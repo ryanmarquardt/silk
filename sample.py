@@ -20,6 +20,10 @@ for name in ['js/jquery.js', 'css/calendar.css', 'js/calendar.js', 'js/web2py.js
 	doc.include('/examples/static/'+name)
 doc.include(Javascript("jQuery(function(){jQuery('.sf-menu').superfish();});"))
 
+wrapper = doc.body.add('div#wrapper')
+wrapper.add('#flash')
+header = wrapper.add('#header')
+container = header.add('#container')
 
 for depth, element in doc.walk():
 	if isinstance(element, Node):
