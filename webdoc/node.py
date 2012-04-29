@@ -42,12 +42,30 @@ class Node(MutableMapping, MutableSequence):
 	>>> print a
 	Node('a', class='234')
 	
+	Set and retrieve attributes on the object that start with an underscore. If
+	that attribute doesn't exist, None is returned (similar to dict.get()).
+	
+	>>> a._class = '345'
+	>>> print a
+	Node('a', class='345')
+	>>> print a._class
+	345
+	>>> print a._milk
+	None
+	
+	Normal attribute access isn't so lucky
+
+	>>> a.milk
+	Traceback (most recent call last):
+	 ...
+	AttributeError: 'Node' object has no attribute 'milk'
+	
 	If the first argument is another node, that node's values are copied. The 
 	other arguments are ignored.
 	
 	>>> b = Node.copy(a)
 	>>> b
-	Node('a', _class='234')
+	Node('a', _class='345')
 	>>> b.children is a.children
 	False
 	>>> b.attributes is a.attributes
@@ -87,12 +105,24 @@ class Node(MutableMapping, MutableSequence):
 			return self.__dict__['attributes'][self._attr_key(key)]
 		else:
 			return self.__dict__['children'][key]
+
+	def __getattr__(self, key):
+		if key[0] == '_':
+			return self.get(key)
+		else:
+			return super(Node, self).__getattribute__(key)
 	
 	def __setitem__(self, key, value):
 		if is_string(key):
 			self.__dict__['attributes'][self._attr_key(key)] = value
 		else:
 			self.__dict__['children'][key] = value
+
+	def __setattr__(self, key, value):
+		if key[0] == '_':
+			self.__setitem__(key, value)
+		else:
+			super(Node, self).__setattr__(key, value)
 	
 	def __delitem__(self, key):
 		if is_string(key):
@@ -125,7 +155,7 @@ class Node(MutableMapping, MutableSequence):
 	def walk(self, filter=None, depth=0):
 		yield depth, self
 		for element in self.children:
-			if isinstance(element, Node):
+			if hasattr(element, 'walk'):
 				for d,sub in element.walk(depth=depth+1):
 					yield d,sub
 			else:
