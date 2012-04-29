@@ -1,9 +1,9 @@
-from __future__ import print_function
 from common import *
 from node import *
 
 from functools import partial
 from xml.sax.saxutils import escape as xmlescape, unescape as xmlunescape
+import re
 
 def _xml(value):
 	if is_sequence(value):
@@ -30,6 +30,11 @@ class XMLNode(Node):
 	<div>abc</div>
 	>>> print XMLNode('div', 'abc', _class='')
 	<div class=''>abc</div>
+	>>> a = XMLNode('div')
+	>>> a.add('span.highlight')
+	XMLNode('span', _class='highlight')
+	>>> print a
+	<div><span class='highlight' /></div>
 	'''
 	def __str__(self):
 		return ('<%(name)s%(attr)s>%(kids)s</%(name)s>' if len(self.children) else '<%(name)s%(attr)s />') % dict(
@@ -37,6 +42,18 @@ class XMLNode(Node):
 			kids=''.join(map(_xml,self.children)),
 			attr=self._render_attrs(),
 		)
+
+	def add(self, selector):
+		name = None
+		props = {}
+		maps = {'.':'_class','#':'_id'}
+		for part in re.findall('([.#]?[-_a-zA-Z0-9]+)', selector):
+			props[maps.get(part[0])] = part[1:] if part[0] in maps else part
+		name = props.pop(None, 'div')
+		node_cls = globals().get(name.title()) or globals().get(name.upper()) or partial(XMLNode, name)
+		node = node_cls(**props)
+		self.append(node)
+		return node
 		
 	def _render_attrs(self):
 		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v)) for k,v in self._real_attrs().items() if len(sequence(v)))
@@ -60,11 +77,6 @@ class XMLNotEmptyNode(XMLNode):
 	>>> print XMLNotEmptyNode('head')
 	<head></head>
 	'''
-	children = property(
-		lambda s:s.__dict__['children'] or print(s),
-		lambda s,v:s.__dict__.__setitem__('children', v),
-		lambda s:s.__dict__.__delitem__('children'),
-	)
 	def __str__(self):
 		return '<%(name)s%(attr)s>%(kids)s</%(name)s>' % dict(
 			name=self.name,
@@ -78,7 +90,7 @@ class XMLNotEmptyNode(XMLNode):
 ## Normal tags
 for tag in """a abbr acronym address applet b bdo big blockquote button
 caption center cite code colgroup dd del dfn dir dl dt em fieldset font
-form frameset h1 h2 h3 h4 h5 h6 head html i iframe ins kbd label legend li map
+form frameset head html i iframe ins kbd label legend li map
 menu noframes noscript object ol optgroup option p pre q s samp select
 small span strike strong style sub sup table tbody td textarea tfoot th thead
 title tr tt u ul var xmp""".split():
@@ -91,7 +103,7 @@ for tag in """area base basefont br col frame hr img input link param""".split()
 	assert str(globals()[tag.upper()]()) == '<%s />'%tag.lower(), str(globals()[tag.upper()]())
 
 ## NotEmpty tags
-for tag in """head div""".split():
+for tag in """head div h1 h2 h3 h4 h5 h6""".split():
 	globals()[tag.upper()] = partial(XMLNotEmptyNode,tag.lower())
 	assert str(globals()[tag.upper()]()) == '<%s></%s>'%(tag.lower(),tag.lower()), str(globals()[tag.upper()]())
 
@@ -141,11 +153,7 @@ class META(XMLNoChildNode):
 	>>> print META.http_equiv('X-UA-Compatible', 'IE=edge')
 	<meta http-equiv='X-UA-Compatible' content='IE=edge' />
 	'''
-	def __init__(self, name=None, content=None, **attributes):
-		if name:
-			attributes.setdefault('_name', name)
-		if content:
-			attributes.setdefault('_content', content or '')
+	def __init__(self, **attributes):
 		XMLNoChildNode.__init__(self, 'meta', **attributes)
 		
 	@classmethod
@@ -161,7 +169,6 @@ class META(XMLNoChildNode):
 		return cls(_http_equiv=header, _content = content)
 		
 	def _render_attrs(self):
-		#print 'META._render_attrs', self.attributes
 		items = []
 		ra = self._real_attrs()
 		##Assert a particular ordering on some attributes
@@ -286,7 +293,7 @@ class HTMLDoc(HTML):
 		charset = attributes.pop('charset','utf-8')
 		if charset:
 			includes.insert(0, META.charset(charset))
-		HTML.__init__(self, HEAD(), BODY(*children), **attributes)
+		HTML.__init__(self, HEAD(), Body(*children), **attributes)
 		self['_class'] = sequence(self.get('_class',[]))
 		if no_js:
 			self['_class'].append('no-js')
