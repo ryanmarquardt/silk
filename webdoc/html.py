@@ -306,10 +306,13 @@ class HTMLDoc(HTML):
 
 	def __init__(self, *children, **attributes):
 		self.conditional = attributes.pop('conditional', True)
+		title = attributes.pop('title','')
 		attributes.setdefault('doctype','html')
 		no_js = attributes.pop('no_js', True)
 		includes = attributes.pop('includes', [])
 		charset = attributes.pop('charset','utf-8')
+		if title:
+			includes.insert(0, TITLE(title))
 		if charset:
 			includes.insert(0, META.charset(charset))
 		HTML.__init__(self, HEAD(), Body(*children), **attributes)
