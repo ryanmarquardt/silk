@@ -159,11 +159,12 @@ class Node(MutableMapping, MutableSequence):
 		return True
 		
 	def walk(self, filter=None, depth=0):
+		filter = filter or (lambda x:True)
 		if filter(self):
 			yield depth, self
 		for element in self.children:
 			if hasattr(element, 'walk'):
-				for d,sub in element.walk(depth=depth+1):
+				for d,sub in element.walk(filter=filter, depth=depth+1):
 					if filter(sub):
 						yield d,sub
 			else:
