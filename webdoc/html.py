@@ -119,6 +119,24 @@ class COMMENT(XMLNode, NoAttributesMixin, NoNameMixin):
 	def __str__(self):
 		return '<!--%s-->'%''.join(map(str,self.children))
 
+class CONDITIONAL_COMMENT(XMLNode, NoAttributesMixin):
+	'''Used to comment out text conditionally by browser
+	
+	>>> print CONDITIONAL_COMMENT('lt IE 7', 'Your browser is IE before version 7')
+	<!--[if lt IE 7]>Your browser is IE before version 7<![endif]-->
+	>>> print CONDITIONAL_COMMENT('(gt IE 9)|!(IE)', 'Your browser is IE after version 7 or not IE', ornot=True)
+	<!--[if (gt IE 9)|!(IE)]><!-->Your browser is IE after version 7 or not IE<!--<![endif]-->
+	'''
+	def __init__(self, condition, *children, **attributes):
+		self.ornot = attributes.pop('ornot', False)
+		XMLNode.__init__(self, condition, *children)
+	
+	def __str__(self):
+		return ('<!--[if %(name)s]><!-->%(kids)s<!--<![endif]-->' if self.ornot else '<!--[if %(name)s]>%(kids)s<![endif]-->') % dict(
+			name=self.name,
+			kids=''.join(map(_xml,self.children))
+		)
+
 class XML(XMLNode, NoAttributesMixin, NoNameMixin):
 	'''Renders text without escaping it.
 	
@@ -262,12 +280,12 @@ class HTMLDoc(HTML):
 	
 	## parameters:
 	
-	>>> print HTMLDoc(no_js=False, charset=None)
+	>>> print HTMLDoc(no_js=False, charset=None, conditional=False)
 	<!DOCTYPE HTML>
 	<html><head></head><body></body></html>
-	>>> print HTMLDoc(doctype='xhtml11')
+	>>> print HTMLDoc(doctype='xhtml11', conditional=True)
 	<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-	<html class='no-js'><head><meta charset='utf-8' /></head><body></body></html>
+	<!--[if lt IE 7]><html class='ie6 no-js'><![endif]--><!--[if IE 7]><html class='ie7 no-js'><![endif]--><!--[if IE 8]><html class='ie8 no-js'><![endif]--><!--[if IE 9]><html class='ie9 no-js'><![endif]--><!--[if (gt IE 9)|!(IE)]><!--><html class='no-js'><!--<![endif]--><head><meta charset='utf-8' /></head><body></body></html>
 	'''
 	doctypes = container(
 		html5='HTML',
@@ -334,19 +352,19 @@ class HTMLDoc(HTML):
 	def __str__(self):
 		orig_doctype = self.doctype
 		self.doctype = self.doctypes[self.doctype]
-		result = super(HTMLDoc, self).__str__()
-		self.doctype = orig_doctype
 		if self.conditional:
-			wrapped = ''
+			result = '<!DOCTYPE %s>\n'%self.doctype
 			for cond,cls in [('lt IE 7','ie6'),('IE 7','ie7'),('IE 8','ie8'),('IE 9','ie9')]:
 				self.attributes['_class'].insert(0, cls)
-				wrapped += "<!--[if %s ]><html%s><![endif]-->" % (cond,self._render_attrs())
+				result += str(CONDITIONAL_COMMENT(cond, XML('<html%s>'%self._render_attrs())))
 				del self.attributes['_class'][0]
-			wrapped += "<!--[if (gt IE 9)|!(IE)]><!--> <html%(attr)s> <!--<![endif]-->%(kids)s</html>" % dict(
+			result += "<!--[if (gt IE 9)|!(IE)]><!--><html%(attr)s><!--<![endif]-->%(kids)s</html>" % dict(
 				kids=''.join(map(_xml,self.children)),
 				attr=self._render_attrs(),
 			)
-			result.replace('<html%s>'%self._render_attrs(), wrapped)
+		else:
+			result = super(HTMLDoc, self).__str__()
+		self.doctype = orig_doctype
 		return result
 
 
