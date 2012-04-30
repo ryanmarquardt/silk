@@ -39,7 +39,7 @@ doc.body = Body(
 		DIV(
 			DIV(
 				DIV(
-					IMG(_src='/examples/static/images/web2py_logo.png', _class='logo', _alt='web2py logo'),
+					Image('/examples/static/images/web2py_logo.png', 'web2py logo', _class='logo'),
 					H5(),
 				_class=['sixteen', 'columns']),
 				DIV(
@@ -67,8 +67,15 @@ doc.body = Body(
 								TD(A(IMG(_src='/examples/static/images/videos.png'),_href='http://www.youtube.com/playlist?list=PL5E2E223FE3777851')),
 							),
 						width=css.Units.Pct(100)),
-						H3('WEB2PY', SUP('TM'), 'WEB FRAMEWORK'),
-						P('Free open source full-stack framework for rapid development of fast, scalable, ',A('secure',_href='http://www.web2py.com/book/default/chapter/01#security',_target='_blank'),' and portable database-driven web-based applications. Written and programmable in ',A('Python',_href='http://www.python.org',_target='_blank'),'. ',A('LGPLv3 License',_href='http://www.gnu.org/licenses/lgpl.html'),'. Current version: 1.99.7 (2012-03-04 22:12:08) stable'),
+						H3('WEB2PY', SUP('TM'), ' WEB FRAMEWORK'),
+						P(
+							'Free open source full-stack framework for rapid development of fast, scalable, ',
+							A('secure',_href='http://www.web2py.com/book/default/chapter/01#security',_target='_blank'),
+							' and portable database-driven web-based applications. Written and programmable in ',
+							A('Python',_href='http://www.python.org',_target='_blank'),
+							'. ',A('LGPLv3 License',_href='http://www.gnu.org/licenses/lgpl.html'),
+							'. Current version: 1.99.7 (2012-03-04 22:12:08) stable'
+						),
 					_class=['two-thirds','column','alpha']),
 					DIV(
 						DIV(
@@ -149,7 +156,6 @@ doc.body = Body(
 					A('Spanish',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-usuarios',target='_blank'), '.',
 					DIV(
 						A(IMG(style=css.PADDING_BOTTOM(0),src='/examples/static/images/poweredby.png'),href='https://www.web2py.com/',style=[css.FLOAT('left'),css.PADDING_RIGHT(px=6)]),
-					#_style=css.FLOAT('right')),
 					_style=css.css(float='right')),
 				_class='footer-content'),
 			_class=['sixteen','columns']),
