@@ -159,13 +159,16 @@ class Node(MutableMapping, MutableSequence):
 		return True
 		
 	def walk(self, filter=None, depth=0):
-		yield depth, self
+		if filter(self):
+			yield depth, self
 		for element in self.children:
 			if hasattr(element, 'walk'):
 				for d,sub in element.walk(depth=depth+1):
-					yield d,sub
+					if filter(sub):
+						yield d,sub
 			else:
-				yield depth+1, element
+				if filter(element):
+					yield depth+1, element
 
 __all__.append('NoChildrenMixin')
 class NoChildrenMixin(object):

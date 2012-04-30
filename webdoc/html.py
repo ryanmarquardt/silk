@@ -375,11 +375,12 @@ class HTMLDoc(HTML):
 		xhtml_frameset='HTML PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd"',
 		xhtml11='HTML PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"',
 	)
+	#Aliases
 	doctypes.html = doctypes.html5
 	doctypes.html4 = doctypes.html_strict
 	doctypes.strict = doctypes.html_strict
 	doctypes.transitional = doctypes.html_transitional
-	doctypes.framset = doctypes.html_framset
+	doctypes.frameset = doctypes.html_frameset
 	doctypes.xhtml = doctypes.xhtml11
 
 	def __init__(self, *children, **attributes):
@@ -448,6 +449,52 @@ class HTMLDoc(HTML):
 		self.doctype = orig_doctype
 		return result
 
+	def parse_doctype(self):
+		dt = self.doctypes.get(self.doctype,self.doctype)
+		m = re.match(r'[hH][tT][mM][lL]( PUBLIC "-//W3C//DTD (?P<type>X?HTML) (?P<version>[0-9.]+)( (?P<variant>Strict|Transitional|Frameset))?//EN")?', dt)
+		if not m:
+			raise Exception('Unable to parse doctype: %s'%dt)
+		else:
+			m = container(m.groupdict())
+			if m.type is None and m.version is None and m.variant is None:
+				m.type = 'HTML'
+				m.version = '5'
+			if m.type == 'HTML' and m.version == '4.01' and m.variant is None:
+				m.variant = 'Strict'
+			return m
+
+	def find_deprecated(self):
+		'''Walks the node tree, checking for deprecated elements.
+		
+		'''
+		dt_info = self.parse_doctype()
+		if (dt_info.type, dt_info.version) == ('HTML','5'):
+			deprecated = set("""acronym applet basefont big center dir font frame
+				frameset isindex noframes strike tt u""".split())
+		elif (dt_info.type, dt_info.version) == ('XHTML', '1.1'):
+			deprecated = set("""applet area article aside audio base basefont
+				bdi bdo canvas center col colgroup command datalist del details
+				dir embed figcaption figure font footer frame frameset header
+				hgroup iframe ins isindex keygen map mark menu meter nav noframes
+				output progress rp rt ruby s section source strike summary tbody
+				tfoot thead time track u video wbr""".split())
+		else:
+			deprecated = set("""article aside audio bdi canvas command datalist
+				details embed figcaption figure footer header hgroup keygen mark
+				meter nav output progress rp rt ruby section source summary time
+				track video wbr""".split())
+			if dt_info.variant in ('Transitional','Strict'):
+				deprecated.update("""frame frameset""".split())
+			if dt_info.variant == 'Strict':
+				deprecated.update("""applet basefont center dir font iframe isindex menu noframes strike u""".split())
+		for depth,element in self.walk(lambda x:x.name in deprecated):
+			yield depth,element
+
+for dt in HTMLDoc.doctypes:
+	print dt
+	print HTMLDoc.doctypes[dt]
+	print HTMLDoc(doctype=dt).parse_doctype()
+	print
 
 if __name__=='__main__':
 	import doctest
