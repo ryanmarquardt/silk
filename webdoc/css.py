@@ -108,7 +108,10 @@ class CSSSelector(CSSNode):
 		if _child: result += '>'+str(_child)
 		return ' '.join([result] + map(str,self.children))
 
-Attributes = container()
+def Width(value=None, **units):
+	if units:
+		value = Units[units.keys()[0].title()](units.values()[0])
+	return CSSAttribute('width', value)
 
 Units = container(
 	Px = lambda i:'%gpx'%i if i else '0',
