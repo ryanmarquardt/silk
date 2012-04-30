@@ -216,6 +216,26 @@ class META(XMLNoChildNode):
 		items.extend(ra.items())
 		return ''.join(' %s=%r'%(k.replace('_','-'),v) for k,v in items if len(sequence(v)))
 
+def Hyper(href, *children, **attributes):
+	'''Helper function for creating hyperlinks
+
+	>>> print Hyper('http://www.google.com', 'Google')
+	<a href='http://www.google.com'>Google</a>
+	'''
+	attributes['_href'] = href
+	return A(*children, **attributes)
+
+def Image(src, alt=None, **attributes):
+	'''Helper function for creating images
+
+	>>> print Image('favicon.ico')
+	<img src='favicon.ico' />
+	'''
+	attributes['_src'] = src
+	if alt:
+		attributes['_alt'] = alt
+	return IMG(**attributes)
+
 class SCRIPT(XMLNode):
 	'''
 	
