@@ -490,12 +490,6 @@ class HTMLDoc(HTML):
 		for depth,element in self.walk(lambda x:x.name in deprecated):
 			yield depth,element
 
-for dt in HTMLDoc.doctypes:
-	print dt
-	print HTMLDoc.doctypes[dt]
-	print HTMLDoc(doctype=dt).parse_doctype()
-	print
-
 if __name__=='__main__':
 	import doctest
 	doctest.testmod()
