@@ -33,16 +33,32 @@ class XMLNode(Node):
 	<div class=''>abc</div>
 	>>> a = XMLNode('div')
 	>>> a.add('span.highlight')
-	XMLNode('span', _class='highlight')
+	XMLNode('span', _class=['highlight'])
 	>>> print a
 	<div><span class='highlight' /></div>
+	
+	One attribute, '_class' is treated specially. It is always created as a
+	sequence, so that ...
+	
+	>>> a._class.append('lowlight')
+	
+	should never raise an error, so long as only sequences are assigned to _class
 	'''
+	def __init__(self, *children, **attributes):
+		super(XMLNode, self).__init__(*children, **attributes)
+		self.attributes['_class'] = sequence(self.attributes.get('_class',[]))
+	
 	def __str__(self):
 		return ('<%(name)s%(attr)s>%(kids)s</%(name)s>' if len(self.children) else '<%(name)s%(attr)s />') % dict(
 			name=self.name,
 			kids=''.join(map(_xml,self.children)),
 			attr=self._render_attrs(),
 		)
+
+	def __repr__(self):
+		return '%s(%s)'%(self.__class__.__name__,', '.join([repr(self.name)] + \
+		  map(repr,self.children) + \
+		  ['%s=%r'%(k,v) for k,v in self.attributes.items() if len(sequence(v))]))
 
 	def add(self, selector):
 		name = None
@@ -198,7 +214,7 @@ class META(XMLNoChildNode):
 		if 'content' in ra:
 			items.append(('content',ra.pop('content')))
 		items.extend(ra.items())
-		return ''.join(' %s=%r'%(k.replace('_','-'),v) for k,v in items)
+		return ''.join(' %s=%r'%(k.replace('_','-'),v) for k,v in items if len(sequence(v)))
 
 class SCRIPT(XMLNode):
 	'''
@@ -278,14 +294,56 @@ class HTML(XMLNotEmptyNode):
 class HTMLDoc(HTML):
 	'''Class representing a complete (X)HTML document.
 	
-	## parameters:
-	
-	>>> print HTMLDoc(no_js=False, charset=None, conditional=False)
+	>>> print HTMLDoc()
 	<!DOCTYPE HTML>
-	<html><head></head><body></body></html>
-	>>> print HTMLDoc(doctype='xhtml11', conditional=True)
+	<html><head><meta charset='utf-8' /></head><body></body></html>
+	
+	Keyword parameters:
+	
+	conditional=True : Wraps start <html> tag in conditional comments, setting
+	  css classes on the element corresponding to browser
+	  (see paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/
+	   for more information.)
+	
+	>>> print HTMLDoc(conditional=True)
+	<!DOCTYPE HTML>
+	<!--[if lt IE 7]><html class='ie6'><![endif]--><!--[if IE 7]><html class='ie7'><![endif]--><!--[if IE 8]><html class='ie8'><![endif]--><!--[if IE 9]><html class='ie9'><![endif]--><!--[if (gt IE 9)|!(IE)]><!--><html><!--<![endif]--><head><meta charset='utf-8' /></head><body></body></html>
+	
+	
+	title='' : Automatically includes a title tag in the head.
+	
+	>>> print HTMLDoc(title='Welcome to Siteland')
+	<!DOCTYPE HTML>
+	<html><head><meta charset='utf-8' /><title>Welcome to Siteland</title></head><body></body></html>
+	
+	
+	doctype='html' : Set the document type header of the document. Defaults to
+	  HTML5. Possible values can be found as HTMLDoc.doctypes.keys()
+	
+	>>> print HTMLDoc(doctype='xhtml11', no_js=True, conditional=True)
 	<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 	<!--[if lt IE 7]><html class='ie6 no-js'><![endif]--><!--[if IE 7]><html class='ie7 no-js'><![endif]--><!--[if IE 8]><html class='ie8 no-js'><![endif]--><!--[if IE 9]><html class='ie9 no-js'><![endif]--><!--[if (gt IE 9)|!(IE)]><!--><html class='no-js'><!--<![endif]--><head><meta charset='utf-8' /></head><body></body></html>
+	
+	
+	charset='utf-8' : Sets the character set for the document. Set to a false value
+	to prevent such a meta tag being included in the document.
+	
+	>>> print HTMLDoc(charset='iso-8859-1')
+	<!DOCTYPE HTML>
+	<html><head><meta charset='iso-8859-1' /></head><body></body></html>
+	>>> print HTMLDoc(charset=None)
+	<!DOCTYPE HTML>
+	<html><head></head><body></body></html>
+	
+	
+	includes=[] : A list of arguments to HTMLDoc.include. Members may be nodes,
+	  or strings which are interpretted as paths
+	
+	>>> a,b = HTMLDoc(charset='', includes=['/static.css', XML('123')]).head
+	>>> print a.name, a._href, a._type
+	link /static.css text/css
+	>>> print b
+	123
 	'''
 	doctypes = container(
 		html5='HTML',
@@ -305,10 +363,10 @@ class HTMLDoc(HTML):
 	doctypes.xhtml = doctypes.xhtml11
 
 	def __init__(self, *children, **attributes):
-		self.conditional = attributes.pop('conditional', True)
+		self.conditional = attributes.pop('conditional', False)
 		title = attributes.pop('title','')
 		attributes.setdefault('doctype','html')
-		no_js = attributes.pop('no_js', True)
+		no_js = attributes.pop('no_js', False)
 		includes = attributes.pop('includes', [])
 		charset = attributes.pop('charset','utf-8')
 		if title:
