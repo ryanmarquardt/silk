@@ -1,13 +1,14 @@
 from common import *
 from node import *
 
+import collections
 from functools import partial
 from xml.sax.saxutils import escape as xmlescape, unescape as xmlunescape
 import re
 
-def _xml(value):
+def _xml(value, attr=False):
 	if is_sequence(value):
-		return ' '.join(map(_xml,value))
+		return (' ' if attr else '').join(map(_xml,value))
 	elif isinstance(value, Node):
 		return str(value)
 	else:
@@ -45,18 +46,18 @@ class XMLNode(Node):
 
 	def add(self, selector):
 		name = None
-		props = {}
+		props = collections.defaultdict(list)
 		maps = {'.':'_class','#':'_id'}
 		for part in re.findall('([.#]?[-_a-zA-Z0-9]+)', selector):
-			props[maps.get(part[0])] = part[1:] if part[0] in maps else part
-		name = props.pop(None, 'div')
+			props[maps.get(part[0])].append(part[1:] if part[0] in maps else part)
+		name = props.pop(None, ['div'])[0]
 		node_cls = globals().get(name.title()) or globals().get(name.upper()) or partial(XMLNode, name)
-		node = node_cls(**props)
+		node = node_cls(**dict((k,' '.join(vs)) for k,vs in props.items()))
 		self.append(node)
 		return node
 		
 	def _render_attrs(self):
-		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v)) for k,v in self._real_attrs().items() if len(sequence(v)))
+		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v,attr=True)) for k,v in self._real_attrs().items() if len(sequence(v)))
 		
 class XMLNoChildNode(XMLNode, NoChildrenMixin):
 	'''Node which is represented as xml, and forbidden to have children.
