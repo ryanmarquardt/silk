@@ -13,21 +13,26 @@ def AddToAny():
 		Javascript(_src='http://static.addtoany.com/menu/page.js'),
 	)
 
-doc = HTMLDoc(no_js=True, _lang='en', conditional=True)
-doc.include(TITLE('web2py Web Framework'))
-doc.include('/examples/static/js/modernizr-1.7.min.js')
-doc.include(META.http_equiv("X-UA-Compatible", "IE=edge"))
-doc.include(META.value('google-site-verification'))
-doc.include(META.value('viewport', 'width=device-width, initial-scale=1.0, user-scalable=yes'))
-doc.include('/examples/static/favicon.ico')
+doc = HTMLDoc(
+	no_js=True,
+	lang='en',
+	conditional=True,
+	includes=[
+		TITLE('web2py Web Framework'),
+		'/examples/static/js/modernizr-1.7.min.js',
+		CONDITIONAL_COMMENT('IE',META.http_equiv("X-UA-Compatible", "IE=edge")),
+		META.value('google-site-verification'),
+		META.value('viewport', 'width=device-width, initial-scale=1.0, user-scalable=yes'),
+		'/examples/static/favicon.ico',
+		'/examples/static/js/modernizr.custom.js',
+		Javascript('    var w2p_ajax_confirm_message = "Are you sure you want to delete this object?";\n    var w2p_ajax_date_format = "%Y-%m-%d";\n    var w2p_ajax_datetime_format = "%Y-%m-%d %H:%M:%S";',type='text/javascript'),
+		]+['/examples/static/'+name for name in ['js/jquery.js', 'css/calendar.css',
+		'js/calendar.js', 'js/web2py.js', 'css/skeleton.css', 'css/web2py.css',
+		'css/examples.css', 'js/superfish.js', 'css/superfish.css']]+[
+		Javascript("jQuery(function(){jQuery('.sf-menu').superfish();});"),
+	]
+)
 doc.include('/examples/static/favicon.png', rel='apple-touch-icon')
-doc.include('/examples/static/js/modernizr.custom.js')
-doc.include(Javascript('    var w2p_ajax_confirm_message = "Are you sure you want to delete this object?";\n    var w2p_ajax_date_format = "%Y-%m-%d";\n    var w2p_ajax_datetime_format = "%Y-%m-%d %H:%M:%S";',type='text/javascript'))
-for name in ['js/jquery.js', 'css/calendar.css', 'js/calendar.js', 'js/web2py.js',
-             'css/skeleton.css', 'css/web2py.css', 'css/examples.css',
-             'js/superfish.js', 'css/superfish.css']:
-	doc.include('/examples/static/'+name)
-doc.include(Javascript("jQuery(function(){jQuery('.sf-menu').superfish();});"))
 doc.body = Body(
 	DIV(
 		DIV(_class='flash'),
@@ -69,15 +74,91 @@ doc.body = Body(
 						DIV(
 							IMG(_class=['scale-with-grid','centered'], src='/examples/static/images/tag-cloud-color-small.png', width=css.Units.Px(300)),
 							BR(),
-							A('DOWNLOAD NOW',_class='button', href='/examples/default/download',style=css.Width(pct=90)),
-							A('ONLINE DEMO',_class='button', href='http://web2py.com/demo_admin',style=css.Width(pct=90)),
-							A('SITES POWERED BY WEB2PY',_class='button', href='http://web2py.com/poweredby',style=css.Width(pct=90)),
+							A('DOWNLOAD NOW',_class='button', href='/examples/default/download',style=css.WIDTH(pct=90)), ' ',
+							A('ONLINE DEMO',_class='button', href='http://web2py.com/demo_admin',style=css.WIDTH(pct=90)), ' ',
+							A('SITES POWERED BY WEB2PY',_class='button', href='http://web2py.com/poweredby',style=css.WIDTH(pct=90)),
 						_class=['one-third','column'], _style='text-align:center'),
 					_class=['one-third','column','omega']),
 				_class=['sixteen','columns']),
 			_class=['container','mainbody']),
+			DIV(
+				DIV(
+					DIV(
+						H3(A('BATTERIES INCLUDED',href='/examples/default/what')),
+						P('Everything you need in one package including fast multi-threaded web server, SQL database and web-based interface. No third party dependencies but works with ',A('third party tools',href='/examples/default/what'),'.'),
+					_class=['one-third','column','alpha']),
+					DIV(
+						H3(A('WEB-BASED IDE',href='http://web2py.com/demo_admin')),
+						P('Create, modify, deploy and manage application from anywhere using your browser. One web2py instance can run multiple web sites using different databases. Try the ',A('interactive demo',href='http://web2py.com/demo_admin'),'.'),
+					_class=['one-third','column']),
+					DIV(
+						H3(A('EXTENSIVE DOCS',href='/examples/default/documentation')),
+						P(
+							'Start with some ',
+							A('quick examples',href='/examples/default/examples'),
+							', then read the',
+							A('manual',href='http://web2py.com/book',target='_blank'),
+							', watch ',
+							A('videos',href='http://vimeo.com/album/178500',target='_blank'),
+							', and join a ',
+							A('user group',href='/examples/default/usergroups'),
+							' for discussion. Take advantage of the ',
+							A('layouts', href='http://web2py.com/layouts',target='_blank'),
+							', ', A('plugins',href='http://dev.s-cubism.com/web2py_plugins',target='_blank'),
+							', ', A('appliances',href='http://www.web2py.com/appliances',target='_blank'),
+							', and', A('recipes',href='http://web2pyslices.com',target='_blank'), '.',
+						),
+					_class=['one-third','column','omega']),
+				_class=['sixteen','columns']),
+			_class=['container','aboutW2P']),
+			IMG(_class=['scale-with-grid','centered'],src='/examples/static/images/shadow-bottom.png'),
+			DIV(
+				DIV(
+					DIV(
+						EM(P('web2py was the life saver today for me, my blog post: Standalone Usage of web2py',XML('&#x27;'),'s')),
+						SPAN(
+							A(EM(XML('&mdash;'),'caglartoklu'),href='http://twitter.com/#!/caglartoklu/status/84292131707031553'),
+						_class='right'),
+					_class=['one-third','column','alpha']),
+					DIV(
+						EM(P('web2py rules! as a sysadmin I like the no installation and no configuration approach a lot)')),
+						SPAN(
+							A(EM(XML('&mdash;'),'kjogut'),href='http://twitter.com/#!/jkogut/status/61414554273447936'),
+						_class='right'),
+					_class=['one-third','column']),
+					DIV(
+						EM(P('web2py it is. Compatible with everything under the sun and great interfaces to googleappengine')),
+						SPAN(
+							A(EM(XML('&mdash;'),'comamitc'),href='http://twitter.com/#!/comamitc/status/51744719071477760'),
+						_class='right'),
+					_class=['one-third','column','omega']),
+				_class=['sixteen','columns']),
+			_class=['container','userQuotes']),
 		_class='main'),
+		DIV(_class='push'),
 	_class='wrapper'),
+	DIV(
+		DIV(
+			DIV(
+				DIV(
+					'\nCopyright ',XML('&#169;'),' 2011\n - User communities in ',
+					A('English',href='https://groups.google.com/forum/?fromgroups#!forum/web2py',target='_blank'), ', ',
+					A('French',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-fr',target='_blank'), ', ',
+					A('Japanese',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-japan',target='_blank'), ', ',
+					A('Portuguese',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-users-brazil',target='_blank'), ', and ',
+					A('Spanish',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-usuarios',target='_blank'), '.',
+					DIV(
+						A(IMG(style=css.PADDING_BOTTOM(0),src='/examples/static/images/poweredby.png'),href='https://www.web2py.com/',style=[css.FLOAT('left'),css.PADDING_RIGHT(px=6)]),
+					#_style=css.FLOAT('right')),
+					_style=css.css(float='right')),
+				_class='footer-content'),
+			_class=['sixteen','columns']),
+		_class=['container','header']),
+	_class='footer'),
+	CONDITIONAL_COMMENT('lt IE 7',
+		Javascript(src='/examples/static/js/dd_belatedpng.js'),
+		Javascript("DD_belatedPNG.fix('img, .png_bg');"),
+	),
 )
 
 
