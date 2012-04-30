@@ -1,15 +1,15 @@
 """Construct css style sheets from abstract structure
 
->>> print CSSBlock(CSSSelector('div'),
-...     CSSAttribute('padding', '0', Units.Px(20), Units.Px(15)),
-...     CSSAttribute('background', 'transparent'),
-...     CSSAttribute('border', Units.Px(1), 'solid', Colors.Black),
+>>> print Block(Selector('div'),
+...     Property('padding', '0', Units.Px(20), Units.Px(15)),
+...     Property('background', 'transparent'),
+...     Property('border', Units.Px(1), 'solid', Colors.Black),
 ... )
 div { padding: 0 20px 15px; background: transparent; border: 1px solid #000000; }
 
 As a shortcut, selectors can be given as strings, and attributes as dictionaries
 
->>> a = CSSBlock('a', {'color': Colors.Red})
+>>> a = Block('a', {'color': Colors.Red})
 >>> print a
 a { color: #FF0000; }
 
@@ -19,6 +19,15 @@ later.
 >>> a.name['_state'] = 'hover'
 >>> print a
 a:hover { color: #FF0000; }
+
+Several helper functions and constants exist.
+
+Colors are stored with CamelCase names
+>>> Colors.Black
+'#000000'
+>>> Colors.from_rgb(255,255,255)
+'#FFFFFF'
+
 """
 
 from common import *
@@ -27,70 +36,102 @@ from node import *
 from functools import partial
 
 def _css(value):
-	return str(value)
+	return 'none' if value is None else str(value)
 
 __all__ = ['CSSNode']
 class CSSNode(Node):
 	pass
 
-__all__.append('CSSBlock')
-class CSSBlock(CSSNode, NoAttributesMixin):
+__all__.append('Block')
+class Block(CSSNode, NoAttributesMixin):
 	def __init__(self, name=None, *children, **attributes):
-		if not isinstance(name, CSSNode): name = CSSSelector(name)
+		if not isinstance(name, CSSNode): name = Selector(name)
 		mychildren = []
 		for child in children:
 			if isinstance(child, dict):
-				mychildren.extend(CSSAttribute(prop,*sequence(val)) for prop,val in child.items())
+				mychildren.extend(Property(prop,*sequence(val)) for prop,val in child.items())
 			else:
 				mychildren.append(child)
-		super(CSSBlock, self).__init__(name, *mychildren, **attributes)
+		super(Block, self).__init__(name, *mychildren, **attributes)
 		
 	def __str__(self):
 		return '%s { %s }' % (self.name, ' '.join(map(_css,self.children)))
 	
-__all__.append('CSSAttribute')
-class CSSAttribute(CSSNode):
+__all__.append('Property')
+class Property(CSSNode):
 	'''Class for specifying a css property in a block
 	
-	>>> print CSSAttribute('background', 'transparent')
+	>>> print Property('background', 'transparent')
 	background: transparent;
-	>>> print CSSAttribute('padding', 0, Units.Px(0), Units.In(15), Units.Px(15))
+	>>> print Property('padding', 0, Units.Px(0), Units.In(15), Units.Px(15))
 	padding: 0 0 15in 15px;
+	
+	A single keyword provided as a lower-cased unit name is appended to the list
+	of values, transformed into a unitted value. Output with more than one
+	keyword input is undefined and not recommended. 
+	
+	>>> print Property('width', px=100)
+	width: 100px;
+	>>> print Property('border-left', 'solid', 'black', em=1)
+	border-left: solid black 1em;
+	
+	If value is an iterable, all members are transformed and appended to the
+	list of children.
+	
+	>>> print Property('padding', px=[0,0,25,50])
+	padding: 0 0 25px 50px;
+	
+	The special keyword 'important' appends '!important' to the list of children
+	if it's set to a true value.
+	>>> print Property('position', 'absolute', important=True)
+	position: absolute !important;
 	'''
+	def __init__(self, name, *values, **units):
+		important = units.pop('important', False)
+		values = list(values)
+		if units:
+			unit = units.keys()[0].title()
+			if unit[0] == '_':
+				unit = unit[1:]
+			values.extend(map(Units[unit], sequence(units.values()[0])))
+		if important:
+			values.append('!important')
+		super(Property, self).__init__(name, *values)
+
 	def __str__(self):
 		return '%s: %s;' % (self.name, ' '.join(map(_css,self.children)))
 
 Attributes = container(
-	background = partial(CSSAttribute, 'background')
+	background = partial(Property, 'background')
 )
 
-__all__.append('CSSSelector')
-class CSSSelector(CSSNode):
+__all__.append('Selector')
+class Selector(CSSNode):
 	'''Class for specifying a css element selector
 	
 	Match elements by type
 	
-	>>> print CSSSelector('input')
+	>>> print Selector('input')
 	input
 	
 	Match elements by class
 	
-	>>> print CSSSelector(_class='important')
+	>>> print Selector(_class='important')
 	.important
 	
 	Match elements by id
 	
-	>>> print CSSSelector('div', _id='content')
+	>>> print Selector('div', _id='content')
 	div#content
 	
 	Match elements by ancestry
-	>>> print CSSSelector('div', CSSSelector('p'))
+	>>> print Selector('div', Selector('p'))
 	div p
-	>>> print CSSSelector('div', _child=CSSSelector('p'))
+	>>> print Selector('div', _child=Selector('p'))
 	div>p
 	
 	Match elements with a certain state
-	>>> print CSSSelector('a', _state='hover')
+	>>> print Selector('a', _state='hover')
 	a:hover
 	
 	'''
@@ -108,11 +149,6 @@ class CSSSelector(CSSNode):
 		if _child: result += '>'+str(_child)
 		return ' '.join([result] + map(str,self.children))
 
-def Width(value=None, **units):
-	if units:
-		value = Units[units.keys()[0].title()](units.values()[0])
-	return CSSAttribute('width', value)
-
 Units = container(
 	Px = lambda i:'%gpx'%i if i else '0',
 	In = lambda i:'%gin'%i if i else '0',
@@ -123,11 +159,66 @@ Units = container(
 	Pt = lambda i:'%gpt'%i if i else '0',
 	Pc = lambda i:'%gpc'%i if i else '0',
 	Pct = lambda i:'%g%%'%i if i else '0',
+	S = lambda i:'%gs'%i,
 )
 
-rgb = lambda r,g,b:'#%02X%02X%02X'%(r,g,b)
+### Factory functions for properties that accept units as arguments
+for name in """animation animation-name animation-duration animation-timing-function
+animation-delay animation-iteration-count animation-direction animation-play-state
+background background-attachment background-color background-image background-position
+background-repeat background-clip background-origin background-size
+border border-bottom border-bottom-color border-bottom-style border-bottom-width
+border-color border-left border-left-color border-left-style border-left-width
+border-right border-right-color border-right-style border-right-width border-style
+border-top border-top-color border-top-style border-top-width border-width
+border-radius border-bottom-left-radius border-bottom-right-radius
+border-top-left-radius border-top-right-radius
+border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width
+outline outline-color outline-style outline-width
+box-decoration-break box-shadow
+overflow-x overflow-y overflow-style rotation rotation-point
+color-profile opacity rendering-intent
+bookmark-label bookmark-level bookmark-target float-offset
+hyphenate-after hyphenate-before hyphenate-character hyphenate-lines hyphenate-resource
+hyphens image-resolution marks string-set
+width height max-height min-height max-width min-width
+box-align box-direction box-flex box-flex-group box-lines box-ordinal-group box-orient box-pack
+font font-family font-size font-style font-variant font-weight font-size-adjust font-stretch
+content counter-increment counter-reset quotes crop move-to page-policy
+grid-columns grid-rows target target-name target-new target-position
+alignment-adjust alignment-baseline baseline-shift dominant-baseline
+drop-initial-after-adjust drop-initial-after-align drop-initial-before-adjust drop initial-before-align
+drop-initial-size drop-initial-value inline-box-align text-height
+line-stacking line-stacking-ruby line-stacking-shift line-stacking-strategy
+list-style list-style-image list-style-position list-style-type
+margin margin-left margin-right margin-top margin-bottom
+marquee-direction marquee-play-count marquee-speed marquee-style
+column-count column-fill column-gap column-rule column-rule-color column-rule-style
+column-rule-width column-span column-width columns
+padding padding-left padding-right padding-top padding-bottom
+fit fit-position image-orientation page size
+bottom clear clip cursor display float left overflow position right top visibility z-index
+orphans page-break-after page-break-before page-break-inside widows
+ruby-align ruby-overhang ruby-position ruby-span
+mark mark-after mark-before phonemes rest rest-after rest-before
+voice-balance voice-duration voice-pitch voice-pitch-range voice-rate voice-stress voice-volume
+border-collapse border-spacing caption-side empty-cells table-layout
+color direction letter-spacing line-height text-align text-decoration text-indent text-transform
+unicode-bidi vertical-align white-space word-spacing hanging-punctuation punctuation-trim
+text-align-last text-justify text-outline text-overflow text-shadow text-wrap
+word-break word-wrap
+transform transform-origin transform-style perspective perspective-origin backface-visibility
+transition transition-property transition-duration transition-timing-function transition-delay
+appearance box-sizing icon nav-down nav-index nav-left nav-right nav-up outline-offset resize
+""".split():
+	globals()[name.upper().replace('-','_')] = partial(Property,name.lower().replace('_','-'))
+	assert str(globals()[name.upper().replace('-','_')](0)) == '%s: 0;'%name.lower().replace('_','-'), str(globals()[name.upper()]())
+
+def css(**attributes):
+	return [globals()[name.upper().replace('-','_')](*sequence(value)) for name,value in attributes.items()]
+
 Colors = container(
-	from_rgb = rgb,
+	from_rgb = lambda r,g,b:'#%02X%02X%02X'%(r,g,b),
 	AliceBlue = "#F0F8FF",
 	AntiqueWhite = "#FAEBD7",
 	Aqua = "#00FFFF",
