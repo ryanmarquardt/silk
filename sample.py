@@ -165,15 +165,17 @@ doc.body = Body(
 		Javascript(src='/examples/static/js/dd_belatedpng.js'),
 		Javascript("DD_belatedPNG.fix('img, .png_bg');"),
 	),
+	U('test'),
 )
 
+for depth, element in doc.find_deprecated():
+	print depth, element.name, element.attributes
 
-
-for depth, element in doc.walk():
-	if isinstance(element, Node):
-		print '  '*depth, element.name, element.attributes
-	else:
-		print '  '*depth, `element`
+#for depth, element in doc.walk():
+	#if isinstance(element, Node):
+		#print '  '*depth, element.name, element.attributes
+	#else:
+		#print '  '*depth, `element`
 
 #print
 
