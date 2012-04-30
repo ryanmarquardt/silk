@@ -89,7 +89,7 @@ class Node(MutableMapping, MutableSequence):
 	__sequence__ = False
 	def __init__(self, name=None, *children, **attributes):
 		self.name = name
-		self.children = list(children)
+		self.children = flatten(children)
 		self.attributes = dict((self._attr_key(k),v) for k,v in attributes.items())
 	
 	@classmethod
@@ -116,7 +116,12 @@ class Node(MutableMapping, MutableSequence):
 		if is_string(key):
 			self.__dict__['attributes'][self._attr_key(key)] = value
 		else:
-			self.__dict__['children'][key] = value
+			if is_sequence(value):
+				del self.__dict__['children'][key]
+				for v in reversed(flatten(value)):
+					self.__dict__['children'].insert(key, value)
+			else:
+				self.__dict__['children'][key] = value
 
 	def __setattr__(self, key, value):
 		if key[0] == '_':
@@ -134,7 +139,8 @@ class Node(MutableMapping, MutableSequence):
 		return len(self.children)
 		
 	def insert(self, place, value):
-		self.children.insert(place, value)
+		for v in reversed(flatten(value)):
+			self.children.insert(place, v)
 		
 	def _real_attrs(self):
 		return dict((k[1:],v) if k[0]=='_' else (k,v) for k,v in self.attributes.iteritems())
