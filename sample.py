@@ -5,20 +5,20 @@ from webdoc.html import *
 import webdoc.css
 
 def AddToAny():
-	return CAT(
+	return [
 		DIV(
 			A('Share', _class='a2a_dd', _href='http://www.addtoany.com/share_save'),
 		_style='float:right;padding-top:6px', _class=['a2a_kit','a2a_default_style']
 		),
 		Javascript(_src='http://static.addtoany.com/menu/page.js'),
-	)
+	]
 
 doc = HTMLDoc(
 	no_js=True,
 	lang='en',
 	conditional=True,
+	title='web2py Web Framework',
 	includes=[
-		TITLE('web2py Web Framework'),
 		'/examples/static/js/modernizr-1.7.min.js',
 		CONDITIONAL_COMMENT('IE',META.http_equiv("X-UA-Compatible", "IE=edge")),
 		META.value('google-site-verification'),
@@ -44,11 +44,11 @@ doc.body = Body(
 				_class=['sixteen', 'columns']),
 				DIV(
 					DIV(
-						UL((LI(A(text,_href='/examples/default/'+link)) for text,link in [
+						UL([LI(A(text,_href='/examples/default/'+link)) for text,link in [
 							('Home','index'), ('About','what'), ('Download','download'),
 							('Docs & Resources','documentation'), ('Support','support'), ('Contributors','who'),
-					]), _class='sf-menu'),
-					AddToAny(),
+						]], _class='sf-menu'),
+						AddToAny(),
 					_id='menu', _class='clearfix'),
 				_class=['sixteen','columns','statusbar']),
 			_class='container'),
@@ -163,12 +163,12 @@ doc.body = Body(
 
 
 
-#for depth, element in doc.walk():
-	#if isinstance(element, Node):
-		#print '  '*depth, element.name, element.attributes
-	#else:
-		#print '  '*depth, `element`
+for depth, element in doc.walk():
+	if isinstance(element, Node):
+		print '  '*depth, element.name, element.attributes
+	else:
+		print '  '*depth, `element`
 
 #print
 
-print doc
+#print doc
