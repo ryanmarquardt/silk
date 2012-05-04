@@ -17,36 +17,31 @@ def _xml(value, attr=False):
 class XMLNode(Node):
 	'''Node which is represented as xml.
 	
-	>>> print XMLNode('a', 'My home page', href='http://homepage.com')
+	>>> print XMLNode.new('a')('My home page', href='http://homepage.com')
 	<a href='http://homepage.com'>My home page</a>
 	
 	Literals are escaped properly when rendering.
 	
-	>>> print XMLNode('a', '>>> Click Here! <<<', href='/index?a=1&b=2')
+	>>> print XMLNode.new('a')('>>> Click Here! <<<', href='/index?a=1&b=2')
 	<a href='/index?a=1&amp;b=2'>&gt;&gt;&gt; Click Here! &lt;&lt;&lt;</a>
 	
 	Attributes that are empty sequences (excluding strings) will be ignored:
 	
-	>>> print XMLNode('div', 'abc', _class=[])
+	>>> print XMLNode.new('div')('abc', _class=[])
 	<div>abc</div>
-	>>> print XMLNode('div', 'abc', _class='')
+	>>> print XMLNode.new('div')('abc', _class='')
 	<div class=''>abc</div>
-	>>> a = XMLNode('div')
+	>>> a = XMLNode.new('div')()
 	>>> a.add('span.highlight')
-	XMLNode('span', _class=['highlight'])
+	XMLNode('span')(_class=['highlight'])
 	>>> print a
 	<div><span class='highlight' /></div>
-	
-	One attribute, '_class' is treated specially. It is always created as a
-	sequence, so that ...
-	
-	>>> a._class.append('lowlight')
-	
-	should never raise an error, so long as only sequences are assigned to _class
 	'''
 	def __init__(self, *children, **attributes):
+		if '_class' in attributes:
+			attributes['_class'] = sequence(attributes['_class'])
 		super(XMLNode, self).__init__(*children, **attributes)
-		self.attributes['_class'] = sequence(self.attributes.get('_class',[]))
+		#self.attributes['_class'] = sequence(self.attributes.get('_class',[]))
 	
 	def __str__(self):
 		return ('<%(name)s%(attr)s>%(kids)s</%(name)s>' if len(self.children) else '<%(name)s%(attr)s />') % dict(
@@ -55,11 +50,6 @@ class XMLNode(Node):
 			attr=self._render_attrs(),
 		)
 
-	def __repr__(self):
-		return '%s(%s)'%(self.__class__.__name__,', '.join([repr(self.name)] + \
-		  map(repr,self.children) + \
-		  ['%s=%r'%(k,v) for k,v in self.attributes.items() if len(sequence(v))]))
-
 	def add(self, selector):
 		name = None
 		props = collections.defaultdict(list)
@@ -67,8 +57,7 @@ class XMLNode(Node):
 		for part in re.findall('([.#]?[-_a-zA-Z0-9]+)', selector):
 			props[maps.get(part[0])].append(part[1:] if part[0] in maps else part)
 		name = props.pop(None, ['div'])[0]
-		node_cls = globals().get(name.title()) or globals().get(name.upper()) or partial(XMLNode, name)
-		node = node_cls(**dict((k,' '.join(vs)) for k,vs in props.items()))
+		node = XMLNode.new(name)(**dict((k,' '.join(vs)) for k,vs in props.items()))
 		self.append(node)
 		return node
 		
@@ -78,20 +67,20 @@ class XMLNode(Node):
 class XMLNoChildNode(XMLNode, NoChildrenMixin):
 	'''Node which is represented as xml, and forbidden to have children.
 	
-	>>> XMLNoChildNode('br')
-	XMLNoChildNode('br')
-	>>> print XMLNoChildNode('hr')
+	>>> XMLNoChildNode.new('br')()
+	XMLNoChildNode('br')()
+	>>> print XMLNoChildNode.new('hr')()
 	<hr />
-	>>> print XMLNoChildNode('meta', charset='utf-8')
+	>>> print XMLNoChildNode.new('meta')(charset='utf-8')
 	<meta charset='utf-8' />
-	>>> XMLNoChildNode('br', 'ignored', _not='this')
-	XMLNoChildNode('br', _not='this')
+	>>> XMLNoChildNode.new('br')('ignored', _not='this')
+	XMLNoChildNode('br')(_not='this')
 	'''
 
 class XMLNotEmptyNode(XMLNode):
 	'''XMLNode which always renders with a start and end tag.
 	
-	>>> print XMLNotEmptyNode('head')
+	>>> print XMLNotEmptyNode.new('head')()
 	<head></head>
 	'''
 	def __str__(self):
@@ -105,26 +94,99 @@ class XMLNotEmptyNode(XMLNode):
 ###Factory functions for names that don't need special treatment
 #
 ## Normal tags
-for tag in """a abbr acronym address applet b bdo big blockquote button
-caption center cite code colgroup dd del dfn dir dl dt em fieldset font
-form frameset head html i iframe ins kbd label legend li map
-menu noframes noscript object ol optgroup option p pre q s samp select
-small span strike strong style sub sup table tbody td textarea tfoot th thead
-title tr tt u ul var xmp""".split():
-	globals()[tag.upper()] = partial(XMLNode,tag.lower())
-	assert str(globals()[tag.upper()]()) == '<%s />'%tag.lower(), str(globals()[tag.upper()]())
+class A(XMLNode): name = 'a'
+class ABBR(XMLNode): name = 'abbr'
+class ACRONYM(XMLNode): name = 'acronym'
+class ADDRESS(XMLNode): name = 'address'
+class B(XMLNode): name = 'b'
+class BDO(XMLNode): name = 'bdo'
+class BIG(XMLNode): name = 'big'
+class BLOCKQUOTE(XMLNode): name = 'blockquote'
+class BUTTON(XMLNode): name = 'button'
+class CAPTION(XMLNode): name = 'caption'
+class CENTER(XMLNode): name = 'center'
+class CITE(XMLNode): name = 'cite'
+class CODE(XMLNode): name = 'code'
+class COLGROUP(XMLNode): name = 'colgroup'
+class DD(XMLNode): name = 'dd'
+class DEL(XMLNode): name = 'del'
+class DFN(XMLNode): name = 'dfn'
+class DIR(XMLNode): name = 'dir'
+class DL(XMLNode): name = 'dl'
+class DT(XMLNode): name = 'dt'
+class EM(XMLNode): name = 'em'
+class FIELDSET(XMLNode): name = 'fieldset'
+class FONT(XMLNode): name = 'font'
+class FORM(XMLNode): name = 'form'
+class FRAMESET(XMLNode): name = 'frameset'
+class HEAD(XMLNode): name = 'head'
+class I(XMLNode): name = 'i'
+class IFRAME(XMLNode): name = 'iframe'
+class INS(XMLNode): name = 'ins'
+class KBD(XMLNode): name = 'kbd'
+class LABEL(XMLNode): name = 'label'
+class LEGEND(XMLNode): name = 'legend'
+class LI(XMLNode): name = 'li'
+class MAP(XMLNode): name = 'map'
+class MENU(XMLNode): name = 'menu'
+class NOFRAMES(XMLNode): name = 'noframes'
+class NOSCRIPT(XMLNode): name = 'noscript'
+class OBJECT(XMLNode): name = 'object'
+class OL(XMLNode): name = 'ol'
+class OPTGROUP(XMLNode): name = 'optgroup'
+class OPTION(XMLNode): name = 'option'
+class P(XMLNode): name = 'p'
+class PRE(XMLNode): name = 'pre'
+class Q(XMLNode): name = 'q'
+class S(XMLNode): name = 's'
+class SAMP(XMLNode): name = 'samp'
+class SELECT(XMLNode): name = 'select'
+class SMALL(XMLNode): name = 'small'
+class SPAN(XMLNode): name = 'span'
+class STRIKE(XMLNode): name = 'strike'
+class STRONG(XMLNode): name = 'strong'
+class STYLE(XMLNode): name = 'style'
+class SUB(XMLNode): name = 'sub'
+class SUP(XMLNode): name = 'sup'
+class TABLE(XMLNode): name = 'table'
+class TBODY(XMLNode): name = 'tbody'
+class TD(XMLNode): name = 'td'
+class TEXTAREA(XMLNode): name = 'textarea'
+class TFOOT(XMLNode): name = 'tfoot'
+class TH(XMLNode): name = 'th'
+class THEAD(XMLNode): name = 'thead'
+class TITLE(XMLNode): name = 'title'
+class TR(XMLNode): name = 'tr'
+class TT(XMLNode): name = 'tt'
+class U(XMLNode): name = 'u'
+class UL(XMLNode): name = 'ul'
+class VAR(XMLNode): name = 'var'
+class XMP(XMLNode): name = 'xmp'
 
 ## NoChild tags
-for tag in """area base basefont br col frame hr img input link param""".split():
-	globals()[tag.upper()] = partial(XMLNoChildNode,tag.lower())
-	assert str(globals()[tag.upper()]()) == '<%s />'%tag.lower(), str(globals()[tag.upper()]())
+class AREA(XMLNoChildNode): name = 'area'
+class BASE(XMLNoChildNode): name = 'base'
+class BASEFONT(XMLNoChildNode): name = 'basefont'
+class BR(XMLNoChildNode): name = 'br'
+class COL(XMLNoChildNode): name = 'col'
+class FRAME(XMLNoChildNode): name = 'frame'
+class HR(XMLNoChildNode): name = 'hr'
+class IMG(XMLNoChildNode): name = 'img'
+class INPUT(XMLNoChildNode): name = 'input'
+class LINK(XMLNoChildNode): name = 'link'
+class PARAM(XMLNoChildNode): name = 'param'
 
 ## NotEmpty tags
-for tag in """head div h1 h2 h3 h4 h5 h6""".split():
-	globals()[tag.upper()] = partial(XMLNotEmptyNode,tag.lower())
-	assert str(globals()[tag.upper()]()) == '<%s></%s>'%(tag.lower(),tag.lower()), str(globals()[tag.upper()]())
+class HEAD(XMLNotEmptyNode): name = 'head'
+class DIV(XMLNotEmptyNode): name = 'div'
+class H1(XMLNotEmptyNode): name = 'h1'
+class H2(XMLNotEmptyNode): name = 'h2'
+class H3(XMLNotEmptyNode): name = 'h3'
+class H4(XMLNotEmptyNode): name = 'h4'
+class H5(XMLNotEmptyNode): name = 'h5'
+class H6(XMLNotEmptyNode): name = 'h6'
 
-class COMMENT(XMLNode, NoAttributesMixin, NoNameMixin):
+class COMMENT(XMLNode, NoAttributesMixin):
 	'''Includes comments.
 	
 	>>> print COMMENT('This is a comment')
@@ -140,20 +202,21 @@ class CONDITIONAL_COMMENT(XMLNode, NoAttributesMixin):
 	
 	>>> print CONDITIONAL_COMMENT('lt IE 7', 'Your browser is IE before version 7')
 	<!--[if lt IE 7]>Your browser is IE before version 7<![endif]-->
-	>>> print CONDITIONAL_COMMENT('(gt IE 9)|!(IE)', 'Your browser is IE after version 7 or not IE', ornot=True)
+	>>> print CONDITIONAL_COMMENT('(gt IE 9)|!(IE)', 'Your browser is IE after version 7 or not IE', uncomment=True)
 	<!--[if (gt IE 9)|!(IE)]><!-->Your browser is IE after version 7 or not IE<!--<![endif]-->
 	'''
 	def __init__(self, condition, *children, **attributes):
-		self.ornot = attributes.pop('ornot', False)
-		XMLNode.__init__(self, condition, *children)
+		self.name = condition
+		self.uncomment = attributes.pop('uncomment', False)
+		XMLNode.__init__(self, *children)
 	
 	def __str__(self):
-		return ('<!--[if %(name)s]><!-->%(kids)s<!--<![endif]-->' if self.ornot else '<!--[if %(name)s]>%(kids)s<![endif]-->') % dict(
+		return ('<!--[if %(name)s]><!-->%(kids)s<!--<![endif]-->' if self.uncomment else '<!--[if %(name)s]>%(kids)s<![endif]-->') % dict(
 			name=self.name,
 			kids=''.join(map(_xml,self.children))
 		)
 
-class XML(XMLNode, NoAttributesMixin, NoNameMixin):
+class XML(XMLNode, NoAttributesMixin):
 	'''Renders text without escaping it.
 	
 	>>> print XML('<abc />')
@@ -165,11 +228,11 @@ class XML(XMLNode, NoAttributesMixin, NoNameMixin):
 	def __str__(self):
 		return ''.join(map(str,self.children))
 
-class CAT(XMLNode, NoAttributesMixin, NoNameMixin):
+class CAT(XMLNode, NoAttributesMixin):
 	'''Concatenates child nodes.
 	
 	>>> from functools import partial
-	>>> DIV = partial(XMLNode, 'div')
+	>>> DIV = XMLNode.new('div')
 	>>> print CAT('a', 'b')
 	ab
 	>>> print CAT(DIV('a'), DIV('b'), DIV('c'))
@@ -188,9 +251,8 @@ class META(XMLNoChildNode):
 	>>> print META.http_equiv('X-UA-Compatible', 'IE=edge')
 	<meta http-equiv='X-UA-Compatible' content='IE=edge' />
 	'''
-	def __init__(self, **attributes):
-		XMLNoChildNode.__init__(self, 'meta', **attributes)
-		
+	name = 'meta'
+	
 	@classmethod
 	def charset(cls, charset):
 		return cls(_charset=charset)
@@ -247,8 +309,7 @@ class SCRIPT(XMLNode):
 	//--></script>
 	
 	'''
-	def __init__(self, *children, **attributes):
-		XMLNode.__init__(self, 'script', *children, **attributes)
+	name = 'script'
 	
 	def __str__(self):
 		if self.children:
@@ -264,13 +325,12 @@ Javascript = partial(SCRIPT, type='text/javascript')
 class BODY(XMLNotEmptyNode):
 	'''
 	'''
-	def __init__(self, *children, **attributes):
-		XMLNotEmptyNode.__init__(self, 'body', *children, **attributes)
+	name = 'body'
 
 class Body(BODY):
 	def __init__(self, *children, **attributes):
 		self.conditional = attributes.pop('conditional', False)
-		XMLNode.__init__(self, 'body', *children, **attributes)
+		XMLNode.__init__(self, *children, **attributes)
 		
 	def __str__(self):
 		if self.conditional:
@@ -299,9 +359,10 @@ class HTML(XMLNotEmptyNode):
 	<!DOCTYPE html>
 	<html><head></head><body></body></html>
 	'''
+	name = 'html'
 	def __init__(self, *children, **attributes):
 		self.doctype = attributes.pop('doctype', 'html')
-		XMLNotEmptyNode.__init__(self, 'html', *children, **attributes)
+		XMLNotEmptyNode.__init__(self, *children, **attributes)
 		
 	def __str__(self):
 		return '<!DOCTYPE %(doctype)s>\n<%(name)s%(attr)s>%(kids)s</%(name)s>' % dict(

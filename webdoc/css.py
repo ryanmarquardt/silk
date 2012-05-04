@@ -1,9 +1,9 @@
 """Construct css style sheets from abstract structure
 
 >>> print Block(Selector('div'),
-...     Property('padding', '0', Units.Px(20), Units.Px(15)),
-...     Property('background', 'transparent'),
-...     Property('border', Units.Px(1), 'solid', Colors.Black),
+...     Property.new('padding')('0', Units.Px(20), Units.Px(15)),
+...     Property.new('background')('transparent'),
+...     Property.new('border')(Units.Px(1), 'solid', Colors.Black),
 ... )
 div { padding: 0 20px 15px; background: transparent; border: 1px solid #000000; }
 
@@ -16,7 +16,7 @@ a { color: #FF0000; }
 Nodes are created from these values, so they can be accessed and manipulated
 later.
 
->>> a.name['_state'] = 'hover'
+>>> a.selectors[0]['_state'] = 'hover'
 >>> print a
 a:hover { color: #FF0000; }
 
@@ -44,49 +44,58 @@ class CSSNode(Node):
 
 __all__.append('Block')
 class Block(CSSNode, NoAttributesMixin):
-	def __init__(self, name=None, *children, **attributes):
-		if not isinstance(name, CSSNode): name = Selector(name)
+	'''
+	
+	>>> print Block('body',
+	...   Property.new('background')('white'),
+	... )
+	body { background: white; }
+	'''
+	def __init__(self, selector, *children, **attributes):
+		self.selectors = [Selector(a) if not isinstance(a,CSSNode) else a for a in sequence(selector)]
 		mychildren = []
 		for child in children:
 			if isinstance(child, dict):
-				mychildren.extend(Property(prop,*sequence(val)) for prop,val in child.items())
+				mychildren.extend(Property.new(prop)(*sequence(val)) for prop,val in child.items())
 			else:
 				mychildren.append(child)
-		super(Block, self).__init__(name, *mychildren, **attributes)
+		for k,v in attributes.items():
+			mychildren.append(Property(k)(*sequence(val)))
+		super(Block, self).__init__(*mychildren)
 		
 	def __str__(self):
-		return '%s { %s }' % (self.name, ' '.join(map(_css,self.children)))
+		return '%s { %s }' % (', '.join(map(str,self.selectors)), ' '.join(map(_css,self.children)))
 	
 __all__.append('Property')
 class Property(CSSNode):
 	'''Class for specifying a css property in a block
 	
-	>>> print Property('background', 'transparent')
+	>>> print Property.new('background')('transparent')
 	background: transparent;
-	>>> print Property('padding', 0, Units.Px(0), Units.In(15), Units.Px(15))
+	>>> print Property.new('padding')(0, Units.Px(0), Units.In(15), Units.Px(15))
 	padding: 0 0 15in 15px;
 	
 	A single keyword provided as a lower-cased unit name is appended to the list
 	of values, transformed into a unitted value. Output with more than one
 	keyword input is undefined and not recommended. 
 	
-	>>> print Property('width', px=100)
+	>>> print Property.new('width')(px=100)
 	width: 100px;
-	>>> print Property('border-left', 'solid', 'black', em=1)
+	>>> print Property.new('border-left')('solid', 'black', em=1)
 	border-left: solid black 1em;
 	
 	If value is an iterable, all members are transformed and appended to the
 	list of children.
 	
-	>>> print Property('padding', px=[0,0,25,50])
+	>>> print Property.new('padding')(px=[0,0,25,50])
 	padding: 0 0 25px 50px;
 	
 	The special keyword 'important' appends '!important' to the list of children
 	if it's set to a true value.
-	>>> print Property('position', 'absolute', important=True)
+	>>> print Property.new('position')('absolute', important=True)
 	position: absolute !important;
 	'''
-	def __init__(self, name, *values, **units):
+	def __init__(self, *values, **units):
 		important = units.pop('important', False)
 		values = list(values)
 		if units:
@@ -96,7 +105,7 @@ class Property(CSSNode):
 			values.extend(map(Units[unit], sequence(units.values()[0])))
 		if important:
 			values.append('!important')
-		super(Property, self).__init__(name, *values)
+		super(Property, self).__init__(*values)
 
 	def __str__(self):
 		return '%s: %s;' % (self.name, ' '.join(map(_css,self.children)))
@@ -137,8 +146,8 @@ class Selector(CSSNode):
 	'''
 	def __str__(self):
 		result = ''
-		if self.name:
-			result += self.name
+		if self.children:
+			result += self.children[0]
 		_class = self.get('_class')
 		if _class: result += '.'+_class
 		_id = self.get('_id')
@@ -147,7 +156,7 @@ class Selector(CSSNode):
 		if _state: result += ':'+_state
 		_child = self.get('_child')
 		if _child: result += '>'+str(_child)
-		return ' '.join([result] + map(str,self.children))
+		return ' '.join([result] + map(str,self.children[1:]))
 
 Units = container(
 	Px = lambda i:'%gpx'%i if i else '0',
@@ -211,8 +220,9 @@ transform transform-origin transform-style perspective perspective-origin backfa
 transition transition-property transition-duration transition-timing-function transition-delay
 appearance box-sizing icon nav-down nav-index nav-left nav-right nav-up outline-offset resize
 """.split():
-	globals()[name.upper().replace('-','_')] = partial(Property,name.lower().replace('_','-'))
-	assert str(globals()[name.upper().replace('-','_')](0)) == '%s: 0;'%name.lower().replace('_','-'), str(globals()[name.upper()]())
+	pass
+	#globals()[name.upper().replace('-','_')] = partial(Property,name.lower().replace('_','-'))
+	#assert str(globals()[name.upper().replace('-','_')](0)) == '%s: 0;'%name.lower().replace('_','-'), str(globals()[name.upper()]())
 
 def css(**attributes):
 	return [globals()[name.upper().replace('-','_')](*sequence(value)) for name,value in attributes.items()]

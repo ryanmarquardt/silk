@@ -9,23 +9,25 @@ class Node(MutableMapping, MutableSequence):
 	of a document.
 	
 	>>> rep = lambda x:sorted(vars(x).items())
-	>>> Node('x')
-	Node('x')
-	>>> Node('y', 1, 2, 3, a=5)
-	Node('y', 1, 2, 3, _a=5)
-	>>> n = Node('n', r='s')
+	>>> Node.new('x')
+	<class 'abc.Node'>
+	>>> Node.new('x')()
+	Node('x')()
+	>>> Node.new('y')(1, 2, 3, a=5)
+	Node('y')(1, 2, 3, _a=5)
+	>>> n = Node.new('n')(r='s')
 	>>> n.append('o')
 	>>> n.extend(['p', 'z'])
 	>>> n[-1] = 'q'
 	>>> n['r'] = 'r'
 	>>> n
-	Node('n', 'o', 'p', 'q', _r='r')
+	Node('n')('o', 'p', 'q', _r='r')
 	>>> n.update(_s='t', r=0)
 	>>> del n['r']
 	>>> n.pop(1)
 	'p'
 	>>> n
-	Node('n', 'o', 'q', _s='t')
+	Node('n')('o', 'q', _s='t')
 
 	An underscore '_' is prepended to all attribute names to allow for attribute
 	names that are also python keywords such as 'class', which is a valid concern e.g. in
@@ -33,21 +35,21 @@ class Node(MutableMapping, MutableSequence):
 	repr() is unaffected so that eval(repr(Node(...))) evaluates to the original
 	Node value.
 
-	>>> a = Node('a', _class='123')
+	>>> a = Node.new('a')(_class='123')
 	>>> a
-	Node('a', _class='123')
+	Node('a')(_class='123')
 	>>> a['class'] = '234'
 	>>> a
-	Node('a', _class='234')
+	Node('a')(_class='234')
 	>>> print a
-	Node('a', class='234')
+	a(class='234')
 	
 	Set and retrieve attributes on the object that start with an underscore. If
 	that attribute doesn't exist, None is returned (similar to dict.get()).
 	
 	>>> a._class = '345'
 	>>> print a
-	Node('a', class='345')
+	a(class='345')
 	>>> print a._class
 	345
 	>>> print a._milk
@@ -63,9 +65,9 @@ class Node(MutableMapping, MutableSequence):
 	If the first argument is another node, that node's values are copied. The 
 	other arguments are ignored.
 	
-	>>> b = Node.copy(a)
+	>>> b = a.copy()
 	>>> b
-	Node('a', _class='345')
+	Node('a')(_class='345')
 	>>> b.children is a.children
 	False
 	>>> b.attributes is a.attributes
@@ -75,7 +77,7 @@ class Node(MutableMapping, MutableSequence):
 	
 	Use Node.walk to iterate over its entire tree.
 	
-	>>> doc = Node('a', Node('b', 'c', Node('d', e='f')))
+	>>> doc = Node.new('a')(Node.new('b')('c', Node.new('d')(e='f')))
 	>>> for depth, element in doc.walk():
 	...   if isinstance(element, Node):
 	...     print '  '*depth, element.name, element.attributes
@@ -86,15 +88,18 @@ class Node(MutableMapping, MutableSequence):
 	     'c'
 	     d {'_e': 'f'}
 	'''
+	name = None
 	__sequence__ = False
-	def __init__(self, name=None, *children, **attributes):
-		self.name = name
+	def __init__(self, *children, **attributes):
 		self.children = flatten(children)
 		self.attributes = dict((self._attr_key(k),v) for k,v in attributes.items())
 	
 	@classmethod
-	def copy(cls, node):
-		return cls(node.name, *node.children, **node.attributes)
+	def new(cls, name, classname=None):
+		return type(classname or cls.__name__, (cls,), {'name':name})
+	
+	def copy(self):
+		return self.__class__(*self.children, **self.attributes)
 	
 	@staticmethod
 	def _attr_key(key):
@@ -146,15 +151,22 @@ class Node(MutableMapping, MutableSequence):
 		return dict((k[1:],v) if k[0]=='_' else (k,v) for k,v in self.attributes.iteritems())
 		
 	def __repr__(self):
-		return '%s(%s)'%(self.__class__.__name__,', '.join([repr(self.name)] + \
-		  map(repr,self.children) + \
-		  ['%s=%r'%i for i in self.attributes.items()]))
+		return '%s%s(%s)'%(
+			self.__class__.__name__,
+			('('+`self.name`+')') if self.name else '',
+			', '.join(
+				map(repr,self.children) + \
+				['%s=%r'%i for i in self.attributes.items()]
+			)
+		)
 		
 	def __str__(self):
-		return '%s(%s)'%(self.__class__.__name__,', '.join([repr(self.name)] + \
-		  map(repr,self.children) + \
-		  ['%s=%r'%i for i in self._real_attrs().items()]))
-		  
+		return '%s(%s)'%(
+			self.name,', '.join(
+			map(repr,self.children) + \
+			['%s=%r'%i for i in self._real_attrs().items()])
+		)
+
 	def __nonzero__(self):
 		return True
 		
@@ -186,29 +198,6 @@ class NoAttributesMixin(object):
 	This mixin is useful for node types which never need attributes set, for
 	example raw text nodes.'''
 	attributes = property(lambda s:{}, lambda s,v:None)
-
-__all__.append('NoNameMixin')
-class NoNameMixin(Node):
-	'''Node mixin which reroutes name access to children.
-	
-	This mixin is useful for node types, for which it doesn't make sense to
-	have a name, for example comment nodes.'''
-	def __init__(self, *children, **attributes):
-		Node.__init__(self, None, *children, **attributes)
-	#@property
-	#def children(self):
-		#return self._children
-	#@children.setter
-	#def children(self, value):
-		#self._children = [None] + list(value)
-		
-	#@property
-	#def name(self):
-		#return None
-	#@name.setter
-	#def name(self, value):
-		## Node.__init__ always sets children before name, so this shouldn't cause problems
-		#self._children[0] = value
 
 if __name__=='__main__':
 	import doctest
