@@ -64,6 +64,10 @@ class XMLNode(Node):
 	def _render_attrs(self):
 		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v,attr=True)) for k,v in self._real_attrs().items() if len(sequence(v)))
 		
+	def __setitem__(self, key, value):
+		if key in ('class','_class'):
+			value = sequence(value)
+		super(XMLNode, self).__setitem__(key, value)
 class XMLNoChildNode(XMLNode, NoChildrenMixin):
 	'''Node which is represented as xml, and forbidden to have children.
 	
@@ -186,6 +190,14 @@ class H4(XMLNotEmptyNode): name = 'h4'
 class H5(XMLNotEmptyNode): name = 'h5'
 class H6(XMLNotEmptyNode): name = 'h6'
 
+class Form(FORM):
+	'''
+	'''
+	def __init__(self, *children, **attributes):
+		FORM.__init__(self, *children, **attributes)
+		self.setdefault('_method','POST')
+		self.setdefault('_enctype','multipart/form-data')
+
 class COMMENT(XMLNode, NoAttributesMixin):
 	'''Includes comments.
 	
@@ -293,10 +305,11 @@ def Image(src, alt=None, **attributes):
 	>>> print Image('favicon.ico')
 	<img src='favicon.ico' />
 	'''
-	attributes['_src'] = src
+	r = IMG(**attributes)
+	r['_src'] = src
 	if alt:
-		attributes['_alt'] = alt
-	return IMG(**attributes)
+		r.setdefault('_alt',alt)
+	return r
 
 class SCRIPT(XMLNode):
 	'''
