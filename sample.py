@@ -155,7 +155,7 @@ doc.body = Body(
 					A('Portuguese',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-users-brazil',target='_blank'), ', and ',
 					A('Spanish',href='https://groups.google.com/forum/?fromgroups#!forum/web2py-usuarios',target='_blank'), '.',
 					DIV(
-						A(IMG(style=css.PADDING_BOTTOM(0),src='/examples/static/images/poweredby.png'),href='https://www.web2py.com/',style=[css.FLOAT('left'),css.PADDING_RIGHT(px=6)]),
+						A(IMG(style=css.PADDING.BOTTOM(0),src='/examples/static/images/poweredby.png'),href='https://www.web2py.com/',style=[css.FLOAT('left'),css.PADDING.RIGHT(px=6)]),
 					_style=css.css(float='right')),
 				_class='footer-content'),
 			_class=['sixteen','columns']),
@@ -165,7 +165,6 @@ doc.body = Body(
 		Javascript(src='/examples/static/js/dd_belatedpng.js'),
 		Javascript("DD_belatedPNG.fix('img, .png_bg');"),
 	),
-	U('test'),
 )
 
 for depth, element in doc.find_deprecated():
@@ -179,4 +178,4 @@ for depth, element in doc.find_deprecated():
 
 #print
 
-#print doc
+print doc
