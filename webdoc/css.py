@@ -282,7 +282,8 @@ class BOX(container):
 	ORIENT = newp('box-orient')
 	PACK = newp('box-pack')
 
-class FONT(Property):
+class FONT(container):
+	FACE = newp('font-face')
 	FAMILY = newp('font-family')
 	SIZE = newp('font-size')
 	STYLE = newp('font-style')
