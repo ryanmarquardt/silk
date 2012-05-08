@@ -43,11 +43,9 @@ from functools import partial
 def _css(value):
 	return 'none' if value is None else str(value)
 
-__all__ = ['CSSNode']
 class CSSNode(Node):
 	pass
 
-__all__.append('Block')
 class Block(CSSNode, NoAttributesMixin):
 	'''
 	
@@ -71,7 +69,6 @@ class Block(CSSNode, NoAttributesMixin):
 	def __str__(self):
 		return '%s { %s }' % (', '.join(map(str,self.selectors)), ' '.join(map(_css,self.children)))
 	
-__all__.append('Property')
 class Property(CSSNode):
 	'''Class for specifying a css property in a block
 	
@@ -115,7 +112,10 @@ class Property(CSSNode):
 	def __str__(self):
 		return '%s: %s;' % (self.name, ' '.join(map(_css,self.children)))
 
-__all__.append('Selector')
+class CSSDoc(CSSNode):
+	def __str__(self):
+		return '\n'.join(map(str,self.children))
+
 class Selector(CSSNode):
 	'''Class for specifying a css element selector
 	
@@ -159,18 +159,31 @@ class Selector(CSSNode):
 		if _child: result += '>'+str(_child)
 		return ' '.join([result] + map(str,self.children[1:]))
 
+def Unit(fmt, i, force=False):
+	try:
+		i = float(i)
+	except ValueError:
+		return i
+	else:
+		return fmt%i if i or force else '0'
+
+from functools import partial
+
 Units = container(
-	Px = lambda i:'%gpx'%i if i else '0',
-	In = lambda i:'%gin'%i if i else '0',
-	Cm = lambda i:'%gcm'%i if i else '0',
-	Mm = lambda i:'%gmm'%i if i else '0',
-	Em = lambda i:'%gem'%i if i else '0',
-	Ex = lambda i:'%gex'%i if i else '0',
-	Pt = lambda i:'%gpt'%i if i else '0',
-	Pc = lambda i:'%gpc'%i if i else '0',
-	Pct = lambda i:'%g%%'%i if i else '0',
-	S = lambda i:'%gs'%i,
+	Px = partial(Unit, '%gpx'),
+	In = partial(Unit, '%gin'),
+	Cm = partial(Unit, '%gcm'),
+	Mm = partial(Unit, '%gmm'),
+	Em = partial(Unit, '%gem'),
+	Ex = partial(Unit, '%gex'),
+	Pt = partial(Unit, '%gpt'),
+	Pc = partial(Unit, '%gpc'),
+	Pct = partial(Unit, '%g%%'),
+	S = partial(Unit, '%gs', force=True),
 )
+
+def url(path):
+	return 'url(%r)'%path
 
 def newp(name):
 	return Property.new(name, name.upper().replace('-','_'))
