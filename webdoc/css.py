@@ -110,7 +110,7 @@ class Property(CSSNode):
 		super(Property, self).__init__(*values)
 
 	def __str__(self):
-		return '%s: %s;' % (self.name, ' '.join(map(_css,self.children)))
+		return ' '.join('%s%s: %s;' % (p, self.name, ' '.join(map(_css,self.children))) for p in [''] + (getattr(self,'__prefixes__') or []))
 
 class CSSDoc(CSSNode):
 	def __str__(self):
@@ -185,8 +185,11 @@ Units = container(
 def url(path):
 	return 'url(%r)'%path
 
-def newp(name):
-	return Property.new(name, name.upper().replace('-','_'))
+def newp(name, prefixes=None):
+	p = Property.new(name, name.upper().replace('-','_'))
+	if prefixes:
+		p.__prefixes__ = prefixes
+	return p
 
 class ANIMATION(Property):
 	name = 'animation'
@@ -236,6 +239,7 @@ class BORDER(Property):
 		WIDTH = newp('border-left-width')
 	class RADIUS(Property):
 		name = 'border-radius'
+		__prefixes__ = ['-moz-','-webkit-']
 		BOTTOM_LEFT = newp('border-bottom-left-radius')
 		BOTTOM_RIGHT = newp('border-bottom-right-radius')
 		TOP_LEFT = newp('border-top-left-radius')
