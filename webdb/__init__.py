@@ -254,7 +254,6 @@ class Expression(object):
 		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
 
 	def __eq__(self, x):
-		#return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
 		return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
 	def __ne__(self, x):
 		return Where(self._db, self._op_args(drivers.base.NOTEQUAL, self, x))
