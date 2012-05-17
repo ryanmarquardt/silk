@@ -37,8 +37,11 @@ FLOORDIVIDE = FLOORDIVIDE()
 class MODULO(op): pass
 MODULO = MODULO()
 class AND(op): pass
+AND = AND()
 class OR(op): pass
+OR = OR()
 class NOT(op): pass
+NOT = NOT()
 
 class driver_base(object):
 	def __init__(self, connection):
@@ -70,9 +73,37 @@ class driver_base(object):
 		with self as cursor:
 			return cursor.execute(sql, values)
 		
-	def validate_name(self, name):
+	def protect_identifier(self, name):
 		if not name.replace('_','').isalnum():
 			raise ColumnError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
+		return '"%s"'%name
+
+	def represent_literal(self, value):
+		if isinstance(value, basestring):
+			return "'%s'"%value.replace("'", "\'")
+		else:
+			return repr(value)
+			
+	def column_name(self, table, col):
+		return '.'.join(map(self.protect_identifier, (table, col)))
+		
+	def parse_where(self, conditions):
+		if isinstance(conditions, list):
+			operator = conditions[0]
+			return '(%s)'%self.operators[operator](*map(self.parse_where,conditions[1:]))
+		elif hasattr(conditions, 'table') and hasattr(conditions, 'name'): #Column duck-typed
+			return self.column_name(conditions.table._name, conditions.name)
+		else:
+			return self.represent_literal(conditions)
+		
+	def format_column(self, column):
+		props = container(vars(column))
+		props.name = self.protect_identifier(props.name)
+		props.type = self.map_type(props.type)
+		props.notnull = ' NOT NULL' if column.notnull else ''
+		props.default = " DEFAULT %s"%self.format_value(column.default, props.type) if column.notnull or not column.default is None else ''
+		return '%(name)s %(type)s%(notnull)s%(default)s' % props
+
 
 class sqlite(driver_base):
 	"""Driver for sqlite3 databases
@@ -96,26 +127,6 @@ class sqlite(driver_base):
 		LESSEQUAL:lambda a,b:'%s<=%s'%(a,b),
 		GREATERTHAN:lambda a,b:'%s>%s'%(a,b),
 	}
-	def protect_identifier(self, name):
-		return '"%s"'%name
-		
-	def represent_literal(self, value):
-		if isinstance(value, basestring):
-			return "'%s'"%value.replace("'", "\'")
-		else:
-			return repr(value)
-			
-	def column_name(self, table, col):
-		return '.'.join(map(self.protect_identifier, (table, col)))
-		
-	def parse_where(self, conditions):
-		if isinstance(conditions, list):
-			operator = conditions[0]
-			return '(%s)'%self.operators[operator](*map(self.parse_where,conditions[1:]))
-		elif hasattr(conditions, 'table') and hasattr(conditions, 'name'): #Column duck-typed
-			return self.column_name(conditions.table._name, conditions.name)
-		else:
-			return self.represent_literal(conditions)
 		
 	def list_tables(self):
 		return (str(n) for (n,) in self.execute("""SELECT name FROM sqlite_master WHERE type='table'"""))
@@ -159,42 +170,32 @@ class sqlite(driver_base):
 		elif t == 'BLOB':
 			return 'data'
 
-	def format_column(self, column):
-		props = container(vars(column))
-		self.validate_name(props.name)
-		props.type = self.map_type(props.type)
-		props.notnull = ' NOT NULL' if column.notnull else ''
-		props.default = " DEFAULT %s"%self.format_value(column.default, props.type) if column.notnull or not column.default is None else ''
-		return '"%(name)s" %(type)s%(notnull)s%(default)s' % props
-
 	def create_table_if_nexists(self, name, table):
-		self.validate_name(name)
-		self.execute("""CREATE TABLE IF NOT EXISTS "%s"(%s);""" % (
-			name,
+		self.execute("""CREATE TABLE IF NOT EXISTS %s(%s);""" % (
+			self.protect_identifier(name),
 			', '.join(map(self.format_column, table))
 		))
 
 	def create_table(self, name, table):
-		self.validate_name(name)
-		self.execute("""CREATE TABLE "%s"(%s);""" % (
-			name,
+		self.execute("""CREATE TABLE %s(%s);""" % (
+			self.protect_identifier(name),
 			', '.join(map(self.format_column,table))
 		))
 
 	def rename_table(self, orig, new):
-		self.validate_name(orig)
-		self.validate_name(new)
-		self.execute("""ALTER TABLE "%s" RENAME TO "%s";""" % (orig, new))
+		self.execute("""ALTER TABLE %s RENAME TO %s;""" % (
+			self.protect_identifier(orig),
+			self.protect_identifier(new),
+		))
 
 	def alter_table(self, name, table):
-		self.validate_name(name)
 		with self:
 			db_cols = self.list_columns(name)
 			db_names = [c[0] for c in db_cols]
 			for column in table:
 				if column.name not in db_names:
-					self.execute("""ALTER TABLE "%s" ADD COLUMN %s;"""%(
-						name, self.format_column(column)
+					self.execute("""ALTER TABLE %s ADD COLUMN %s;"""%(
+						self.protect_identifier(name), self.format_column(column)
 					))
 
 	def select(self, columns, conditions):
@@ -208,8 +209,6 @@ class sqlite(driver_base):
 			where = ' WHERE '+where
 		if len(tables) == 1:
 			table = tables.pop()
-			self.validate_name(table)
-			#where = ' and '.join("%s.%s=%s"%(c.table._name,c.name,v) for (c,v) in conditions)
 			sql = """SELECT %s FROM %s%s;""" % (
 				', '.join(self.column_name(*i) for i in names),
 				self.protect_identifier(table),
@@ -220,7 +219,6 @@ class sqlite(driver_base):
 			raise Exception("Can't handle query with %i tables: %s" % (len(tables), where))
 
 	def insert(self, values, table):
-		self.validate_name(table)
 		cur = self.execute("""INSERT INTO %s(%s) VALUES (%s)""" % (
 			self.protect_identifier(table),
 			','.join(values.keys()),
