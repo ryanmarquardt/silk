@@ -171,11 +171,7 @@ Multiple conditions can be combined using bitwise operators & and |
 import collections
 import datetime
 import inspect
-import drivers.sqlite
-try:
-	import drivers.base
-except ImportError:
-	drivers.base = drivers.sqlite
+import drivers
 
 from webdoc.common import container, flatten
 
