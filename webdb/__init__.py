@@ -167,6 +167,9 @@ Multiple conditions can be combined using bitwise operators & and |
 >>> ((mydb.test_table.rowid < 0) & (mydb.test_table.key == 4)).count()
 0
 
+>>> for row in (mydb.test_table.rowid > 0).select(mydb.test_table.value, mydb.test_table.value.length()):
+...   print row
+
 """
 import collections
 import datetime
@@ -248,6 +251,8 @@ class Row(container):
 class Expression(object):
 	def _op_args(self, op, *args):
 		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
+	def __nonzero__(self):
+		return True
 
 	def __eq__(self, x):
 		return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
@@ -296,6 +301,9 @@ class Expression(object):
 	def __neg__(self, x):
 		return Where(self._db, self._op_args(drivers.base.NEGATIVE, self, x))
 
+	def length(self):
+		return Where(self._db, self._op_args(drivers.base.LENGTH, self))
+
 class Where(Expression):
 	def __init__(self, db, where_tree):
 		self._db = db
@@ -306,15 +314,12 @@ class Where(Expression):
 			columns = [table.ALL for table in self._get_tables()]
 		return flatten(columns)
 		
-	def _get_tables(self, columns=None):
+	def _get_tables(self, where_tree=None):
 		tables = set()
-		if columns:
-			for col in columns:
-				tables.add(col.table)
-		else:
-			for entity in flatten(self._where_tree):
-				if isinstance(entity, Column):
-					tables.add(entity.table)
+		where_tree = where_tree or self._where_tree
+		for entity in flatten(where_tree):
+			if isinstance(entity, Column):
+				tables.add(entity.table)
 		return tables
 		
 	def select(self, *columns):

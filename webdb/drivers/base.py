@@ -91,18 +91,19 @@ class driver_base(object):
 			
 	def column_name(self, table, col):
 		return '.'.join(map(self.identifier, (table, col)))
+	
+	def expression(self, x):
+		if isinstance(x, list):
+			operator = x[0]
+			return '(%s)'%self.operators[operator](*map(self.expression,x[1:]))
+		elif hasattr(x, 'table') and hasattr(x, 'name'): #Column duck-typed
+			return self.column_name(x.table._name, x.name)
+		else:
+			return self.literal(x)
 		
 	def parse_where(self, where_clause):
 		if where_clause:
-			def recurse(conditions):
-				if isinstance(conditions, list):
-					operator = conditions[0]
-					return '(%s)'%self.operators[operator](*map(recurse,conditions[1:]))
-				elif hasattr(conditions, 'table') and hasattr(conditions, 'name'): #Column duck-typed
-					return self.column_name(conditions.table._name, conditions.name)
-				else:
-					return self.literal(conditions)
-			clause = recurse(where_clause)
+			clause = self.expression(where_clause)
 			if clause:
 				clause = ' WHERE '+clause
 		else:
@@ -159,7 +160,7 @@ class driver_base(object):
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
 
 	def select(self, columns, tables, conditions):
-		return self.execute(self.select_sql([self.column_name(c.table._name, c.name) for c in columns], [self.identifier(t._name) for t in tables], self.parse_where(conditions)))
+		return self.execute(self.select_sql(map(self.expression,columns), [self.identifier(t._name) for t in tables], self.parse_where(conditions)))
 
 	def insert(self, table, values):
 		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,values.keys())), values.values())

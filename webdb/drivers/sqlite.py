@@ -40,6 +40,7 @@ class sqlite(driver_base):
 		NOT:lambda a:'NOT %s'%a,
 		NEGATIVE:lambda a:'-%s'%a,
 		ABS:lambda a:'abs(%s)'%a,
+		LENGTH:lambda a:'length(%s)'%a,
 	}
 	
 	webdb_types = {
