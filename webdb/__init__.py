@@ -195,6 +195,17 @@ class collection(collections.MutableSet, collections.MutableMapping):
 	>>> a['stephanie'] = b('robert', 'Sys Admin')
 	>>> a['stephanie']
 	b('stephanie', 'Sys Admin')
+	>>> len(a)
+	3
+	>>> del a['robert']
+	>>> a.pop('josephine', 'Q/A')
+	Traceback (most recent call last):
+		...
+	TypeError: collection.pop takes at most 1 argument (got 2)
+	>>> a.pop('josephine')
+	b('josephine', 'Q/A')
+	>>> a.pop()
+	b('stephanie', 'Sys Admin')
 	'''
 	def __init__(self, elements=(), namekey='name'):
 		self._key = namekey
@@ -229,7 +240,8 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		del self._data[key]
 
 	def pop(self, *item):
-		assert len(item) <= 1
+		if len(item) > 1:
+			raise TypeError('collection.pop takes at most 1 argument (got %i)' % len(item))
 		if item:
 			return self._data.pop(item[0])
 		else:
