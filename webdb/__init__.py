@@ -311,26 +311,31 @@ class Where(Expression):
 			columns = [table.ALL for table in self._get_tables()]
 		return flatten(columns)
 		
-	def _get_tables(self):
+	def _get_tables(self, columns=None):
 		tables = set()
-		for entity in flatten(self._where_tree):
-			if isinstance(entity, Column):
-				tables.add(entity.table)
+		if columns:
+			for col in columns:
+				tables.add(col.table)
+		else:
+			for entity in flatten(self._where_tree):
+				if isinstance(entity, Column):
+					tables.add(entity.table)
 		return tables
 		
 	def select(self, *columns):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._where_tree)
+		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree)
 		return Selection(columns, values)
 		
 	def select_one(self, *columns):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._where_tree)
+		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree)
 		return Row(columns, values.fetchone())
 		
 	def count(self):
-		columns = [table.rowid for table in self._get_tables()]
-		values = self._db.__driver__.select(columns, self._where_tree)
+		tables = self._get_tables()
+		columns = [table.rowid for table in tables]
+		values = self._db.__driver__.select(columns, tables, self._where_tree)
 		return len(values.fetchall())
 		
 	def update(self, **values):
@@ -462,7 +467,7 @@ class Table(collection):
 		(self.rowid==key).delete()
 
 	def insert(self, **values):
-		return self._db.__driver__.insert(values, self._name)
+		return self._db.__driver__.insert(self._name, values)
 
 	def select(self, *columns):
 		return Where(self._db, None).select(*(columns or self.ALL))

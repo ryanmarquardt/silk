@@ -53,10 +53,6 @@ class driver_base(object):
 		self.depth = 0
 		self.cursor = None
 
-	def create_table_if_nexists(self, name, table):
-		if name not in self.list_tables:
-			self.create_table(name, table)
-
 	def __enter__(self):
 		self.depth += 1
 		if self.cursor is None:
@@ -75,38 +71,103 @@ class driver_base(object):
 	def execute(self, sql, values=()):
 		self.lastsql = sql
 		with self as cursor:
-			return cursor.execute(sql, values)
+			try:
+				return cursor.execute(sql, values)
+			except sqlite3.OperationalError, e:
+				raise Exception(e, sql, values)
 		
-	def protect_identifier(self, name):
+	def identifier(self, name):
 		if not name.replace('_','').isalnum():
 			raise ColumnError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
 		return '"%s"'%name
 
-	def represent_literal(self, value):
-		if isinstance(value, basestring):
-			return "'%s'"%value.replace("'", "''")
+	#def format_value(val, cast=None):
+		#if val is None:
+			#return 'NULL'
+		#elif cast in ('INT','REAL'):
+			#return "%g"%val
+		#elif cast in ('TEXT','BLOB'):
+			#return "'%s'"%str(val).replace("'", "''")
+		#else:
+			#return val
+			
+
+	def literal(self, value, cast=None):
+		if value is None:
+			return 'NULL'
+		elif isinstance(value, basestring) or cast in ('TEXT','BLOB'):
+			return "'%s'"%str(value).replace("'", "''")
+		elif cast in ('INT', 'REAL'):
+			return '%g'%value
 		else:
-			return repr(value)
+			return value
 			
 	def column_name(self, table, col):
-		return '.'.join(map(self.protect_identifier, (table, col)))
+		return '.'.join(map(self.identifier, (table, col)))
 		
-	def parse_where(self, conditions):
-		if isinstance(conditions, list):
-			operator = conditions[0]
-			return '(%s)'%self.operators[operator](*map(self.parse_where,conditions[1:]))
-		elif hasattr(conditions, 'table') and hasattr(conditions, 'name'): #Column duck-typed
-			return self.column_name(conditions.table._name, conditions.name)
+	def parse_where(self, where_clause):
+		if where_clause:
+			def recurse(conditions):
+				if isinstance(conditions, list):
+					operator = conditions[0]
+					return '(%s)'%self.operators[operator](*map(recurse,conditions[1:]))
+				elif hasattr(conditions, 'table') and hasattr(conditions, 'name'): #Column duck-typed
+					return self.column_name(conditions.table._name, conditions.name)
+				else:
+					return self.literal(conditions)
+			clause = recurse(where_clause)
+			if clause:
+				clause = ' WHERE '+clause
 		else:
-			return self.represent_literal(conditions)
+			clause = ''
+		return clause
 		
 	def format_column(self, column):
 		props = container()
-		props.name = self.protect_identifier(column.name)
+		props.name = self.identifier(column.name)
 		props.type = self.map_type(column.type)
 		props.notnull = ' NOT NULL' if column.notnull else ''
-		props.default = " DEFAULT %s"%self.format_value(column.default, props.type) if column.notnull or not column.default is None else ''
+		props.default = " DEFAULT %s"%self.literal(column.default, props.type) if column.notnull or not column.default is None else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % props
+
+	def create_table_if_nexists(self, name, table):
+		if hasattr(self, 'create_table_if_nexists_sql'):
+			self.execute(self.create_table_if_nexists_sql(
+				self.identifier(name),
+				*map(self.format_column, table)
+			))
+		elif name not in self.list_tables:
+			self.create_table(name, table)
+
+	def create_table(self, name, table):
+		self.execute(self.create_table_sql(self.identifier(name), map(self.format_column,table)))
+
+	def list_tables(self):
+		return (str(n) for (n,) in self.execute(self.list_tables_sql()))
+
+	def rename_table(self, orig, new):
+		self.execute(self.rename_table_sql(self.identifier(orig), self.identifier(new)))
+
+	def alter_table(self, name, table):
+		with self:
+			db_cols = self.list_columns(name)
+			db_names = [c[0] for c in db_cols]
+			for column in table:
+				if column.name not in db_names:
+					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
+
+	def select(self, columns, tables, conditions):
+		return self.execute(self.select_sql([self.column_name(c.table._name, c.name) for c in columns], [self.identifier(t._name) for t in tables], self.parse_where(conditions)))
+
+	def insert(self, table, values):
+		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,values.keys())), values.values())
+		return cur.lastrowid
+
+	def update(self, table, conditions, values):
+		return self.execute(self.update_sql(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions)), values.values())
+
+	def delete(self, table, conditions):
+		return self.execute(self.delete_sql(self.identifier(table), self.parse_where(conditions)))
 
 
 class sqlite(driver_base):
@@ -146,22 +207,12 @@ class sqlite(driver_base):
 		NEGATIVE:lambda a:'-%s'%a,
 	}
 		
-	def list_tables(self):
-		return (str(n) for (n,) in self.execute("""SELECT name FROM sqlite_master WHERE type='table'"""))
+	def list_tables_sql(self):
+		return """SELECT name FROM sqlite_master WHERE type='table'"""
 		
 	def list_columns(self, table):
 		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info("%s");""" % table):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
-			
-	def format_value(val, cast=None):
-		if val is None:
-			return 'NULL'
-		elif cast in ('INT','REAL'):
-			return "%g"%val
-		elif cast in ('TEXT','BLOB'):
-			return "'%s'"%str(val).replace("'", "''")
-		else:
-			return val
 			
 	def map_type(self, t):
 		if t == 'rowid':
@@ -197,79 +248,26 @@ class sqlite(driver_base):
 		else:
 			raise Exception('Unknown type %s' % t)
 
-	def create_table_if_nexists(self, name, table):
-		self.execute("""CREATE TABLE IF NOT EXISTS %s(%s);""" % (
-			self.protect_identifier(name),
-			', '.join(map(self.format_column, table))
-		))
+	def create_table_if_nexists_sql(self, name, *coldefs):
+		return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
 
-	def create_table(self, name, table):
-		self.execute("""CREATE TABLE %s(%s);""" % (
-			self.protect_identifier(name),
-			', '.join(map(self.format_column,table))
-		))
+	def create_table_sql(self, name, *coldefs):
+		return """CREATE TABLE %s(%s);""" % (name, ', '.join(coldefs))
 
-	def rename_table(self, orig, new):
-		self.execute("""ALTER TABLE %s RENAME TO %s;""" % (
-			self.protect_identifier(orig),
-			self.protect_identifier(new),
-		))
+	def rename_table_sql(self, orig, new):
+		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
 
-	def alter_table(self, name, table):
-		with self:
-			db_cols = self.list_columns(name)
-			db_names = [c[0] for c in db_cols]
-			for column in table:
-				if column.name not in db_names:
-					self.execute("""ALTER TABLE %s ADD COLUMN %s;"""%(
-						self.protect_identifier(name), self.format_column(column)
-					))
+	def add_column_sql(self, table, column):
+		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
 
-	def select(self, columns, conditions):
-		tables = set()
-		names = []
-		for c in columns:
-			tables.add(c.table._name)
-			names.append((c.table._name,c.name))
-		where = self.parse_where(conditions) if conditions else ''
-		if where:
-			where = ' WHERE '+where
-		if len(tables) == 1:
-			table = tables.pop()
-			sql = """SELECT %s FROM %s%s;""" % (
-				', '.join(self.column_name(*i) for i in names),
-				self.protect_identifier(table),
-				where,
-			)
-			return self.execute(sql)
-		else:
-			raise Exception("Can't handle query with %i tables: %s" % (len(tables), where))
+	def select_sql(self, columns, tables, where):
+		return """SELECT %s FROM %s%s;""" % (', '.join(columns), ', '.join(tables), where)
 
-	def insert(self, values, table):
-		cur = self.execute("""INSERT INTO %s(%s) VALUES (%s)""" % (
-			self.protect_identifier(table),
-			','.join(values.keys()),
-			','.join(list('?'*len(values))),
-		), values.values())
-		return cur.lastrowid
+	def insert_sql(self, table, names):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(names), ','.join(list('?'*len(names))))
 
-	def update(self, table, conditions, values):
-		where = self.parse_where(conditions) if conditions else ''
-		if where:
-			where = ' WHERE '+where
-		sql = """UPDATE %s SET %s%s;""" % (
-			self.protect_identifier(table),
-			', '.join('%s=?'%(self.protect_identifier(k)) for k in values.keys()),
-			where,
-		)
-		return self.execute(sql, values.values())
+	def update_sql(self, table, names, where):
+		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=?'%n for n in names), where)
 
-	def delete(self, table, conditions):
-		where = self.parse_where(conditions) if conditions else ''
-		if where:
-			where = ' WHERE '+where
-		sql = """DELETE FROM %s%s;""" % (
-			self.protect_identifier(table),
-			where,
-		)
-		return self.execute(sql)
+	def delete_sql(self, table, where):
+		return """DELETE FROM %s%s;""" % (table, where)
