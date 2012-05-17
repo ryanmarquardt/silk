@@ -160,6 +160,8 @@ class driver_base(object):
 			return '(%s)'%self.operators[operator](*map(self.expression,x[1:]))
 		elif hasattr(x, 'table') and hasattr(x, 'name'): #Column duck-typed
 			return self.column_name(x.table._name, x.name)
+		elif hasattr(x, '_where_tree'): #Where duck-typed
+			return self.expression(x._where_tree)
 		else:
 			return self.literal(x)
 		
