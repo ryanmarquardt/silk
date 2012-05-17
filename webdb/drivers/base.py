@@ -46,6 +46,68 @@ class LENGTH(op): pass
 LENGTH = LENGTH()
 
 class driver_base(object):
+	'''Base class for database drivers
+	
+	This class abstracts away a lot of the logic needed to implement a database
+	driver for webdb. Derived classes must overload the following methods to
+	have a working driver. If the task is best accomplished using a single SQL
+	command, the method ending in '_sql' should be defined, as the alternatives
+	use those to accomplish their tasks. For more information, view documentation
+	on each specific method
+	
+	  * list_tables or list_tables_sql
+	     - list all tables in the database. Implements: db.conform
+	  * list_columns or list_columns_sql
+	     - list all columns defined in a table. Implements: db.conform
+	  * create_table, create_table_sql, create_table_if_nexists,
+	    or create_table_if_nexists_sql
+	     - create tables (if missing). Implements: db.__setattr__, db.migrate
+	  * rename_table or rename_table_sql.
+	     - changes a table's name. Implements: db.migrate
+	  * add_column or add_column_sql
+	     - adds a new column to a table. Implements: db.migrate
+	  * select or select_sql
+	     - retrieves rows from a table. Implements: Where.select, table.select
+	  * insert or insert_sql
+	     - adds rows to a table. Implements: table.insert
+	  * update or update_sql
+	     - alters records in a table. Implements: Where.update, row.update
+	  * delete or delete_sql
+	     - removes records from a table. Implements: Where.delete, row.delete,
+	       table.__delitem__, table.__delattr__
+	
+	Additionally, the following variables must be defined.
+	
+	  * operators: a dictionary mapping operator objects (EQUAL, MULTIPLY, etc.)
+	      to functions that format those operations. See drivers/sqlite.py
+	  * webdb_types: a dictionary mapping webdb column types to names of database
+	      column types. Used for defining tables
+	  * driver_types: a dictionary mapping database column types to webdb column
+	      types. Used when conforming.
+	
+	The following methods should be defined by subclasses if the database uses
+	non-standard syntax
+	
+	  * identifier
+	     - checks that a table or column name uses valid characters, and is properly
+	       escaped (to avoid keywords). Default encloses name in double quotes (")
+	  * literal
+	     - formats a literal value to be used in an sql expression. 
+	  * column_name
+	     - returns the name of a column. Default returns dot (.) joined result
+	       of identifier on its arguments, i.e. "table"."column" 
+	  * format_column
+	     - returns a column definition for its Column object argument
+
+	The following methods may be defined by subclasses, but are not required for
+	normal use.
+	
+	  * drop_column or drop_column_sql
+	     - removes a column and all its data from a table. Columns in a table
+	       which don't appear in a table definition are ignored.
+	       Implements: table.drop_column
+	'''
+
 	def __init__(self, connection):
 		self.connection = connection
 		self.depth = 0
@@ -133,6 +195,13 @@ class driver_base(object):
 			raise Exception('Unknown column type %s' % t)
 
 
+	def create_table_if_nexists_sql(self, name, *columns):
+		'''create_table_if_nexists_sql(self, name, *columns) -> Stub
+		
+		Base classes should return SQL for creating a table if it doesn't
+		exist. '''
+		raise NotImplementedError
+
 	def create_table_if_nexists(self, name, table):
 		if hasattr(self, 'create_table_if_nexists_sql'):
 			self.execute(self.create_table_if_nexists_sql(
@@ -142,8 +211,14 @@ class driver_base(object):
 		elif name not in self.list_tables:
 			self.create_table(name, table)
 
+	def create_table_sql(self, name, *columns):
+		raise NotImplementedError
+
 	def create_table(self, name, table):
-		self.execute(self.create_table_sql(self.identifier(name), map(self.format_column,table)))
+		try:
+			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,table)))
+		except NotImplementedError:
+			self.create_table_if_nexists(name, table)
 
 	def list_tables(self):
 		return (str(n) for (n,) in self.execute(self.list_tables_sql()))
