@@ -130,6 +130,21 @@ class driver_base(object):
 		props.default = " DEFAULT %s"%self.literal(column.default, props.type) if column.notnull or not column.default is None else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % props
 
+	def map_type(self, t):
+		r = self.webdb_types.get(t)
+		if r:
+			return r
+		else:
+			raise Exception('Unknown column type %s' % t)
+			
+	def unmap_type(self, t):
+		r = self.driver_types.get(t)
+		if r:
+			return r
+		else:
+			raise Exception('Unknown column type %s' % t)
+
+
 	def create_table_if_nexists(self, name, table):
 		if hasattr(self, 'create_table_if_nexists_sql'):
 			self.execute(self.create_table_if_nexists_sql(
@@ -206,7 +221,25 @@ class sqlite(driver_base):
 		NOT:lambda a:'NOT %s'%a,
 		NEGATIVE:lambda a:'-%s'%a,
 	}
-		
+	
+	webdb_types = {
+		'rowid':'INTEGER PRIMARY KEY',
+		'string':'TEXT',
+		'integer':'INT',
+		'float':'REAL',
+		'data':'BLOB',
+		'boolean':'INT',
+		'datetime':'TIMESTAMP',
+	}
+	
+	driver_types = {
+		'TEXT':'string',
+		'INT':'integer',
+		'REAL':'float',
+		'BLOB':'data',
+		'TIMESTAMP':'datetime',
+	}
+	
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""
 		
@@ -214,39 +247,6 @@ class sqlite(driver_base):
 		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info("%s");""" % table):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
 			
-	def map_type(self, t):
-		if t == 'rowid':
-			return 'INTEGER PRIMARY KEY'
-		elif t == 'string':
-			return 'TEXT'
-		elif t == 'text':
-			return 'TEXT'
-		elif t == 'integer':
-			return 'INT'
-		elif t == 'float':
-			return 'REAL'
-		elif t == 'data':
-			return 'BLOB'
-		elif t == 'boolean':
-			return 'INT'
-		elif t == 'datetime':
-			return 'TIMESTAMP'
-		else:
-			raise Exception('Unknown column type %s' % t)
-			
-	def unmap_type(self, t):
-		if t == 'TEXT':
-			return 'string'
-		elif t == 'INT':
-			return 'integer'
-		elif t == 'REAL':
-			return 'float'
-		elif t == 'BLOB':
-			return 'data'
-		elif t == 'TIMESTAMP':
-			return 'datetime'
-		else:
-			raise Exception('Unknown type %s' % t)
 
 	def create_table_if_nexists_sql(self, name, *coldefs):
 		return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
