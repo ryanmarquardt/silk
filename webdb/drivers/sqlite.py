@@ -80,7 +80,7 @@ class driver_base(object):
 
 	def represent_literal(self, value):
 		if isinstance(value, basestring):
-			return "'%s'"%value.replace("'", "\'")
+			return "'%s'"%value.replace("'", "''")
 		else:
 			return repr(value)
 			
@@ -126,6 +126,19 @@ class sqlite(driver_base):
 		EQUAL:lambda a,b:'%s=%s'%(a,b),
 		LESSEQUAL:lambda a,b:'%s<=%s'%(a,b),
 		GREATERTHAN:lambda a,b:'%s>%s'%(a,b),
+		NOTEQUAL:lambda a,b:'%s!=%s'%(a,b),
+		LESSTHAN:lambda a,b:'%s<%s'%(a,b),
+		GREATEREQUAL:lambda a,b:'%s>=%s'%(a,b),
+		ADD:lambda a,b:'%s+%s'%(a,b),
+		CONCATENATE:lambda a,b:'%s||%s'%(a,b),
+		SUBTRACT:lambda a,b:'%s-%s'%(a,b),
+		MULTIPLY:lambda a,b:'%s*%s'%(a,b),
+		DIVIDE:lambda a,b:'%s/%s'%(a,b),
+		FLOORDIVIDE:lambda a,b:'%s/%s'%(a,b),
+		MODULO:lambda a,b:'%s%%%s'%(a,b),
+		AND:lambda a,b:'%s AND %s'%(a,b),
+		OR:lambda a,b:'%s OR %s'%(a,b),
+		NOT:lambda a:'NOT %s'%a
 	}
 		
 	def list_tables(self):
