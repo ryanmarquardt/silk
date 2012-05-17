@@ -97,9 +97,9 @@ class driver_base(object):
 			return self.represent_literal(conditions)
 		
 	def format_column(self, column):
-		props = container(vars(column))
-		props.name = self.protect_identifier(props.name)
-		props.type = self.map_type(props.type)
+		props = container()
+		props.name = self.protect_identifier(column.name)
+		props.type = self.map_type(column.type)
 		props.notnull = ' NOT NULL' if column.notnull else ''
 		props.default = " DEFAULT %s"%self.format_value(column.default, props.type) if column.notnull or not column.default is None else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % props
@@ -115,7 +115,7 @@ class sqlite(driver_base):
 	def __init__(self, path=':memory:'):
 		self.path = path
 		try:
-			driver_base.__init__(self, sqlite3.connect(path))
+			driver_base.__init__(self, sqlite3.connect(path, sqlite3.PARSE_DECLTYPES))
 		except sqlite3.OperationalError, e:
 			if e.message == 'unable to open database file':
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
@@ -145,7 +145,8 @@ class sqlite(driver_base):
 		return (str(n) for (n,) in self.execute("""SELECT name FROM sqlite_master WHERE type='table'"""))
 		
 	def list_columns(self, table):
-		return ((str(name),self.unmap_type(v_type),bool(notnull),default) for (_,name,v_type,notnull,default,_) in self.execute("""PRAGMA table_info("%s");""" % table))
+		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info("%s");""" % table):
+			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
 			
 	def format_value(val, cast=None):
 		if val is None:
@@ -172,6 +173,10 @@ class sqlite(driver_base):
 			return 'BLOB'
 		elif t == 'boolean':
 			return 'INT'
+		elif t == 'datetime':
+			return 'TIMESTAMP'
+		else:
+			raise Exception('Unknown column type %s' % t)
 			
 	def unmap_type(self, t):
 		if t == 'TEXT':
@@ -182,6 +187,10 @@ class sqlite(driver_base):
 			return 'float'
 		elif t == 'BLOB':
 			return 'data'
+		elif t == 'TIMESTAMP':
+			return 'datetime'
+		else:
+			raise Exception('Unknown type %s' % t)
 
 	def create_table_if_nexists(self, name, table):
 		self.execute("""CREATE TABLE IF NOT EXISTS %s(%s);""" % (

@@ -25,33 +25,48 @@ that have already been defined.
 >>> list(mydb) #No tables defined yet
 []
 
->>> mydb.test_table = Table(Column('key'), Column('value'))
+>>> mydb.test_table = Table(StrColumn('key'), StrColumn('value'))
 >>> list(mydb)
-[Table(Column('key', 'string'), Column('value', 'string'))]
+[Table(StrColumn('key'), StrColumn('value'))]
 
->>> mydb.test_table = Table(Column('key'), Column('value'), Column('extra'))
+>>> mydb.test_table = Table(StrColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> list(mydb)
-[Table(Column('extra', 'string'), Column('key', 'string'), Column('value', 'string'))]
+[Table(StrColumn('extra'), StrColumn('key'), StrColumn('value'))]
 
 >>> mydb.conform()
 >>> list(mydb)
-[Table(Column('key', 'string'), Column('value', 'string'))]
+[Table(StrColumn('key'), StrColumn('value'))]
 
 Migrate modifies tables in the database to be like newly-assigned tables.
->>> mydb.test_table = Table(Column('key', 'integer'), Column('value'), Column('extra'))
+>>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> mydb.migrate()
 >>> mydb.test_table
-Table(Column('extra', 'string'), Column('key', 'integer'), Column('value', 'string'))
+Table(IntColumn('key'), StrColumn('extra'), StrColumn('value'))
 
 Conforming after a migration keeps the same columns, but other information might
 be lost. For example column data types might be lost (sqlite migrations don't
 change data types, boolean columns might be interpretted as integers, etc.)
 >>> mydb.conform()
 >>> mydb.test_table
-Table(Column('extra', 'string'), Column('key', 'string'), Column('value', 'string'))
+Table(StrColumn('extra'), StrColumn('key'), StrColumn('value'))
 
 It is always recommended to conform your database *before* defining columns.
->>> mydb.test_table = Table(Column('key', 'integer'), Column('value'), Column('extra'))
+>>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'), StrColumn('extra'))
+
+>>> mydb.test_types = Table(
+... 	IntColumn('a'),
+... 	BoolColumn('b'),
+... 	StrColumn('c'),
+... 	DateTimeColumn('e'),
+... 	FloatColumn('f'),
+... 	DataColumn('g'),
+... 	RowidColumn('i'),
+... )
+>>> mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
+1
+>>> for row in mydb.test_types.select():
+...   print sorted(row.items())
+[('a', 1), ('b', True), ('c', '3'), ('e', datetime.datetime(1969, 10, 5, 0, 0)), ('f', 6.0), ('g', '7'), ('i', 1)]
 
 Conforming and migrating are both optional. Attempting to manipulate the
 database without these calls may fail if table definitions don't match tables
@@ -67,7 +82,7 @@ Data
 Add some data by calling insert on a table. An integer referring to the new row
 is returned and can be used to retrieve it later.
 >>> mydb = DB()
->>> mydb.test_table = Table(Column('key', 'integer'), Column('value'))
+>>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'))
 
 Insert adds a row to the table and returns its row id
 >>> mydb.test_table.insert(key='100', value='a')
@@ -117,7 +132,7 @@ Querying
 Doing comparison, binary or arithmetic operations on columns produces 'Where'
 objects.
 >>> mydb.test_table.key <= 3
-Where([LESSEQUAL, Column('key', 'integer'), 3])
+Where([LESSEQUAL, IntColumn('key'), 3])
 
 The resulting object can be queried. Standard SQL commands are provided. Using
 parentheses, a query can be set up and then selected:
@@ -145,6 +160,7 @@ or deleted...
 
 """
 import collections
+import datetime
 import inspect
 import drivers.sqlite
 try:
@@ -241,7 +257,7 @@ class Expression(object):
 	def __add__(self, x):
 		if isinstance(x, basestring) or \
 		self.type in ('string','text','data') or \
-		(isinstance(x, Column) and x.type in ('string','text','data')):
+		(isinstance(x, Column) and x.type in ('string','data')):
 			return Where(self._db, [drivers.base.CONCATENATE, getattr(self,'_where_tree',self), x])
 		else:
 			return Where(self._db, [drivers.base.ADD, getattr(self,'_where_tree',self), x])
@@ -304,71 +320,95 @@ class Where(Expression):
 ident = lambda x:x
 
 class Column(Expression):
-	'''Column(name, type='string', notnull=False, default=None)
+	'''Column(name, notnull=False, default=None)
 	
-	valid types:
-	'rowid'
-	'string' or basestring
-	'text'
-	'integer' or int
-	'float' or float
-	'boolean' or bool
-	'data' or bytes
+	Subclasses must define three class attributes:
+	type: a string naming a datatype that the database can store. Valid types are:
+		'rowid' -> unique integer for each row
+		'string' -> str or unicode
+		'integer' -> int
+		'float' -> float
+		'boolean' -> bool
+		'data' -> buffer or bytes
+		'datetime' -> datetime.datetime
+	interpret: a callable object that converts a value to the database native type
+	represent: a callable object that converts a value from the database native type
 	'''
-	def __init__(self, name, datatype='string', notnull=False, default=None):
+	interpret = staticmethod(str)
+	represent = staticmethod(str)
+	def __init__(self, name, notnull=False, default=None):
 		self.name = name
-		if isinstance(datatype, type):
-			self.interpret = self.represent = datatype
-			sample = datatype()
-			if isinstance(sample, basestring):
-				self.type = 'string'
-			elif isinstance(sample, bool):
-				self.type = 'boolean'
-			elif isinstance(sample, int):
-				self.type = 'integer'
-			elif isinstance(sample, float):
-				self.type = 'float'
-			else:
-				self.type = 'data'
-		else:
-			self.type = datatype
-			if datatype in ('string','text','data'):
-				self.interpret = self.represent = str
-			elif datatype in ('integer','rowid'):
-				self.interpret = self.represent = int
-			elif type == 'float':
-				self.interpret = self.represent = float
-			elif type == 'boolean':
-				self.interpret = self.represent = bool
-			
 		self.notnull = notnull
 		self.default = default
 		
+	@classmethod
+	def cast(cls, type, interpret, represent):
+		self = cls
+		self.type = type
+		self.interpret = interpret
+		self.represent = represent
+		
 	def __repr__(self):
 		values = [`self.name`]
-		values.append(`self.type`)
 		if self.notnull:
 			values.append('notnull=True')
 		if not self.default is None:
 			values.append('default=%r' % self.default)
-		return 'Column(%s)' % ', '.join(values)
+		return '%s(%s)' % (self.__class__.__name__,', '.join(values))
 		
 	@property
 	def _db(self):
 		return self.table._db
+
+class RowidColumn(Column):
+	type = 'rowid'
+	interpret = int
+	represent = int
+
+class IntColumn(Column):
+	type = 'integer'
+	interpret = int
+	represent = int
+
+class BoolColumn(Column):
+	type = 'boolean'
+	interpret = bool
+	represent = bool
 	
+class StrColumn(Column):
+	type = 'string'
+	interpret = str
+	represent = str
+
+class FloatColumn(Column):
+	type = 'float'
+	interpret = float
+	represent = float
+
+class DataColumn(Column):
+	type = 'data'
+	interpret = bytes
+	represent = bytes
+
+class DateTimeColumn(Column):
+	type = 'datetime'
+	interpret = datetime.datetime
+	represent = staticmethod(lambda x:datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
+
 class Table(collection):
 	def __init__(self, *columns, **kwargs):
 		collection.__init__(self, columns)
+		rowid = None
 		for c in columns:
 			c.table = self
+			if isinstance(c, RowidColumn):
+				rowid = c
+			assert c.type
+		if not rowid:
+			rowid = RowidColumn('rowid')
+			rowid.table = self
+		self.rowid = rowid
 
-	@property
-	def rowid(self):
-		c = Column('rowid', 'rowid')
-		c.table = self
-		return c
-		
 	@property
 	def ALL(self):
 		return [self.rowid]+list(self)
@@ -409,9 +449,9 @@ class DB(collection):
 	"""
 	
 	>>> mydb = DB.connect('sqlite')
-	>>> mydb.test = Table(Column('data'))
+	>>> mydb.test = Table(StrColumn('data'))
 	>>> list(mydb)
-	[Table(Column('data', 'string'))]
+	[Table(StrColumn('data'))]
 	"""
 	__driver__ = drivers.sqlite.sqlite()
 
@@ -458,10 +498,19 @@ class DB(collection):
 		return newcls()
 		
 	def conform(self):
+		coltypes = {
+			'string':StrColumn,
+			'rowid':RowidColumn,
+			'integer':IntColumn,
+			'float':FloatColumn,
+			'data':DataColumn,
+			'boolean':BoolColumn,
+			'datetime':DateTimeColumn,
+		}
 		for table in self.__driver__.list_tables():
 			columns = []
 			for name,v_type,notnull,default in self.__driver__.list_columns(table):
-				columns.append(Column(name, v_type, notnull=notnull, default=default))
+				columns.append(coltypes[v_type](name, notnull=notnull, default=default))
 			t = Table(*columns)
 			t._db = self
 			t._name = table
