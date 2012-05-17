@@ -42,6 +42,10 @@ class OR(op): pass
 OR = OR()
 class NOT(op): pass
 NOT = NOT()
+class NEGATIVE(op): pass
+NEGATIVE = NEGATIVE()
+class ABS(op): pass
+ABS = ABS()
 
 class driver_base(object):
 	def __init__(self, connection):
@@ -138,7 +142,8 @@ class sqlite(driver_base):
 		MODULO:lambda a,b:'%s%%%s'%(a,b),
 		AND:lambda a,b:'%s AND %s'%(a,b),
 		OR:lambda a,b:'%s OR %s'%(a,b),
-		NOT:lambda a:'NOT %s'%a
+		NOT:lambda a:'NOT %s'%a,
+		NEGATIVE:lambda a:'-%s'%a,
 	}
 		
 	def list_tables(self):

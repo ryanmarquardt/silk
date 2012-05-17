@@ -157,6 +157,15 @@ or deleted...
 ...   print sorted(row.items())
 [('key', 4), ('rowid', 1), ('value', 'c')]
 
+Multiple conditions can be combined using bitwise operators & and |
+>>> (mydb.test_table.key == 4).count()
+1
+>>> (mydb.test_table.rowid < 0).count()
+0
+>>> ((mydb.test_table.rowid < 0) | (mydb.test_table.key == 4)).count()
+1
+>>> ((mydb.test_table.rowid < 0) & (mydb.test_table.key == 4)).count()
+0
 
 """
 import collections
@@ -241,40 +250,56 @@ class Row(container):
 		container.__init__(self, [(c.name,c.represent(v)) for v,c in zip(values,columns)])
 
 class Expression(object):
+	def _op_args(self, op, *args):
+		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
+
 	def __eq__(self, x):
-		return Where(self._db, [drivers.base.EQUAL, getattr(self,'_where_tree',self), x])
+		#return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
+		return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
 	def __ne__(self, x):
-		return Where(self._db, [drivers.base.NOTEQUAL, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.NOTEQUAL, self, x))
 	def __le__(self, x):
-		return Where(self._db, [drivers.base.LESSEQUAL, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.LESSEQUAL, self, x))
 	def __ge__(self, x):
-		return Where(self._db, [drivers.base.GREATEREQUAL, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.GREATEREQUAL, self, x))
 	def __lt__(self, x):
-		return Where(self._db, [drivers.base.LESSTHAN, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.LESSTHAN, self, x))
 	def __gt__(self, x):
-		return Where(self._db, [drivers.base.GREATERTHAN, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.GREATERTHAN, self, x))
 	
 	def __add__(self, x):
 		if isinstance(x, basestring) or \
 		self.type in ('string','text','data') or \
 		(isinstance(x, Column) and x.type in ('string','data')):
-			return Where(self._db, [drivers.base.CONCATENATE, getattr(self,'_where_tree',self), x])
+			return Where(self._db, self._op_args(drivers.base.CONCATENATE, self, x))
 		else:
-			return Where(self._db, [drivers.base.ADD, getattr(self,'_where_tree',self), x])
+			return Where(self._db, self._op_args(drivers.base.ADD, self, x))
 	def __sub__(self, x):
-		return Where(self._db, [drivers.base.SUBTRACT, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.SUBTRACT, self, x))
 	def __mul__(self, x):
-		return Where(self._db, [drivers.base.MULTIPLY, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.MULTIPLY, self, x))
 	def __div__(self, x):
-		return Where(self._db, [drivers.base.DIVIDE, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
 	def __floordiv__(self, x):
-		return Where(self._db, [drivers.base.FLOORDIVIDE, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.FLOORDIVIDE, self, x))
 	def __div__(self, x):
-		return Where(self._db, [drivers.base.DIVIDE, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
 	def __truediv__(self, x):
-		return Where(self._db, [drivers.base.DIVIDE, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
 	def __mod__(self, x):
-		return Where(self._db, [drivers.base.MODULO, getattr(self,'_where_tree',self), x])
+		return Where(self._db, self._op_args(drivers.base.MODULO, self, x))
+
+	def __and__(self, x):
+		return Where(self._db, self._op_args(drivers.base.AND, self, x))
+	def __or__(self, x):
+		return Where(self._db, self._op_args(drivers.base.OR, self, x))
+
+	def __invert__(self, x):
+		return Where(self._db, self._op_args(drivers.base.NOT, self, x))
+	def __abs__(self, x):
+		return Where(self._db, self._op_args(drivers.base.ABS, self, x))
+	def __neg__(self, x):
+		return Where(self._db, self._op_args(drivers.base.NEGATIVE, self, x))
 
 class Where(Expression):
 	def __init__(self, db, where_tree):
