@@ -1,5 +1,4 @@
 
-from webdoc import container
 import sqlite3
 import errno
 
@@ -81,17 +80,6 @@ class driver_base(object):
 			raise ColumnError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
 		return '"%s"'%name
 
-	#def format_value(val, cast=None):
-		#if val is None:
-			#return 'NULL'
-		#elif cast in ('INT','REAL'):
-			#return "%g"%val
-		#elif cast in ('TEXT','BLOB'):
-			#return "'%s'"%str(val).replace("'", "''")
-		#else:
-			#return val
-			
-
 	def literal(self, value, cast=None):
 		if value is None:
 			return 'NULL'
@@ -123,12 +111,12 @@ class driver_base(object):
 		return clause
 		
 	def format_column(self, column):
-		props = container()
-		props.name = self.identifier(column.name)
-		props.type = self.map_type(column.type)
-		props.notnull = ' NOT NULL' if column.notnull else ''
-		props.default = " DEFAULT %s"%self.literal(column.default, props.type) if column.notnull or not column.default is None else ''
-		return '%(name)s %(type)s%(notnull)s%(default)s' % props
+		return '%(name)s %(type)s%(notnull)s%(default)s' % {
+			'name': self.identifier(column.name),
+			'type': self.map_type(column.type),
+			'notnull': ' NOT NULL' if column.notnull else '',
+			'default': " DEFAULT %s"%self.literal(column.default, props.type) if column.notnull or not column.default is None else ''
+		}
 
 	def map_type(self, t):
 		r = self.webdb_types.get(t)
