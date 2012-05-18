@@ -236,8 +236,14 @@ class driver_base(object):
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
 
-	def select(self, columns, tables, conditions):
-		return self.execute(self.select_sql(map(self.expression,columns), [self.identifier(t._name) for t in tables], self.parse_where(conditions)))
+	def select(self, columns, tables, conditions, props):
+		return self.execute(self.select_sql(
+			map(self.expression,columns),
+			[self.identifier(t._name) for t in tables],
+			self.parse_where(conditions),
+			props.get('distinct',False),
+			props.get('orderby',[]),
+		))
 
 	def insert(self, table, values):
 		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,values.keys())), values.values())

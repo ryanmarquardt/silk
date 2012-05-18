@@ -81,8 +81,14 @@ class sqlite(driver_base):
 	def add_column_sql(self, table, column):
 		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
 
-	def select_sql(self, columns, tables, where):
-		return """SELECT %s FROM %s%s;""" % (', '.join(columns), ', '.join(tables), where)
+	def select_sql(self, columns, tables, where, distinct, orderby):
+		return """SELECT%s %s FROM %s%s%s;""" % (
+			' DISTINCT' if distinct else '',
+			', '.join(columns),
+			', '.join(tables),
+			where,
+			' ORDER BY %s'%', '.join(map(self.expression,orderby)) if orderby else '',
+		)
 
 	def insert_sql(self, table, names):
 		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(names), ','.join(list('?'*len(names))))
