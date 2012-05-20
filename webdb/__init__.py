@@ -468,12 +468,10 @@ class DateTimeColumn(Column):
 	interpret = datetime.datetime
 	represent = staticmethod(lambda x:datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
 
-class DefinitionError(Exception): pass
-
 class Table(object):
 	def __init__(self, *columns, **kwargs):
 		if not columns:
-			raise DefinitionError("Tables must have at least one column")
+			raise TypeError("Tables must have at least one column")
 		self.__dict__['columns'] = collection()
 		rowid = None
 		for c in columns:

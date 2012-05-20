@@ -1,4 +1,3 @@
-class ColumnError(Exception): pass
 
 from webdoc import sequence
 
@@ -146,7 +145,7 @@ class driver_base(object):
 		
 	def identifier(self, name):
 		if not name.replace('_','').isalnum():
-			raise ColumnError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
+			raise NameError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
 		return '"%s"'%name
 
 	def literal(self, value, cast=None):

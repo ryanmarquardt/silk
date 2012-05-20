@@ -29,7 +29,7 @@ Tables
 >>> db.table1 = Table()
 Traceback (most recent call last):
  ...
-DefinitionError: Tables must have at least one column
+TypeError: Tables must have at least one column
 >>> db.table1 = db.table2 = Table(StrColumn('data'))
 >>> db.table1 is db.table2
 False
