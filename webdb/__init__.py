@@ -122,8 +122,8 @@ Exception
 2
 >>> for row in mydb.test_table.select():
 ...   print sorted(row.items())
-[('key', 3), ('rowid', 1), ('value', 'c')]
-[('key', 7), ('rowid', 2), ('value', 'g')]
+[('key', 3), ('value', 'c')]
+[('key', 7), ('value', 'g')]
 
 ===
 Querying
@@ -138,7 +138,7 @@ The resulting object can be queried. Standard SQL commands are provided. Using
 parentheses, a query can be set up and then selected:
 >>> for row in (mydb.test_table.key<=3).select():
 ...   print sorted(row.items())
-[('key', 3), ('rowid', 1), ('value', 'c')]
+[('key', 3), ('value', 'c')]
 
 Rows in a query can be counted...
 >>> (mydb.test_table.key>1).count()
@@ -147,15 +147,15 @@ Rows in a query can be counted...
 or updated...
 >>> (mydb.test_table.value=='c').update(key=4)
 >>> for row in mydb.test_table.select():
-...   print sorted(row.items())
-[('key', 4), ('rowid', 1), ('value', 'c')]
-[('key', 7), ('rowid', 2), ('value', 'g')]
+...   print row.rowid, sorted(row.items())
+1 [('key', 4), ('value', 'c')]
+2 [('key', 7), ('value', 'g')]
 
 or deleted...
 >>> (mydb.test_table.key > 5).delete()
 >>> for row in mydb.test_table.select():
 ...   print sorted(row.items())
-[('key', 4), ('rowid', 1), ('value', 'c')]
+[('key', 4), ('value', 'c')]
 
 >>> _ = mydb.test_table.insert(key=4, value='d')
 >>> _ = mydb.test_table.insert(key=5, value='d')
@@ -177,17 +177,17 @@ d
 
 Order by one column
 >>> for row in mydb.test_table.select(orderby=mydb.test_table.rowid):
-...   print sorted(row.items())
-[('key', 4), ('rowid', 1), ('value', 'c')]
-[('key', 4), ('rowid', 2), ('value', 'd')]
-[('key', 5), ('rowid', 3), ('value', 'd')]
+...   print row.rowid, sorted(row.items())
+1 [('key', 4), ('value', 'c')]
+2 [('key', 4), ('value', 'd')]
+3 [('key', 5), ('value', 'd')]
 
 Or more
 >>> for row in mydb.test_table.select(orderby=[mydb.test_table.key.descend(), mydb.test_table.value]):
 ...   print sorted(row.items())
-[('key', 5), ('rowid', 3), ('value', 'd')]
-[('key', 4), ('rowid', 1), ('value', 'c')]
-[('key', 4), ('rowid', 2), ('value', 'd')]
+[('key', 5), ('value', 'd')]
+[('key', 4), ('value', 'c')]
+[('key', 4), ('value', 'd')]
 """
 import collections
 import datetime
@@ -276,7 +276,9 @@ class Selection(object):
 
 class Row(container):
 	def __init__(self, columns, values):
-		container.__init__(self, [(c.name,c.represent(v)) for v,c in zip(values,columns)])
+		if len(values) > len(columns):
+			self.__dict__['rowid'] = values[0]
+		container.__init__(self, [(c.name,c.represent(v)) for v,c in zip(values[-len(columns):],columns)])
 
 class Expression(object):
 	def _op_args(self, op, *args):
@@ -504,7 +506,7 @@ class Table(object):
 
 	@property
 	def ALL(self):
-		return [self.rowid]+list(self.columns)
+		return list(self.columns)
 
 	def __getattr__(self, key):
 		return self.__dict__['columns'][key]

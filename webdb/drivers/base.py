@@ -248,7 +248,7 @@ class driver_base(object):
 
 	def select(self, columns, tables, conditions, props):
 		return self.execute(self.select_sql(
-			map(self.expression,columns),
+			([self.identifier('rowid')]if len(tables)==1 and not props.get('distinct') else [])+map(self.expression,columns),
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
 			props.get('distinct',False),
