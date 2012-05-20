@@ -1,4 +1,8 @@
 
+=====
+Connections
+=====
+
 >>> import webdb
 >>> db = webdb.connect('sqlite', 'path/to/database.sqlite')
 Traceback (most recent call last):
@@ -17,3 +21,21 @@ Traceback (most recent call last):
  ...
 UnknownDriver: Unable to find database driver 'base'
 >>> db = webdb.connect('sqlite')
+
+=====
+Tables
+=====
+
+>>> db.table1 = webdb.Table()
+Traceback (most recent call last):
+ ...
+DefinitionError: Tables must have at least one column
+>>> db.table1 = db.table2 = webdb.Table(webdb.StrColumn('data'))
+>>> db.table1 is db.table2
+False
+>>> db.table1 == db.table2
+True
+>>> db.table1._name
+'table1'
+>>> db.table2._name
+'table2'

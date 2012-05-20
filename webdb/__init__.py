@@ -459,8 +459,12 @@ class DateTimeColumn(Column):
 	interpret = datetime.datetime
 	represent = staticmethod(lambda x:datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
 
+class DefinitionError(Exception): pass
+
 class Table(collection):
 	def __init__(self, *columns, **kwargs):
+		if not columns:
+			raise DefinitionError("Tables must have at least one column")
 		collection.__init__(self, columns)
 		rowid = None
 		for c in columns:
@@ -531,7 +535,7 @@ class DB(collection):
 		self.__driver__.__exit__(obj, exc, tb)
 	
 	def __setitem__(self, key, value):
-		assert isinstance(value, Table)
+		value = Table(*iter(value))
 		value._db = self
 		self.__driver__.create_table_if_nexists(key, value)
 		collection.__setitem__(self, key, value)
