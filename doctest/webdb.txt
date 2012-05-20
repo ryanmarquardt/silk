@@ -47,11 +47,19 @@ True
 True
 >>> db.table1 == Table(IntColumn('data'))
 False
+>>> db.table3 = Table(StrColumn('columns'))
 
 >>> db.table1.insert(data='12345')
 1
+>>> db.table1.insert(data=23456)
+2
 >>> for row in db.table1.select():
 ...   print sorted(row.items())
 [('data', '12345'), ('rowid', 1)]
+[('data', '23456'), ('rowid', 2)]
 >>> for row in db.table2.select():
 ...   print row
+>>> db.table3.insert(columns='1')
+1
+>>> (db.table3.columns['columns'] == '1').count()
+1

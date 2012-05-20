@@ -477,15 +477,12 @@ class Table(object):
 		self.__dict__['columns'] = collection()
 		rowid = None
 		for c in columns:
-			c.table = self
-			if isinstance(c, RowidColumn):
-				rowid = c
 			assert c.type
-			self.__dict__['columns'][c.name] = c.assign(self)
-		if not rowid:
-			rowid = RowidColumn('rowid')
-			rowid.table = self
-		self.rowid = rowid
+			mycol = c.assign(self)
+			self.__dict__['columns'][c.name] = mycol
+			if isinstance(c, RowidColumn):
+				rowid = mycol
+		self.rowid = rowid or RowidColumn('rowid').assign(self)
 		assert all(c.table for c in self.ALL)
 
 	@property
@@ -497,9 +494,6 @@ class Table(object):
 		
 	def __hash__(self):
 		return hash(self._name)
-
-	def __iter__(self):
-		return self.__dict__.keys()
 
 	def __getitem__(self, key):
 		value = (self.rowid==key).select_one(self.ALL)
