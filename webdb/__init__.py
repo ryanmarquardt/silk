@@ -268,28 +268,32 @@ class collection(collections.MutableSet, collections.MutableMapping):
 class Selection(object):
 	def __init__(self, columns, values):
 		self.columns = columns
+		self.names = tuple(c.name for c in columns)
 		self.values = values
 		
 	def __iter__(self):
 		for value in self.values:
-			yield Row(self.columns, value)
+			rowid = value[0] if len(value) > len(self.names) else None
+			yield Row(self, rowid, [c.represent(v) for c,v in zip(self.columns,value[-len(self.columns):])])
+			
+	def one(self):
+		return iter(self).next()
 
 class Row(object):
-	__slots__ = ['values', 'names', 'rowid']
-	def __init__(self, columns, values):
-		if len(values) > len(columns):
-			self.rowid = values[0]
-		self.names = [c.name for c in columns]
-		self.values = dict((c.name,c.represent(v)) for v,c in zip(values[-len(columns):],columns))
+	__slots__ = ['selection', 'values', 'rowid']
+	def __init__(self, selection, rowid, values):
+		self.selection = selection
+		self.rowid = rowid
+		self.values = dict(zip(selection.names, values))
 		
 	def __iter__(self):
-		return (self.values[name] for name in self.names)
+		return (self.values[name] for name in self.selection.names)
 		
 	def keys(self):
-		return self.names[:]
+		return list(self.selection.names)
 		
 	def iteritems(self):
-		return ((name,self.values[name]) for name in self.names)
+		return ((name,self.values[name]) for name in self.selection.names)
 		
 	def items(self):
 		return list(self.iteritems())
@@ -299,7 +303,7 @@ class Row(object):
 		
 	def __getitem__(self, key):
 		try:
-			return self.values[self.names[int(key)]]
+			return self.values[self.selection.names[int(key)]]
 		except ValueError:
 			return self.values[key]
 	__getattr__ = __getitem__
@@ -308,7 +312,7 @@ class Row(object):
 		return len(self.values)
 		
 	def __repr__(self):
-		return 'Row{%s}'%', '.join('%s=%r'%i for i in self.iteritems())
+		return 'Row(%s)'%', '.join('%s=%r'%i for i in self.iteritems())
 
 class Expression(object):
 	def _op_args(self, op, *args):
@@ -396,7 +400,7 @@ class Where(Expression):
 	def select_one(self, *columns, **props):
 		columns = self._get_columns(columns)
 		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree, props)
-		return Row(columns, values.fetchone())
+		return Selection(columns, [values.fetchone()]).one()
 		
 	def count(self, **props):
 		tables = self._get_tables()
