@@ -21,8 +21,6 @@ class sqlite(driver_base):
 				e.errno = errno.ENOENT
 			raise e
 	
-	OperationalError = sqlite3.OperationalError
-	
 	operators = {
 		EQUAL:lambda a,b:'%s=%s'%(a,b),
 		LESSEQUAL:lambda a,b:'%s<=%s'%(a,b),
@@ -64,6 +62,12 @@ class sqlite(driver_base):
 		'BLOB':'data',
 		'TIMESTAMP':'datetime',
 	}
+	
+	def handle_exception(self, e):
+		if isinstance(e, sqlite3.OperationalError):
+			if 'has no column named' in e.args[0]:
+				raise KeyError("No such column in table: %s" % e.args[0].rsplit(None, 1)[1])
+
 	
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""

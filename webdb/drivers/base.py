@@ -139,8 +139,10 @@ class driver_base(object):
 		with self as cursor:
 			try:
 				return cursor.execute(sql, values)
-			except self.OperationalError, e:
+			except Exception, e:
+				self.handle_exception(e)
 				raise Exception(e, sql, values)
+
 		
 	def identifier(self, name):
 		if not name.replace('_','').isalnum():

@@ -51,6 +51,10 @@ False
 
 >>> db.table1.insert(data='12345')
 1
+>>> db.table1.insert(nonexistant=True)
+Traceback (most recent call last):
+ ...
+KeyError: 'No such column in table: nonexistant'
 >>> db.table1.insert(data=23456)
 2
 >>> for row in db.table1.select():
