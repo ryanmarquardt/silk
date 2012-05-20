@@ -30,6 +30,10 @@ Tables
 Traceback (most recent call last):
  ...
 TypeError: Tables must have at least one column
+>>> db.table1 = Table(StrColumn('bad identifier'))
+Traceback (most recent call last):
+ ...
+NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
 >>> db.table1 = db.table2 = Table(StrColumn('data'))
 >>> db.table1 is db.table2
 False
