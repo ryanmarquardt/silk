@@ -1,0 +1,7 @@
+
+>>> import webdb
+>>> db = webdb.connect('sqlite','path/to/database.sqlite')
+Traceback (most recent call last):
+ ...
+IOError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
+>>> db = webdb.connect()
