@@ -1,5 +1,3 @@
 
-try:
-	from . import sqlite
-except ImportError:
-	pass
+from . import sqlite
+__all__ = ['sqlite']

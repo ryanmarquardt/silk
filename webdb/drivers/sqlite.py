@@ -1,5 +1,5 @@
 
-from drivers.base import *
+from .base import *
 
 import sqlite3
 import errno
