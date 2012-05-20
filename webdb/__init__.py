@@ -265,6 +265,12 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		else:
 			return self._data.popitem()[1]
 
+class ordered_collection(collection):
+	def __init__(self, elements=(), namekey='name'):
+		self._key = namekey
+		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
+
+
 class Selection(object):
 	def __init__(self, columns, values):
 		self.columns = columns
@@ -285,6 +291,15 @@ class Row(object):
 		self.selection = selection
 		self.rowid = rowid
 		self.values = dict(zip(selection.names, values))
+		
+	def update(self, **kwargs):
+		'''Shortcut for updating a single row of the table
+		'''
+		if self.rowid is None:
+			raise RecordError("Can only manipulate records from a single table")
+		table = self.selection.columns[0].table
+		(table.rowid == self.rowid).update(**kwargs)
+		self.values.update(kwargs)
 		
 	def __iter__(self):
 		return (self.values[name] for name in self.selection.names)
@@ -527,7 +542,7 @@ class Table(object):
 	def __init__(self, *columns, **kwargs):
 		if not columns:
 			raise TypeError("Tables must have at least one column")
-		self.__dict__['columns'] = collection()
+		self.__dict__['columns'] = ordered_collection()
 		rowid = None
 		for c in columns:
 			assert c.type

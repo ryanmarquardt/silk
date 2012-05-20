@@ -66,8 +66,9 @@ class sqlite(driver_base):
 	
 	def handle_exception(self, e):
 		if isinstance(e, sqlite3.OperationalError):
-			if 'has no column named' in e.args[0]:
-				raise KeyError("No such column in table: %s" % e.args[0].rsplit(None, 1)[1])
+			msg = e.args[0]
+			if 'has no column named' in msg or msg.startswith('no such column: '):
+				raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 
 	
 	def list_tables_sql(self):

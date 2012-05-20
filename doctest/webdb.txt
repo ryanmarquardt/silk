@@ -125,3 +125,16 @@ Table.select
 
 >>> map(dict,db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name))
 [{'last_name': 'Fablesmok'}, {'last_name': 'Reynolds'}, {'last_name': 'Smith'}]
+
+>>> record = db.users[1]
+>>> print record
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
+>>> record.update(age=record.age+1) #Happy Birthday!
+>>> print record
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+>>> db.users[1]
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+>>> record.update(nonexistant=True)
+Traceback (most recent call last):
+ ...
+KeyError: 'No such column in table: nonexistant'
