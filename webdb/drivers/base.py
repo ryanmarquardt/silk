@@ -139,7 +139,7 @@ class driver_base(object):
 		with self as cursor:
 			try:
 				return cursor.execute(sql, values)
-			except sqlite3.OperationalError, e:
+			except self.OperationalError, e:
 				raise Exception(e, sql, values)
 		
 	def identifier(self, name):

@@ -20,7 +20,9 @@ class sqlite(driver_base):
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
 				e.errno = errno.ENOENT
 			raise e
-			
+	
+	OperationalError = sqlite3.OperationalError
+	
 	operators = {
 		EQUAL:lambda a,b:'%s=%s'%(a,b),
 		LESSEQUAL:lambda a,b:'%s<=%s'%(a,b),
@@ -89,7 +91,7 @@ class sqlite(driver_base):
 			', '.join(columns),
 			', '.join(tables),
 			where,
-			' ORDER BY %s'%', '.join(map(self.expression,orderby)) if orderby else '',
+			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
 		)
 
 	def insert_sql(self, table, names):
