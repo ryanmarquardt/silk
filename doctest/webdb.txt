@@ -122,3 +122,6 @@ Table.select
 [('first_name', 'Maggie'), ('last_name', 'Reynolds')]
 [('first_name', 'Pat'), ('last_name', 'Smith')]
 [('first_name', 'Bob'), ('last_name', 'Smith')]
+
+>>> map(dict,db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name))
+[{'last_name': 'Fablesmok'}, {'last_name': 'Reynolds'}, {'last_name': 'Smith'}]

@@ -274,11 +274,41 @@ class Selection(object):
 		for value in self.values:
 			yield Row(self.columns, value)
 
-class Row(container):
+class Row(object):
+	__slots__ = ['values', 'names', 'rowid']
 	def __init__(self, columns, values):
 		if len(values) > len(columns):
-			self.__dict__['rowid'] = values[0]
-		container.__init__(self, [(c.name,c.represent(v)) for v,c in zip(values[-len(columns):],columns)])
+			self.rowid = values[0]
+		self.names = [c.name for c in columns]
+		self.values = dict((c.name,c.represent(v)) for v,c in zip(values[-len(columns):],columns))
+		
+	def __iter__(self):
+		return (self.values[name] for name in self.names)
+		
+	def keys(self):
+		return self.names[:]
+		
+	def iteritems(self):
+		return ((name,self.values[name]) for name in self.names)
+		
+	def items(self):
+		return list(self.iteritems())
+		
+	def __contains__(self, key):
+		return key in self.values
+		
+	def __getitem__(self, key):
+		try:
+			return self.values[self.names[int(key)]]
+		except ValueError:
+			return self.values[key]
+	__getattr__ = __getitem__
+			
+	def __len__(self):
+		return len(self.values)
+		
+	def __repr__(self):
+		return 'Row{%s}'%', '.join('%s=%r'%i for i in self.iteritems())
 
 class Expression(object):
 	def _op_args(self, op, *args):
