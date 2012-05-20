@@ -3,34 +3,34 @@
 Connections
 =====
 
->>> import webdb
->>> db = webdb.connect('sqlite', 'path/to/database.sqlite')
+>>> from webdb import *
+>>> db = DB.connect('sqlite', 'path/to/database.sqlite')
 Traceback (most recent call last):
  ...
 IOError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
->>> db = webdb.connect('fakename')
+>>> db = DB.connect('fakename')
 Traceback (most recent call last):
  ...
 UnknownDriver: Unable to find database driver 'fakename'
->>> db = webdb.connect('<>invalid name+/%')
+>>> db = DB.connect('<>invalid name+/%')
 Traceback (most recent call last):
  ...
 UnknownDriver: Unable to find database driver '<>invalid name+/%'
->>> db = webdb.connect('base') #Module exists, but has no object named 'base'
+>>> db = DB.connect('base') #Module exists, but has no object named 'base'
 Traceback (most recent call last):
  ...
 UnknownDriver: Unable to find database driver 'base'
->>> db = webdb.connect('sqlite')
+>>> db = DB.connect('sqlite')
 
 =====
 Tables
 =====
 
->>> db.table1 = webdb.Table()
+>>> db.table1 = Table()
 Traceback (most recent call last):
  ...
 DefinitionError: Tables must have at least one column
->>> db.table1 = db.table2 = webdb.Table(webdb.StrColumn('data'))
+>>> db.table1 = db.table2 = Table(StrColumn('data'))
 >>> db.table1 is db.table2
 False
 >>> db.table1 == db.table2
@@ -39,3 +39,9 @@ True
 'table1'
 >>> db.table2._name
 'table2'
+>>> db.table1 == Table(StrColumn('data'))
+True
+>>> db.table1 == [StrColumn('data')]
+True
+>>> db.table1 == Table(IntColumn('data'))
+False

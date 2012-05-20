@@ -236,7 +236,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		return self._data.itervalues()
 
 	def __contains__(self, value):
-		return getattr(value,self._key) in self._data
+		return value in self._data or getattr(value,self._key) in self._data.values()
 
 	def add(self, value):
 		self._data[getattr(value,self._key)] = value
@@ -398,8 +398,8 @@ class Column(Expression):
 	interpret: a callable object that converts a value to the database native type
 	represent: a callable object that converts a value from the database native type
 	'''
-	interpret = staticmethod(str)
-	represent = staticmethod(str)
+	interpret = staticmethod(ident)
+	represent = staticmethod(ident)
 	def __init__(self, name, notnull=False, default=None):
 		self.name = name
 		self.notnull = notnull
@@ -494,7 +494,7 @@ class Table(collection):
 		try:
 			key = int(key)
 		except ValueError:
-			raise TypeError("rowid's must be integers")
+			return collection.__getitem__(self, key)
 		columns = self.ALL
 		value = (self.rowid==key).select_one(columns)
 		if not value:
@@ -512,6 +512,25 @@ class Table(collection):
 
 	def __repr__(self):
 		return 'Table(%s)' % ', '.join(sorted(map(repr,self)))
+		
+	def __nonzero__(self):
+		return True
+		
+	def __eq__(self, other):
+		for col in other:
+			if not isinstance(col, Column):
+				return False
+			if col.name not in self:
+				return False
+			mycol = self[col.name]
+			if col.type != mycol.type:
+				return False
+			a,b = col.__dict__, mycol.__dict__
+			a.pop('table',None)
+			b.pop('table',None)
+			if a != b:
+				return False
+		return True
 
 class UnknownDriver(Exception): pass
 
