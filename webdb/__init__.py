@@ -400,10 +400,11 @@ class Column(Expression):
 	'''
 	interpret = staticmethod(ident)
 	represent = staticmethod(ident)
-	def __init__(self, name, notnull=False, default=None):
+	def __init__(self, name, notnull=False, default=None, table=None):
 		self.name = name
 		self.notnull = notnull
 		self.default = default
+		self.table = table
 		
 	@classmethod
 	def cast(cls, type, interpret, represent):
@@ -411,6 +412,14 @@ class Column(Expression):
 		self.type = type
 		self.interpret = interpret
 		self.represent = represent
+		
+	def assign(self, table):
+		return self.__class__(
+			self.name,
+			notnull=self.notnull,
+			default=self.default,
+			table=table,
+		)
 		
 	def __repr__(self):
 		values = [`self.name`]
@@ -461,42 +470,39 @@ class DateTimeColumn(Column):
 
 class DefinitionError(Exception): pass
 
-class Table(collection):
+class Table(object):
 	def __init__(self, *columns, **kwargs):
 		if not columns:
 			raise DefinitionError("Tables must have at least one column")
-		collection.__init__(self, columns)
+		self.__dict__['columns'] = collection()
 		rowid = None
 		for c in columns:
 			c.table = self
 			if isinstance(c, RowidColumn):
 				rowid = c
 			assert c.type
+			self.__dict__['columns'][c.name] = c.assign(self)
 		if not rowid:
 			rowid = RowidColumn('rowid')
 			rowid.table = self
 		self.rowid = rowid
+		assert all(c.table for c in self.ALL)
 
 	@property
 	def ALL(self):
-		return [self.rowid]+list(self)
+		return [self.rowid]+list(self.columns)
 
 	def __getattr__(self, key):
-		return collection.__getitem__(self, key)
-
-	def __delattr__(self, key):
-		collection.__delitem__(self, key)
+		return self.__dict__['columns'][key]
 		
 	def __hash__(self):
 		return hash(self._name)
 
+	def __iter__(self):
+		return self.__dict__.keys()
+
 	def __getitem__(self, key):
-		try:
-			key = int(key)
-		except ValueError:
-			return collection.__getitem__(self, key)
-		columns = self.ALL
-		value = (self.rowid==key).select_one(columns)
+		value = (self.rowid==key).select_one(self.ALL)
 		if not value:
 			raise KeyError("No row with rowid %i" % key)
 		return value
@@ -511,21 +517,21 @@ class Table(collection):
 		return Where(self._db, None).select(*(columns or self.ALL), **props)
 
 	def __repr__(self):
-		return 'Table(%s)' % ', '.join(sorted(map(repr,self)))
+		return 'Table(%s)' % ', '.join(sorted(map(repr,self.columns)))
 		
 	def __nonzero__(self):
 		return True
 		
 	def __eq__(self, other):
-		for col in other:
+		for col in getattr(other,'columns',other):
 			if not isinstance(col, Column):
 				return False
-			if col.name not in self:
+			if col.name not in self.columns:
 				return False
-			mycol = self[col.name]
+			mycol = self.columns[col.name]
 			if col.type != mycol.type:
 				return False
-			a,b = col.__dict__, mycol.__dict__
+			a,b = dict(col.__dict__), dict(mycol.__dict__)
 			a.pop('table',None)
 			b.pop('table',None)
 			if a != b:
@@ -554,7 +560,7 @@ class DB(collection):
 		self.__driver__.__exit__(obj, exc, tb)
 	
 	def __setitem__(self, key, value):
-		value = Table(*iter(value))
+		value = Table(*getattr(value,'columns',value))
 		value._db = self
 		self.__driver__.create_table_if_nexists(key, value)
 		collection.__setitem__(self, key, value)

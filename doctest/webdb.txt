@@ -39,9 +39,19 @@ True
 'table1'
 >>> db.table2._name
 'table2'
+>>> db.table1.data is db.table2.data
+False
 >>> db.table1 == Table(StrColumn('data'))
 True
 >>> db.table1 == [StrColumn('data')]
 True
 >>> db.table1 == Table(IntColumn('data'))
 False
+
+>>> db.table1.insert(data='12345')
+1
+>>> for row in db.table1.select():
+...   print sorted(row.items())
+[('data', '12345'), ('rowid', 1)]
+>>> for row in db.table2.select():
+...   print row

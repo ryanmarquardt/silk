@@ -214,19 +214,19 @@ class driver_base(object):
 		if hasattr(self, 'create_table_if_nexists_sql'):
 			self.execute(self.create_table_if_nexists_sql(
 				self.identifier(name),
-				*map(self.format_column, table)
+				*map(self.format_column, table.columns)
 			))
 		elif name not in self.list_tables:
-			self.create_table(name, table)
+			self.create_table(name, table.columns)
 
 	def create_table_sql(self, name, *columns):
 		raise NotImplementedError
 
 	def create_table(self, name, table):
 		try:
-			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,table)))
+			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,table.columns)))
 		except NotImplementedError:
-			self.create_table_if_nexists(name, table)
+			self.create_table_if_nexists(name, table.columns)
 
 	def list_tables(self):
 		return (str(n) for (n,) in self.execute(self.list_tables_sql()))
@@ -238,7 +238,7 @@ class driver_base(object):
 		with self:
 			db_cols = self.list_columns(name)
 			db_names = [c[0] for c in db_cols]
-			for column in table:
+			for column in table.columns:
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
 
