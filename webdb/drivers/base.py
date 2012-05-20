@@ -46,6 +46,10 @@ class ABS(op): pass
 ABS = ABS()
 class LENGTH(op): pass
 LENGTH = LENGTH()
+class ASC(op): pass
+ASC = ASC()
+class DESC(op): pass
+DESC = DESC()
 
 class driver_base(object):
 	'''Base class for database drivers

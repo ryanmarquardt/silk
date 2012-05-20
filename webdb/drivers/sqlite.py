@@ -41,6 +41,8 @@ class sqlite(driver_base):
 		NEGATIVE:lambda a:'-%s'%a,
 		ABS:lambda a:'abs(%s)'%a,
 		LENGTH:lambda a:'length(%s)'%a,
+		ASCEND:lambda a:'%s ASC'%a,
+		DESCEND:lambda a:'%s DESC'%a,
 	}
 	
 	webdb_types = {

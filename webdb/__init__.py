@@ -183,11 +183,13 @@ Order by one column
 [('key', 5), ('rowid', 3), ('value', 'd')]
 
 Or more
->>> for row in mydb.test_table.select(orderby=[~mydb.test_table.key,mydb.test_table.value]):
+>>> for row in mydb.test_table.select(orderby=[mydb.test_table.key.descend(),mydb.test_table.value]):
 ...   print sorted(row.items())
 [('key', 5), ('rowid', 3), ('value', 'd')]
 [('key', 4), ('rowid', 1), ('value', 'c')]
 [('key', 4), ('rowid', 2), ('value', 'd')]
+
+>>> mydb.__driver__.lastsql
 """
 import collections
 import datetime
@@ -333,6 +335,10 @@ class Expression(object):
 
 	def length(self):
 		return Where(self._db, self._op_args(drivers.base.LENGTH, self))
+	def ascend(self):
+		return Where(self._db, self._op_args(drivers.base.ASCEND, self))
+	def descend(self):
+		return Where(self._db, self._op_args(drivers.base.DESCEND, self))
 
 class Where(Expression):
 	def __init__(self, db, where_tree):
