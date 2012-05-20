@@ -1,6 +1,6 @@
 
 =====
-Connections
+DB.connect
 =====
 
 >>> from webdb import *
@@ -23,7 +23,7 @@ UnknownDriver: Unable to find database driver 'base'
 >>> db = DB.connect('sqlite')
 
 =====
-Tables
+Table
 =====
 
 >>> db.table1 = Table()
@@ -52,6 +52,23 @@ True
 >>> db.table1 == Table(IntColumn('data'))
 False
 >>> db.table3 = Table(StrColumn('columns'))
+>>> db.users = Table(
+... 	StrColumn('first_name'),
+... 	StrColumn('last_name'),
+... 	StrColumn('email'),
+... 	IntColumn('age', default=18),
+... 	DateTimeColumn('registered', default=datetime.datetime.now),
+... )
+>>> db.messages = Table(
+... 	ReferenceColumn('owner', db.users),
+... 	StrColumn('subject'),
+... 	StrColumn('content'),
+... 	DateTimeColumn('sent', default=datetime.datetime.now),
+... )
+
+-----
+Table.insert
+-----
 
 >>> db.table1.insert(data='12345')
 1
@@ -71,3 +88,13 @@ KeyError: 'No such column in table: nonexistant'
 1
 >>> (db.table3.columns['columns'] == '1').count()
 1
+
+>>> db.users.insert_many(
+... 	{'first_name':'Maggie','last_name':'Reynolds','email':'magginator@email.com'},
+... 	{'first_name':'Bob','last_name':'Smith','email':'bob.smith@email.com','age':23},
+... 	{'first_name':'Werfina','last_name':'Fablesmok','email':'wgf@email.com','age':'45'},
+... )
+
+-----
+Table.select
+-----

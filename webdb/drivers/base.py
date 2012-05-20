@@ -182,11 +182,14 @@ class driver_base(object):
 		return clause
 		
 	def format_column(self, column):
+		type = self.map_type(column.type)
+		#if not callable(column.default)
+		default = " DEFAULT %s"%self.literal(column.default, self.map_type(column.type)) if not callable(column.default) and (column.notnull or not column.default is None) else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % {
 			'name': self.identifier(column.name),
-			'type': self.map_type(column.type),
+			'type': type,
 			'notnull': ' NOT NULL' if column.notnull else '',
-			'default': " DEFAULT %s"%self.literal(column.default, props.type) if column.notnull or not column.default is None else ''
+			'default': default
 		}
 
 	def map_type(self, t):

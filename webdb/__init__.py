@@ -468,6 +468,23 @@ class DateTimeColumn(Column):
 	interpret = datetime.datetime
 	represent = staticmethod(lambda x:datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
 
+class ReferenceColumn(Column):
+	type = 'reference'
+	interpret = int
+	represent = int
+	def __init__(self, name, reftable, *args, **kwargs):
+		self.reftable = reftable
+		Column.__init__(self, name, *args, **kwargs)
+
+	def assign(self, table):
+		return self.__class__(
+			self.name,
+			self.reftable,
+			notnull=self.notnull,
+			default=self.default,
+			table=table,
+		)
+
 class Table(object):
 	def __init__(self, *columns, **kwargs):
 		if not columns:
@@ -504,6 +521,10 @@ class Table(object):
 
 	def insert(self, **values):
 		return self._db.__driver__.insert(self._name, values)
+
+	def insert_many(self, *records):
+		for record in records:
+			self.insert(**record)
 
 	def select(self, *columns, **props):
 		return Where(self._db, None).select(*(columns or self.ALL), **props)

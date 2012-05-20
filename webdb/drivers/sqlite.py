@@ -53,6 +53,7 @@ class sqlite(driver_base):
 		'data':'BLOB',
 		'boolean':'INT',
 		'datetime':'TIMESTAMP',
+		'reference':'INTEGER',
 	}
 	
 	driver_types = {
