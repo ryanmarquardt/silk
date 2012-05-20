@@ -1,5 +1,7 @@
 class ColumnError(Exception): pass
 
+from webdoc import sequence
+
 class op(object):
 	def __repr__(self):
 		return self.__class__.__name__
@@ -242,7 +244,7 @@ class driver_base(object):
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
 			props.get('distinct',False),
-			props.get('orderby',[]),
+			sequence(props.get('orderby',[])),
 		))
 
 	def insert(self, table, values):

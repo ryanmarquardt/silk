@@ -157,19 +157,37 @@ or deleted...
 ...   print sorted(row.items())
 [('key', 4), ('rowid', 1), ('value', 'c')]
 
+>>> _ = mydb.test_table.insert(key=4, value='d')
+>>> _ = mydb.test_table.insert(key=5, value='d')
+
 Multiple conditions can be combined using bitwise operators & and |
 >>> (mydb.test_table.key == 4).count()
-1
+2
 >>> (mydb.test_table.rowid < 0).count()
 0
 >>> ((mydb.test_table.rowid < 0) | (mydb.test_table.key == 4)).count()
-1
+2
 >>> ((mydb.test_table.rowid < 0) & (mydb.test_table.key == 4)).count()
 0
 
->>> for row in (mydb.test_table.rowid > 0).select(mydb.test_table.value, mydb.test_table.value.length()):
-...   print row
+>>> for row in mydb.test_table.select(mydb.test_table.value, distinct=True):
+...   print row.value
+c
+d
 
+Order by one column
+>>> for row in mydb.test_table.select(orderby=mydb.test_table.rowid):
+...   print sorted(row.items())
+[('key', 4), ('rowid', 1), ('value', 'c')]
+[('key', 4), ('rowid', 2), ('value', 'd')]
+[('key', 5), ('rowid', 3), ('value', 'd')]
+
+Or more
+>>> for row in mydb.test_table.select(orderby=[~mydb.test_table.key,mydb.test_table.value]):
+...   print sorted(row.items())
+[('key', 5), ('rowid', 3), ('value', 'd')]
+[('key', 4), ('rowid', 1), ('value', 'c')]
+[('key', 4), ('rowid', 2), ('value', 'd')]
 """
 import collections
 import datetime
@@ -306,12 +324,12 @@ class Expression(object):
 	def __or__(self, x):
 		return Where(self._db, self._op_args(drivers.base.OR, self, x))
 
-	def __invert__(self, x):
-		return Where(self._db, self._op_args(drivers.base.NOT, self, x))
-	def __abs__(self, x):
-		return Where(self._db, self._op_args(drivers.base.ABS, self, x))
-	def __neg__(self, x):
-		return Where(self._db, self._op_args(drivers.base.NEGATIVE, self, x))
+	def __invert__(self):
+		return Where(self._db, self._op_args(drivers.base.NOT, self))
+	def __abs__(self):
+		return Where(self._db, self._op_args(drivers.base.ABS, self))
+	def __neg__(self):
+		return Where(self._db, self._op_args(drivers.base.NEGATIVE, self))
 
 	def length(self):
 		return Where(self._db, self._op_args(drivers.base.LENGTH, self))
@@ -334,20 +352,20 @@ class Where(Expression):
 				tables.add(entity.table)
 		return tables
 		
-	def select(self, *columns):
+	def select(self, *columns, **props):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree)
+		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree, props)
 		return Selection(columns, values)
 		
-	def select_one(self, *columns):
+	def select_one(self, *columns, **props):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree)
+		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree, props)
 		return Row(columns, values.fetchone())
 		
-	def count(self):
+	def count(self, **props):
 		tables = self._get_tables()
 		columns = [table.rowid for table in tables]
-		values = self._db.__driver__.select(columns, tables, self._where_tree)
+		values = self._db.__driver__.select(columns, tables, self._where_tree, props)
 		return len(values.fetchall())
 		
 	def update(self, **values):
@@ -481,8 +499,8 @@ class Table(collection):
 	def insert(self, **values):
 		return self._db.__driver__.insert(self._name, values)
 
-	def select(self, *columns):
-		return Where(self._db, None).select(*(columns or self.ALL))
+	def select(self, *columns, **props):
+		return Where(self._db, None).select(*(columns or self.ALL), **props)
 
 	def __repr__(self):
 		return 'Table(%s)' % ', '.join(sorted(map(repr,self)))
