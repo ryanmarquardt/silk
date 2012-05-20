@@ -466,7 +466,9 @@ class DataColumn(Column):
 class DateTimeColumn(Column):
 	type = 'datetime'
 	interpret = datetime.datetime
-	represent = staticmethod(lambda x:datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
+	@staticmethod
+	def represent(x):
+		return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') if x else x
 
 class ReferenceColumn(Column):
 	type = 'reference'
