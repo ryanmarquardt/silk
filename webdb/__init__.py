@@ -509,6 +509,8 @@ class Table(collection):
 	def __repr__(self):
 		return 'Table(%s)' % ', '.join(sorted(map(repr,self)))
 
+class UnknownDriver(Exception): pass
+
 class DB(collection):
 	"""
 	
@@ -557,7 +559,10 @@ class DB(collection):
 
 	@classmethod
 	def connect(cls, name, *args, **kwargs):
-		driver = getattr(__import__('drivers.%s'%name, fromlist=name), name)
+		try:
+			driver = getattr(getattr(drivers, name), name)
+		except AttributeError:
+			raise UnknownDriver("Unable to find database driver %r" % name)
 		newcls = type(cls.__name__, (cls,), {'__driver__':driver(*args,**kwargs)})
 		return newcls()
 		
@@ -589,6 +594,8 @@ class DB(collection):
 		for name in names.intersection(db_tables):
 			#Alter if not the same
 			self.__driver__.alter_table(name, self[name])
+
+connect = DB.connect
 
 if __name__=='__main__':
 	import doctest
