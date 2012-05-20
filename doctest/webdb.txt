@@ -138,3 +138,7 @@ Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age
 Traceback (most recent call last):
  ...
 KeyError: 'No such column in table: nonexistant'
+>>> record.update(**{'bad identifier':True})
+Traceback (most recent call last):
+ ...
+NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
