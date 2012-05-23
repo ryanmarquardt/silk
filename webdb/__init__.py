@@ -183,7 +183,7 @@ Order by one column
 3 [('key', 5), ('value', 'd')]
 
 Or more
->>> for row in mydb.test_table.select(orderby=[mydb.test_table.key.descend(), mydb.test_table.value]):
+>>> for row in mydb.test_table.select(orderby=[reversed(mydb.test_table.key), mydb.test_table.value]):
 ...   print sorted(row.items())
 [('key', 5), ('value', 'd')]
 [('key', 4), ('value', 'c')]
@@ -270,22 +270,7 @@ class ordered_collection(collection):
 		self._key = namekey
 		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
 
-
-class Selection(object):
-	def __init__(self, columns, values):
-		self.columns = columns
-		self.names = tuple(c.name for c in columns)
-		self.values = values
-		
-	def __iter__(self):
-		for value in self.values:
-			rowid = value[0] if len(value) > len(self.names) else None
-			yield Row(self, rowid, [c.represent(v) for c,v in zip(self.columns,value[-len(self.columns):])])
-			
-	def one(self):
-		return iter(self).next()
-
-class Row(object):
+class __Row__(object):
 	__slots__ = ['selection', 'values', 'rowid']
 	def __init__(self, selection, rowid, values):
 		self.selection = selection
@@ -328,6 +313,33 @@ class Row(object):
 		
 	def __repr__(self):
 		return 'Row(%s)'%', '.join('%s=%r'%i for i in self.iteritems())
+
+Row = __Row__
+
+class Selection(object):
+	def __init__(self, columns, values):
+		self.columns = columns
+		self.names = tuple(getattr(c,'name',None) for c in columns)
+		self.values = values
+		referants = ()
+		if getattr(self.columns[0],'table',False):
+			referants = getattr(self.columns[0].table.rowid, 'referants', set())
+			#if referants:
+				#for r in referants:
+					#self.subqueries[r.table._name]
+		class Row(__Row__):
+			__slots__ = ['selection', 'values', 'rowid']
+		self.Row = Row
+		for r in referants:
+			setattr(self.Row, r.table._name, property(lambda row:(r==row.rowid)))
+		
+	def __iter__(self):
+		for value in self.values:
+			rowid = value[0] if len(value) > len(self.names) else None
+			yield self.Row(self, rowid, [getattr(c,'represent',ident)(v) for c,v in zip(self.columns,value[-len(self.columns):])])
+			
+	def one(self):
+		return iter(self).next()
 
 class Expression(object):
 	def _op_args(self, op, *args):
@@ -384,10 +396,17 @@ class Expression(object):
 
 	def length(self):
 		return Where(self._db, self._op_args(drivers.base.LENGTH, self))
-	def ascend(self):
-		return Where(self._db, self._op_args(drivers.base.ASCEND, self))
-	def descend(self):
+	def __reversed__(self):
 		return Where(self._db, self._op_args(drivers.base.DESCEND, self))
+		
+	def sum(self):
+		return Where(self._db, self._op_args(drivers.base.SUM, self))
+	def average(self):
+		return Where(self._db, self._op_args(drivers.base.AVERAGE, self))
+	def min(self):
+		return Where(self._db, self._op_args(drivers.base.MIN, self))
+	def max(self):
+		return Where(self._db, self._op_args(drivers.base.MAX, self))
 
 class Where(Expression):
 	def __init__(self, db, where_tree):
@@ -405,11 +424,16 @@ class Where(Expression):
 		for entity in flatten(where_tree):
 			if isinstance(entity, Column):
 				tables.add(entity.table)
+			elif isinstance(entity, Where):
+				tables.update(entity._get_tables())
 		return tables
 		
 	def select(self, *columns, **props):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree, props)
+		tables = self._get_tables(columns)
+		if not tables:
+			raise Exception('No tables! Using %s' % flatten(columns))
+		values = self._db.__driver__.select(columns, tables, self._where_tree, props)
 		return Selection(columns, values)
 		
 	def select_one(self, *columns, **props):
@@ -488,6 +512,9 @@ class RowidColumn(Column):
 	type = 'rowid'
 	interpret = int
 	represent = int
+	def __init__(self, *args, **kwargs):
+		Column.__init__(self, *args, **kwargs)
+		self.referants = set()
 
 class IntColumn(Column):
 	type = 'integer'
@@ -530,28 +557,39 @@ class ReferenceColumn(Column):
 		Column.__init__(self, name, *args, **kwargs)
 
 	def assign(self, table):
-		return self.__class__(
+		new = self.__class__(
 			self.name,
 			self.reftable,
 			notnull=self.notnull,
 			default=self.default,
 			table=table,
 		)
+		self.reftable.rowid.referants.add(new)
+		return new
 
 class Table(object):
 	def __init__(self, *columns, **kwargs):
 		if not columns:
 			raise TypeError("Tables must have at least one column")
-		self.__dict__['columns'] = ordered_collection()
+		self.__dict__['columns'] = ordered_collection(columns)
+		
+	@classmethod
+	def assign(cls, name, db, columns):
+		self = Table(*columns)
+		self._db = db
+		self._name = name
 		rowid = None
 		for c in columns:
 			assert c.type
-			mycol = c.assign(self)
-			self.__dict__['columns'][c.name] = mycol
+			self.__dict__['columns'][c.name] = c
 			if isinstance(c, RowidColumn):
-				rowid = mycol
+				rowid = c
 		self.rowid = rowid or RowidColumn('rowid').assign(self)
-		assert all(c.table for c in self.ALL)
+		columns = self.__dict__['columns']
+		for c in columns:
+			columns[c.name] = c.assign(self)
+		assert all(c.table for c in self.ALL), [c.name for c in self.ALL if c.table is None]
+		return self
 
 	@property
 	def ALL(self):
@@ -626,8 +664,7 @@ class DB(collection):
 		self.__driver__.__exit__(obj, exc, tb)
 	
 	def __setitem__(self, key, value):
-		value = Table(*getattr(value,'columns',value))
-		value._db = self
+		value = Table.assign(key, self, getattr(value,'columns',value))
 		self.__driver__.create_table_if_nexists(key, value)
 		collection.__setitem__(self, key, value)
 

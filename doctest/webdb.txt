@@ -117,7 +117,7 @@ Table.select
 [('first_name', 'Bob'), ('last_name', 'Smith')]
 [('first_name', 'Pat'), ('last_name', 'Smith')]
 
->>> print check(db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,db.users.first_name.descend()]))
+>>> print check(db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,reversed(db.users.first_name)]))
 [('first_name', 'Werfina'), ('last_name', 'Fablesmok')]
 [('first_name', 'Maggie'), ('last_name', 'Reynolds')]
 [('first_name', 'Pat'), ('last_name', 'Smith')]
@@ -125,6 +125,17 @@ Table.select
 
 >>> map(dict,db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name))
 [{'last_name': 'Fablesmok'}, {'last_name': 'Reynolds'}, {'last_name': 'Smith'}]
+
+>>> db.users.select(db.users.age.sum()).one()[0]
+105.0
+>>> db.users.select(db.users.age.average()).one()[0]
+26.25
+>>> db.users.select(db.users.age.max()).one()[0]
+45
+
+=====
+Record
+=====
 
 >>> record = db.users[1]
 >>> print record
@@ -142,3 +153,9 @@ KeyError: 'No such column in table: nonexistant'
 Traceback (most recent call last):
  ...
 NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
+
+>>> map(tuple,(db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
+[('Bob',), ('Pat',)]
+
+>>> list(db.users[1].messages.select())
+[]

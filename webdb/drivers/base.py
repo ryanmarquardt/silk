@@ -49,6 +49,18 @@ class ASCEND(op): pass
 ASCEND = ASCEND()
 class DESCEND(op): pass
 DESCEND = DESCEND()
+class SUM(op): pass
+SUM = SUM()
+class AVERAGE(op): pass
+AVERAGE = AVERAGE()
+class MIN(op): pass
+MIN = MIN()
+class MAX(op): pass
+MAX = MAX()
+class UPPER(op): pass
+UPPER = UPPER()
+class LOWER(op): pass
+LOWER = LOWER()
 
 class driver_base(object):
 	'''Base class for database drivers

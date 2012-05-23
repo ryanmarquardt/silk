@@ -43,6 +43,12 @@ class sqlite(driver_base):
 		LENGTH:lambda a:'length(%s)'%a,
 		ASCEND:lambda a:'%s ASC'%a,
 		DESCEND:lambda a:'%s DESC'%a,
+		SUM:lambda a:'total(%s)'%a,
+		AVERAGE:lambda a:'avg(%s)'%a,
+		MIN:lambda a:'min(%s)'%a,
+		MAX:lambda a:'max(%s)'%a,
+		UPPER:lambda a:'upper(%s)'%a,
+		LOWER:lambda a:'lower(%s)'%a,
 	}
 	
 	webdb_types = {
