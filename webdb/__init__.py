@@ -324,14 +324,8 @@ class Selection(object):
 		referants = ()
 		if getattr(self.columns[0],'table',False):
 			referants = getattr(self.columns[0].table.rowid, 'referants', set())
-			#if referants:
-				#for r in referants:
-					#self.subqueries[r.table._name]
-		class Row(__Row__):
-			__slots__ = ['selection', 'values', 'rowid']
-		self.Row = Row
-		for r in referants:
-			setattr(self.Row, r.table._name, property(lambda row:(r==row.rowid)))
+		r_props = dict((r.table._name, property(lambda row:(r==row.rowid))) for r in referants)
+		self.Row = type('Row', (__Row__,), r_props)
 		
 	def __iter__(self):
 		for value in self.values:
