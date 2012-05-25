@@ -132,6 +132,10 @@ Table.select
 26.25
 >>> db.users.select(db.users.age.max()).one()[0]
 45
+>>> print check(db.users.age.between(19,30).select())
+[('age', 23), ('email', 'bob.smith@email.com'), ('first_name', 'Bob'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
+[('age', 19), ('email', 'pat.smith@email.com'), ('first_name', 'Pat'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
+
 
 =====
 Record
@@ -159,3 +163,13 @@ NameError: Column names can only contain letters, numbers, and underscores. Got 
 
 >>> list(db.users[1].messages.select())
 []
+>>> [r[0] for r in db.users.select(db.users.last_name[0])]
+[u'R', u'S', u'S', u'F']
+>>> [r[0] for r in db.users.select(db.users.last_name[3:5])]
+[u'no', u'th', u'th', u'le']
+>>> [r[0] for r in db.users.select(db.users.last_name[1:])]
+[u'eynolds', u'mith', u'mith', u'ablesmok']
+>>> [r[0] for r in db.users.select(db.users.last_name[:-1])]
+Traceback (most recent call last):
+	...
+ValueError: Negative-valued slices not allowed

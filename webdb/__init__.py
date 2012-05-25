@@ -313,6 +313,7 @@ class __Row__(object):
 		
 	def __repr__(self):
 		return 'Row(%s)'%', '.join('%s=%r'%i for i in self.iteritems())
+		#return 'Row(%s)'%', '.join(map(repr,self.values.values()))
 
 Row = __Row__
 
@@ -401,6 +402,45 @@ class Expression(object):
 		return Where(self._db, self._op_args(drivers.base.MIN, self))
 	def max(self):
 		return Where(self._db, self._op_args(drivers.base.MAX, self))
+	def round(self, precision=None):
+		if precision is None:
+			return Where(self._db, self._op_args(drivers.base.ROUND, self))
+		else:
+			return Where(self._db, self._op_args(drivers.base.ROUND, self, precision))
+
+	def like(self, pattern, escape=None):
+		if escape:
+			return Where(self._db, self._op_args(drivers.base.LIKE, self, pattern, escape))
+		else:
+			return Where(self._db, self._op_args(drivers.base.LIKE, self, pattern))
+	def glob(self, pattern):
+		return Where(self._db, self._op_args(drivers.base.GLOB, self, pattern))
+		
+	def strip(self):
+		return Where(self._db, self._op_args(drivers.base.STRIP, self))
+	def lstrip(self):
+		return Where(self._db, self._op_args(drivers.base.LSTRIP, self))
+	def rstrip(self):
+		return Where(self._db, self._op_args(drivers.base.RSTRIP, self))
+	def replace(self, old, new):
+		return Where(self._db, self._op_args(drivers.base.REPLACE, self, old, new))
+	def __getitem__(self, index):
+		if isinstance(index, slice):
+			start = (index.start or 0) + 1
+			if index.step not in (None, 1):
+				raise ValueError('Slices of db columns must have step==1')
+			if index.stop is None:
+				return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, start))
+			elif index.stop >= 0:
+				return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, start, index.stop-start+1))
+			else:
+				raise ValueError('Negative-valued slices not allowed')
+		return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, index+1, 1))
+		
+	def coalesce(self, *args):
+		return Where(self._db, self._op_args(drivers.base.COALESCE, self, *args))
+	def between(self, min, max):
+		return Where(self._db, self._op_args(drivers.base.BETWEEN, self, min, max))
 
 class Where(Expression):
 	def __init__(self, db, where_tree):

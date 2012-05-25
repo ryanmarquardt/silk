@@ -53,6 +53,8 @@ class SUM(op): pass
 SUM = SUM()
 class AVERAGE(op): pass
 AVERAGE = AVERAGE()
+class BETWEEN(op): pass
+BETWEEN = BETWEEN()
 class MIN(op): pass
 MIN = MIN()
 class MAX(op): pass
@@ -61,6 +63,25 @@ class UPPER(op): pass
 UPPER = UPPER()
 class LOWER(op): pass
 LOWER = LOWER()
+class LIKE(op): pass
+LIKE = LIKE()
+class GLOB(op): pass
+GLOB = GLOB()
+class LSTRIP(op): pass
+LSTRIP = LSTRIP()
+class STRIP(op): pass
+STRIP = STRIP()
+class RSTRIP(op): pass
+RSTRIP = RSTRIP()
+class REPLACE(op): pass
+REPLACE = REPLACE()
+class ROUND(op): pass
+ROUND = ROUND()
+class SUBSTRING(op): pass
+SUBSTRING = SUBSTRING()
+class COALESCE(op): pass
+COALESCE = COALESCE()
+
 
 class driver_base(object):
 	'''Base class for database drivers

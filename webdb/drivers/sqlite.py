@@ -45,10 +45,20 @@ class sqlite(driver_base):
 		DESCEND:lambda a:'%s DESC'%a,
 		SUM:lambda a:'total(%s)'%a,
 		AVERAGE:lambda a:'avg(%s)'%a,
+		BETWEEN:lambda a,b,c:'%s BETWEEN %s AND %s'%(a,b,c),
 		MIN:lambda a:'min(%s)'%a,
 		MAX:lambda a:'max(%s)'%a,
 		UPPER:lambda a:'upper(%s)'%a,
 		LOWER:lambda a:'lower(%s)'%a,
+		LIKE:lambda a,b,c=None:'%s LIKE %s'%(a,b) if c is None else '%s LIKE %s ESCAPE %s'%(a,b,c),
+		SUBSTRING:lambda a,b,c=None:'substr(%s,%s)'%(a,b) if c is None else 'substr(%s,%s,%s)'%(a,b,c),
+		GLOB:lambda a,b:'%s GLOB %s' % (a,b),
+		LSTRIP:lambda a,b=None:'ltrim(%s)'%a if b is None else 'ltrim(%s,%s)'%(a,b),
+		RSTRIP:lambda a,b=None:'rtrim(%s)'%a if b is None else 'rtrim(%s,%s)'%(a,b),
+		STRIP:lambda a,b=None:'trim(%s)'%a if b is None else 'trim(%s,%s)'%(a,b),
+		REPLACE:lambda a,b,c:'replace(%s,%s,%s)'%(a,b,c),
+		ROUND:lambda a,b=None:'round(%s)'%a if b is None else 'round(%s,%s'%(a,b),
+		COALESCE:lambda a,b,*c:'coalesce(%s,%s,%s)'%(a,b,','.join(c)) if c else 'coalesce(%s,%s)'%(a,b),
 	}
 	
 	webdb_types = {
