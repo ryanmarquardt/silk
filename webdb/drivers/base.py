@@ -116,8 +116,6 @@ class driver_base(object):
 	
 	Additionally, the following variables must be defined.
 	
-	  * operators: a dictionary mapping operator objects (EQUAL, MULTIPLY, etc.)
-	      to functions that format those operations. See drivers/sqlite.py
 	  * webdb_types: a dictionary mapping webdb column types to names of database
 	      column types. Used for defining tables
 	  * driver_types: a dictionary mapping database column types to webdb column
@@ -197,7 +195,7 @@ class driver_base(object):
 	def expression(self, x):
 		if isinstance(x, list):
 			operator = x[0]
-			return '(%s)'%self.operators[operator](*map(self.expression,x[1:]))
+			return '(%s)'%getattr(self,'op_%s'%operator)(*map(self.expression,x[1:]))
 		elif hasattr(x, 'table') and hasattr(x, 'name'): #Column duck-typed
 			return self.column_name(x.table._name, x.name)
 		elif hasattr(x, '_where_tree'): #Where duck-typed
@@ -299,3 +297,40 @@ class driver_base(object):
 		return self.execute(self.delete_sql(self.identifier(table), self.parse_where(conditions)))
 
 
+	op_EQUAL = staticmethod(lambda a,b:'%s=%s'%(a,b))
+	op_LESSEQUAL = staticmethod(lambda a,b:'%s<=%s'%(a,b))
+	op_GREATERTHAN = staticmethod(lambda a,b:'%s>%s'%(a,b))
+	op_NOTEQUAL = staticmethod(lambda a,b:'%s!=%s'%(a,b))
+	op_LESSTHAN = staticmethod(lambda a,b:'%s<%s'%(a,b))
+	op_GREATEREQUAL = staticmethod(lambda a,b:'%s>=%s'%(a,b))
+	op_ADD = staticmethod(lambda a,b:'%s+%s'%(a,b))
+	op_CONCATENATE = staticmethod(lambda a,b:'%s||%s'%(a,b))
+	op_SUBTRACT = staticmethod(lambda a,b:'%s-%s'%(a,b))
+	op_MULTIPLY = staticmethod(lambda a,b:'%s*%s'%(a,b))
+	op_DIVIDE = staticmethod(lambda a,b:'%s/%s'%(a,b))
+	op_FLOORDIVIDE = staticmethod(lambda a,b:'%s/%s'%(a,b))
+	op_MODULO = staticmethod(lambda a,b:'%s%%%s'%(a,b))
+	op_AND = staticmethod(lambda a,b:'%s AND %s'%(a,b))
+	op_OR = staticmethod(lambda a,b:'%s OR %s'%(a,b))
+	op_NOT = staticmethod(lambda a:'NOT %s'%a)
+	op_NEGATIVE = staticmethod(lambda a:'-%s'%a)
+	op_ABS = staticmethod(lambda a:'abs(%s)'%a)
+	op_LENGTH = staticmethod(lambda a:'length(%s)'%a)
+	op_ASCEND = staticmethod(lambda a:'%s ASC'%a)
+	op_DESCEND = staticmethod(lambda a:'%s DESC'%a)
+	op_SUM = staticmethod(lambda a:'total(%s)'%a)
+	op_AVERAGE = staticmethod(lambda a:'avg(%s)'%a)
+	op_BETWEEN = staticmethod(lambda a,b,c:'%s BETWEEN %s AND %s'%(a,b,c))
+	op_MIN = staticmethod(lambda a:'min(%s)'%a)
+	op_MAX = staticmethod(lambda a:'max(%s)'%a)
+	op_UPPER = staticmethod(lambda a:'upper(%s)'%a)
+	op_LOWER = staticmethod(lambda a:'lower(%s)'%a)
+	op_LIKE = staticmethod(lambda a,b,c=None:'%s LIKE %s'%(a,b) if c is None else '%s LIKE %s ESCAPE %s'%(a,b,c))
+	op_SUBSTRING = staticmethod(lambda a,b,c=None:'substr(%s,%s)'%(a,b) if c is None else 'substr(%s,%s,%s)'%(a,b,c))
+	op_GLOB = staticmethod(lambda a,b:'%s GLOB %s' % (a,b))
+	op_LSTRIP = staticmethod(lambda a,b=None:'ltrim(%s)'%a if b is None else 'ltrim(%s,%s)'%(a,b))
+	op_RSTRIP = staticmethod(lambda a,b=None:'rtrim(%s)'%a if b is None else 'rtrim(%s,%s)'%(a,b))
+	op_STRIP = staticmethod(lambda a,b=None:'trim(%s)'%a if b is None else 'trim(%s,%s)'%(a,b))
+	op_REPLACE = staticmethod(lambda a,b,c:'replace(%s,%s,%s)'%(a,b,c))
+	op_ROUND = staticmethod(lambda a,b=None:'round(%s)'%a if b is None else 'round(%s,%s'%(a,b))
+	op_COALESCE = staticmethod(lambda a,b,*c:'coalesce(%s,%s,%s)'%(a,b,','.join(c)) if c else 'coalesce(%s,%s)'%(a,b))
