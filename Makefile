@@ -4,5 +4,4 @@ test:
 	@PYTHONPATH=$(PWD) python -m doctest doctest/*.txt
 
 public:
-	test -z "`git status --porcelain`" #There are uncommitted changes
-	git push
+	@if test -n "`git status --porcelain`" ; then git status; exit 1; else git push; fi
