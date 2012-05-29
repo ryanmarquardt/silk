@@ -1,5 +1,5 @@
 
-from webdoc import sequence
+from silk import sequence
 
 class op(object):
 	def __repr__(self):
