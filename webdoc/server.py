@@ -141,7 +141,7 @@ for name,code in dict(
 	NetworkAuthenticationRequired = 511,
 	NetworkReadTimeoutError = 598,
 	NetworkConnectTimeoutError = 599,
-}.items():
+).items():
 	exec '''class %(name)s(HTTP):\n def __init__(self, *args, **kwargs): HTTP.__init__(self, %(code)s, %(name)s, *args, **kwargs)''' % {'name':name,'code':code}
 	setattr(HTTP,name,eval(name))
 
