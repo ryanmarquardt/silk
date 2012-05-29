@@ -35,7 +35,7 @@ display: none;
 border-width: 1px;
 """
 
-from common import *
+from silk import *
 from node import *
 
 from functools import partial

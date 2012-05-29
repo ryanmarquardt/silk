@@ -194,7 +194,7 @@ import datetime
 import inspect
 import drivers
 
-from webdoc.common import container, flatten
+from silk import container, flatten
 
 class collection(collections.MutableSet, collections.MutableMapping):
 	'''Set of objects which can also be retrieved by name

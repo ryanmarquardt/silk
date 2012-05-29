@@ -1,4 +1,4 @@
-from common import *
+from silk import *
 from node import *
 
 import collections

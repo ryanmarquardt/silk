@@ -1,4 +1,4 @@
-from common import *
+from silk import *
 import node
 import html
 import css

@@ -1,4 +1,4 @@
-from common import *
+from silk import *
 from collections import MutableMapping, MutableSequence
 
 is_string = lambda x:isinstance(x,basestring)
