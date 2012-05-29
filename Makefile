@@ -5,7 +5,7 @@ all: deb
 .PHONY: all clean test public sdist deb install current
 
 clean:
-	@rm -r build
+	@python setup.py clean
 	@debuild clean
 
 test:
@@ -13,7 +13,7 @@ test:
 	@PYTHONPATH=$(PWD) python webdb/__init__.py
 	@PYTHONPATH=$(PWD) python -m doctest doctest/*.txt
 
-public:
+public: clean
 	@if test -n "`git status --porcelain`" ; then git status; exit 1; else git push; fi
 
 current:
@@ -23,7 +23,7 @@ sdist:
 	@python setup.py sdist
 
 deb: test
-	@debuild -b -i -uc -us
+	@debuild -i -uc -us
 
 install:
 	@dpkg -i $(PACKAGES)

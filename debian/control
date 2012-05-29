@@ -1,20 +1,27 @@
-Source: webdoc
+Source: silk
 Section: python
 Priority: extra
 Maintainer: Ryan Marquardt <ryan@integralws.com>
 Build-Depends: cdbs (>= 0.4.62), debhelper (>= 7.4), python (>= 2.6), python-support
 Standards-Version: 3.8.4
 
-Package: python-webdoc
+Package: python-silk
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: webdoc
+Description: Tools for webapps
 
-Package: python-webdb
+Package: python-silk-webdoc
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: webdb
- Data abstraction layer for python
+Description: Document model for HTML/CSS
+ This package include tools for creating and modifying documents.
+
+Package: python-silk-webdb
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Data abstraction layer for python
+ Webdb is a database abstraction interface which simplifies storing data in
+ relational databases.
  .
  This package includes the driver for sqlite3 databases, and common bits for all
  other drivers
