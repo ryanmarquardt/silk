@@ -1,3 +1,12 @@
 *.pyc
 MANIFEST
 dist/*
+build/*
+debian/*
+!debian/changelog
+!debian/compat
+!debian/control
+!debian/copyright
+!debian/*.install
+!debian/rules
+!debian/pyversions
