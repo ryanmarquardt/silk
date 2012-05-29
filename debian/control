@@ -3,12 +3,14 @@ Section: python
 Priority: extra
 Maintainer: Ryan Marquardt <ryan@integralws.com>
 Build-Depends: cdbs (>= 0.4.62), debhelper (>= 7.4), python (>= 2.6), python-support
-Standards-Version: 3.8.4
+Standards-Version: 3.9.3
 
 Package: python-silk
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, python-silk-webdb-all, python-silk-webdoc
 Description: Tools for webapps
+ .
+ This empty package depends on all silk modules and can be safely removed
 
 Package: python-silk-common
 Architecture: all

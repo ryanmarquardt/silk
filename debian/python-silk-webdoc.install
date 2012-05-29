@@ -1,0 +1,4 @@
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/__init__.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/node.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/css.py

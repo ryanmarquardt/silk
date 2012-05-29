@@ -1,14 +1,13 @@
 VERSION=$(shell python setup.py --version)
-PACKAGES=../python-webdoc_$(VERSION)_all.deb ../python-webdb_$(VERSION)_all.deb
+PACKAGES=../python-silk_$(VERSION)_all.deb ../python-silk-common_$(VERSION)_all.deb ../python-silk-webdoc_$(VERSION)_all.deb ../python-silk-webdb_$(VERSION)_all.deb ../python-silk-webdb-all_$(VERSION)_all.deb
 
 all: deb
 .PHONY: all clean test public sdist deb install current
 
 clean:
-	@python setup.py clean
 	@debuild clean
 
-test:
+test: clean
 	@PYTHONPATH=$(PWD) python silk/__init__.py
 	@PYTHONPATH=$(PWD) python silk/webdoc/__init__.py
 	@PYTHONPATH=$(PWD) python silk/webdb/__init__.py
@@ -23,7 +22,7 @@ current:
 sdist:
 	@python setup.py sdist
 
-deb: test
+deb:
 	@debuild -i -uc -us
 
 install:

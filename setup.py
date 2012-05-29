@@ -3,12 +3,12 @@
 from distutils.core import setup
 
 setup(
-	name='webdoc',
+	name='silk',
 	version='0.0.1',
 	author='Ryan Marquardt',
 	author_email='ryan@integralws.com',
 	url='http://projects.integralws.com/webdoc',
 	description='Tools for WSGI applications',
-	packages=['webdoc','webdb','webdb.drivers'],
+	packages=['silk','silk.webdoc','silk.webdb','silk.webdb.drivers'],
 	license='Simplified BSD License',
 )
