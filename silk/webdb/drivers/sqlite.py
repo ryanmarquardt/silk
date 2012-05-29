@@ -29,7 +29,7 @@ class sqlite(driver_base):
 		'data':'BLOB',
 		'boolean':'INT',
 		'datetime':'TIMESTAMP',
-		'reference':'INTEGER',
+		'reference':'REFERENCES %(table)s(%(column)s)',
 	}
 	
 	driver_types = {

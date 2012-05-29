@@ -3,7 +3,7 @@
 DB.connect
 =====
 
->>> from webdb import *
+>>> from silk.webdb import *
 >>> db = DB.connect('sqlite', 'path/to/database.sqlite')
 Traceback (most recent call last):
  ...

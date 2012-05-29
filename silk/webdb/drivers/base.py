@@ -213,9 +213,11 @@ class driver_base(object):
 		return clause
 		
 	def format_column(self, column):
-		type = self.map_type(column.type)
-		#if not callable(column.default)
-		default = " DEFAULT %s"%self.literal(column.default, self.map_type(column.type)) if not callable(column.default) and (column.notnull or not column.default is None) else ''
+		if hasattr(column,'reftable'):
+			type = self.map_type(column.type) % dict(table=column.reftable._name, column=column.reftable.rowid.name)
+		else:
+			type = self.map_type(column.type)
+		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.notnull or not column.default is None) else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % {
 			'name': self.identifier(column.name),
 			'type': type,
