@@ -10,15 +10,22 @@ Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
 Description: Tools for webapps
 
-Package: python-silk-webdoc
+Package: python-silk-common
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
+Description: Tools for webapps
+ .
+ This package provides common functions and datatypes that all others need
+
+Package: python-silk-webdoc
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-silk-common
 Description: Document model for HTML/CSS
  This package include tools for creating and modifying documents.
 
 Package: python-silk-webdb
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, python-silk-common
 Description: Data abstraction layer for python
  Webdb is a database abstraction interface which simplifies storing data in
  relational databases.
