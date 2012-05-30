@@ -62,8 +62,7 @@ It is always recommended to conform your database *before* defining columns.
 ... 	DataColumn('g'),
 ... 	RowidColumn('i'),
 ... )
->>> mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
-1
+>>> _ = mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
 >>> for row in mydb.test_types.select():
 ...   print sorted(row.items())
 [('a', 1), ('b', True), ('c', '3'), ('e', datetime.datetime(1969, 10, 5, 0, 0)), ('f', 6.0), ('g', '7'), ('i', 1)]
@@ -116,10 +115,8 @@ Exception
 []
 
 >>> with mydb:
-...   mydb.test_table.insert(key=3, value='c')
-...   mydb.test_table.insert(key=7, value='g')
-1
-2
+...   _ = mydb.test_table.insert(key=3, value='c')
+...   _ = mydb.test_table.insert(key=7, value='g')
 >>> for row in mydb.test_table.select():
 ...   print sorted(row.items())
 [('key', 3), ('value', 'c')]
@@ -170,7 +167,7 @@ Multiple conditions can be combined using bitwise operators & and |
 >>> ((mydb.test_table.rowid < 0) & (mydb.test_table.key == 4)).count()
 0
 
->>> for row in mydb.test_table.select(mydb.test_table.value, distinct=True):
+>>> for row in mydb.test_table.select(mydb.test_table.value, orderby=mydb.test_table.value, distinct=True):
 ...   print row.value
 c
 d
@@ -202,81 +199,7 @@ import datetime
 import inspect
 import drivers
 
-from silk import container, flatten
-
-class collection(collections.MutableSet, collections.MutableMapping):
-	'''Set of objects which can also be retrieved by name
-
-	>>> class b(object):
-	...   def __init__(self, name, value):
-	...     self.name, self.value = name, value
-	...   def __repr__(self): return 'b(%r, %r)' % (self.name, self.value)
-	>>> a = collection()
-	>>> a.add(b('robert', 'Sys Admin'))
-	>>> a.add(b('josephine', 'Q/A'))
-	>>> a['robert']
-	b('robert', 'Sys Admin')
-	>>> sorted(list(a), key=lambda x:x.name)
-	[b('josephine', 'Q/A'), b('robert', 'Sys Admin')]
-	>>> a['stephanie'] = b('robert', 'Sys Admin')
-	>>> a['stephanie']
-	b('stephanie', 'Sys Admin')
-	>>> len(a)
-	3
-	>>> del a['robert']
-	>>> a.pop('josephine', 'Q/A')
-	Traceback (most recent call last):
-		...
-	TypeError: collection.pop takes at most 1 argument (got 2)
-	>>> a.pop('josephine')
-	b('josephine', 'Q/A')
-	>>> a.pop()
-	b('stephanie', 'Sys Admin')
-	'''
-	def __init__(self, elements=(), namekey='name'):
-		self._key = namekey
-		self._data = dict((getattr(e,namekey),e) for e in elements)
-
-	def __len__(self):
-		return len(self._data)
-
-	def __iter__(self):
-		return self._data.itervalues()
-
-	def __contains__(self, value):
-		return value in self._data or getattr(value,self._key) in self._data.values()
-
-	def add(self, value):
-		self._data[getattr(value,self._key)] = value
-
-	def discard(self, value):
-		del self._data[getattr(value,self._key)]
-
-	def keys(self):
-		return self._data.keys()
-
-	def __getitem__(self, key):
-		return self._data[key]
-		
-	def __setitem__(self, key, value):
-		setattr(value, self._key, key)
-		self._data[key] = value
-
-	def __delitem__(self, key):
-		del self._data[key]
-
-	def pop(self, *item):
-		if len(item) > 1:
-			raise TypeError('collection.pop takes at most 1 argument (got %i)' % len(item))
-		if item:
-			return self._data.pop(item[0])
-		else:
-			return self._data.popitem()[1]
-
-class ordered_collection(collection):
-	def __init__(self, elements=(), namekey='name'):
-		self._key = namekey
-		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
+from silk import container, flatten, collection, ordered_collection
 
 class __Row__(object):
 	__slots__ = ['selection', 'values', 'rowid']
@@ -323,7 +246,7 @@ class __Row__(object):
 		return 'Row(%s)'%', '.join('%s=%r'%i for i in self.iteritems())
 		#return 'Row(%s)'%', '.join(map(repr,self.values.values()))
 
-Row = __Row__
+#Row = __Row__
 
 class Selection(object):
 	def __init__(self, columns, values):
@@ -550,50 +473,58 @@ class Column(Expression):
 	def _db(self):
 		return self.table._db
 
+def nullor(func, nullval=None):
+	def f(arg):
+		if arg is None:
+			return nullval
+		return func(arg)
+	f.func_name = func.func_name
+	return f
+
 class RowidColumn(Column):
 	type = 'rowid'
-	interpret = int
-	represent = int
+	interpret = lambda s,x:x and int(x)
+	represent = lambda s,x:x and int(x)
 	def __init__(self, *args, **kwargs):
 		Column.__init__(self, *args, **kwargs)
 		self.referants = set()
 
 class IntColumn(Column):
 	type = 'integer'
-	interpret = int
-	represent = int
+	interpret = lambda s,x:x and int(x)
+	represent = lambda s,x:x and int(x)
 
 class BoolColumn(Column):
 	type = 'boolean'
-	interpret = bool
-	represent = bool
+	interpret = lambda s,x:x and bool(x)
+	represent = lambda s,x:x and bool(x)
 	
 class StrColumn(Column):
 	type = 'string'
-	interpret = str
-	represent = str
+	interpret = lambda s,x:x and str(x)
+	represent = lambda s,x:x and str(x)
 
 class FloatColumn(Column):
 	type = 'float'
-	interpret = float
-	represent = float
+	interpret = lambda s,x:x and float(x)
+	represent = lambda s,x:x and float(x)
 
 class DataColumn(Column):
 	type = 'data'
-	interpret = bytes
-	represent = bytes
+	interpret = lambda s,x:x and bytes(x)
+	represent = lambda s,x:x and bytes(x)
 
 class DateTimeColumn(Column):
 	type = 'datetime'
-	interpret = datetime.datetime
+	interpret = lambda s,x:x and datetime.datetime(x)
 	@staticmethod
 	def represent(x):
 		return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') if x else x
 
 class ReferenceColumn(Column):
 	type = 'reference'
-	interpret = int
-	represent = int
+	interpret = lambda s,x:x and int(x)
+	represent = lambda s,x:x and int(x)
 	def __init__(self, name, reftable, *args, **kwargs):
 		self.reftable = reftable
 		Column.__init__(self, name, *args, **kwargs)
@@ -757,7 +688,8 @@ class DB(collection):
 		for table in self.__driver__.list_tables():
 			columns = []
 			for name,v_type,notnull,default in self.__driver__.list_columns(table):
-				columns.append(coltypes[v_type](name, notnull=notnull, default=default))
+				if name != 'rowid':
+					columns.append(coltypes[v_type](name, notnull=notnull, default=default))
 			t = Table(*columns)
 			t._db = self
 			t._name = table

@@ -1,4 +1,6 @@
 
+import collections
+
 class container(dict):
 	'''dict whose items can be retrieved as attributes
 	
@@ -93,6 +95,82 @@ def flatten(x):
 	[1, 2, 3, 4]
 	'''
 	return [a for i in x for a in flatten(i)] if is_sequence(x) else [x]
+
+class collection(collections.MutableSet, collections.MutableMapping):
+	'''Set of objects which can also be retrieved by name
+
+	>>> class b(object):
+	...   def __init__(self, name, value):
+	...     self.name, self.value = name, value
+	...   def __repr__(self): return 'b(%r, %r)' % (self.name, self.value)
+	>>> a = collection()
+	>>> a.add(b('robert', 'Sys Admin'))
+	>>> a.add(b('josephine', 'Q/A'))
+	>>> a['robert']
+	b('robert', 'Sys Admin')
+	>>> sorted(list(a), key=lambda x:x.name)
+	[b('josephine', 'Q/A'), b('robert', 'Sys Admin')]
+	>>> a['stephanie'] = b('robert', 'Sys Admin')
+	>>> a['stephanie']
+	b('stephanie', 'Sys Admin')
+	>>> len(a)
+	3
+	>>> del a['robert']
+	>>> a.pop('josephine', 'Q/A')
+	Traceback (most recent call last):
+		...
+	TypeError: collection.pop takes at most 1 argument (got 2)
+	>>> a.pop('josephine')
+	b('josephine', 'Q/A')
+	>>> a.pop()
+	b('stephanie', 'Sys Admin')
+	'''
+	def __init__(self, elements=(), namekey='name'):
+		self._key = namekey
+		self._data = dict((getattr(e,namekey),e) for e in elements)
+
+	def __len__(self):
+		return len(self._data)
+
+	def __iter__(self):
+		return self._data.itervalues()
+
+	def __contains__(self, value):
+		return value in self._data or getattr(value,self._key) in self._data.values()
+
+	def add(self, value):
+		self._data[getattr(value,self._key)] = value
+
+	def discard(self, value):
+		del self._data[getattr(value,self._key)]
+
+	def keys(self):
+		return self._data.keys()
+
+	def __getitem__(self, key):
+		return self._data[key]
+		
+	def __setitem__(self, key, value):
+		setattr(value, self._key, key)
+		self._data[key] = value
+
+	def __delitem__(self, key):
+		del self._data[key]
+
+	def pop(self, *item):
+		if len(item) > 1:
+			raise TypeError('collection.pop takes at most 1 argument (got %i)' % len(item))
+		if item:
+			return self._data.pop(item[0])
+		else:
+			return self._data.popitem()[1]
+
+class ordered_collection(collection):
+	def __init__(self, elements=(), namekey='name'):
+		self._key = namekey
+		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
+
+__all__ = ['container', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection']
 
 if __name__=='__main__':
 	import doctest
