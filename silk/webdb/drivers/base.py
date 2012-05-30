@@ -1,5 +1,6 @@
 
 from silk import sequence
+import sys
 
 class op(object):
 	def __repr__(self):
@@ -144,10 +145,11 @@ class driver_base(object):
 	       Implements: table.drop_column
 	'''
 
-	def __init__(self, connection):
+	def __init__(self, connection, debug=False):
 		self.connection = connection
 		self.depth = 0
 		self.cursor = None
+		self.debug = debug
 
 	def __enter__(self):
 		self.depth += 1
@@ -166,9 +168,11 @@ class driver_base(object):
 		
 	def execute(self, sql, values=()):
 		self.lastsql = sql
+		print >>sys.stderr, sql, values
 		with self as cursor:
 			try:
-				return cursor.execute(sql, values)
+				cursor.execute(sql, values)
+				return cursor
 			except Exception, e:
 				self.handle_exception(e)
 				raise Exception(e, sql, values)
@@ -217,6 +221,8 @@ class driver_base(object):
 			type = self.map_type(column.type) % dict(table=column.reftable._name, column=column.reftable.rowid.name)
 		else:
 			type = self.map_type(column.type)
+		if type is None:
+			raise Exception('Unknown column type %s' % column.type)
 		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.notnull or not column.default is None) else ''
 		return '%(name)s %(type)s%(notnull)s%(default)s' % {
 			'name': self.identifier(column.name),
@@ -229,16 +235,11 @@ class driver_base(object):
 		r = self.webdb_types.get(t)
 		if r:
 			return r
-		else:
-			raise Exception('Unknown column type %s' % t)
 			
 	def unmap_type(self, t):
 		r = self.driver_types.get(t)
 		if r:
 			return r
-		else:
-			raise Exception('Unknown column type %s' % t)
-
 
 	def create_table_if_nexists_sql(self, name, *columns):
 		'''create_table_if_nexists_sql(self, name, *columns) -> Stub
@@ -249,9 +250,12 @@ class driver_base(object):
 
 	def create_table_if_nexists(self, name, table):
 		if hasattr(self, 'create_table_if_nexists_sql'):
+			cols = list(table.columns)
+			if table.rowid not in table.columns:
+				cols.append(table.rowid)
 			self.execute(self.create_table_if_nexists_sql(
 				self.identifier(name),
-				*map(self.format_column, table.columns)
+				*map(self.format_column, cols)
 			))
 		elif name not in self.list_tables:
 			self.create_table(name, table.columns)
@@ -261,7 +265,10 @@ class driver_base(object):
 
 	def create_table(self, name, table):
 		try:
-			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,table.columns)))
+			cols = list(table.columns)
+			if table.rowid not in table.columns:
+				cols.append(table.rowid)
+			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,cols)))
 		except NotImplementedError:
 			self.create_table_if_nexists(name, table.columns)
 
@@ -278,6 +285,9 @@ class driver_base(object):
 			for column in table.columns:
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
+
+	def drop_table(self, table):
+		self.execute(self.drop_table_sql(self.identifier(table)))
 
 	def select(self, columns, tables, conditions, props):
 		return self.execute(self.select_sql(

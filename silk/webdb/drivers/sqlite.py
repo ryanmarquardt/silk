@@ -11,10 +11,11 @@ class sqlite(driver_base):
 	file. By default, path=':memory:', which creates a temporary database
 	in memory.
 	"""
-	def __init__(self, path=':memory:'):
+	test_args = ()
+	def __init__(self, path=':memory:', debug=False):
 		self.path = path
 		try:
-			driver_base.__init__(self, sqlite3.connect(path, sqlite3.PARSE_DECLTYPES))
+			driver_base.__init__(self, sqlite3.connect(path, sqlite3.PARSE_DECLTYPES), debug)
 		except sqlite3.OperationalError, e:
 			if e.message == 'unable to open database file':
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
@@ -35,6 +36,7 @@ class sqlite(driver_base):
 	driver_types = {
 		'TEXT':'string',
 		'INT':'integer',
+		'INTEGER':'rowid',
 		'REAL':'float',
 		'BLOB':'data',
 		'TIMESTAMP':'datetime',
@@ -66,6 +68,9 @@ class sqlite(driver_base):
 
 	def add_column_sql(self, table, column):
 		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
+
+	def drop_table_sql(self, table):
+		return """DROP TABLE %s;""" % (table)
 
 	def select_sql(self, columns, tables, where, distinct, orderby):
 		return """SELECT%s %s FROM %s%s%s;""" % (

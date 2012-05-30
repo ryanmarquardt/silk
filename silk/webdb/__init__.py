@@ -81,7 +81,7 @@ Data
 
 Add some data by calling insert on a table. An integer referring to the new row
 is returned and can be used to retrieve it later.
->>> mydb = DB()
+#>>> mydb = DB()
 >>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'))
 
 Insert adds a row to the table and returns its row id
@@ -188,6 +188,14 @@ Or more
 [('key', 5), ('value', 'd')]
 [('key', 4), ('value', 'c')]
 [('key', 4), ('value', 'd')]
+
+===
+Cleaning Up
+===
+
+Remove tables by calling 'drop' on them.
+>>> mydb.test_table.drop()
+>>> mydb.test_types.drop()
 """
 import collections
 import datetime
@@ -654,6 +662,10 @@ class Table(object):
 	def select(self, *columns, **props):
 		return Where(self._db, None).select(*(columns or self.ALL), **props)
 
+	def drop(self):
+		self._db.__driver__.drop_table(self._name)
+		del self._db[self._name]
+
 	def __repr__(self):
 		return 'Table(%s)' % ', '.join(sorted(map(repr,self.columns)))
 		
@@ -756,7 +768,7 @@ class DB(collection):
 		db_tables = set(self.__driver__.list_tables())
 		for name in names - db_tables:
 			#Create
-			self.__driver__.create_table(name, self[name])
+			self.__driver__.create_table_if_nexists(name, self[name])
 		for name in names.intersection(db_tables):
 			#Alter if not the same
 			self.__driver__.alter_table(name, self[name])
@@ -766,3 +778,11 @@ connect = DB.connect
 if __name__=='__main__':
 	import doctest
 	doctest.testmod()
+
+	fdoc = '\n'.join(__doc__.split('\n')[8:])
+	fdoc = fdoc.replace('%','%%')
+	fdoc = fdoc.replace('DB()','DB.connect(%(conn)s, debug=True)')
+	for driver in drivers.__all__:
+		conn = ','.join(map(repr,(driver,)+getattr(getattr(drivers,driver),driver).test_args))
+		o = type('',(object,),{'__doc__':fdoc%dict(conn=conn)})
+		doctest.run_docstring_examples(o, globals(), name=__file__+'(%s)'%driver)
