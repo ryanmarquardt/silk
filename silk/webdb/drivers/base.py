@@ -252,7 +252,7 @@ class driver_base(object):
 		if hasattr(self, 'create_table_if_nexists_sql'):
 			cols = list(table.columns)
 			if table.rowid not in table.columns:
-				cols.append(table.rowid)
+				cols.insert(0, table.rowid)
 			self.execute(self.create_table_if_nexists_sql(
 				self.identifier(name),
 				*map(self.format_column, cols)
@@ -266,8 +266,7 @@ class driver_base(object):
 	def create_table(self, name, table):
 		try:
 			cols = list(table.columns)
-			if table.rowid not in table.columns:
-				cols.append(table.rowid)
+			cols.insert(0, table.rowid)
 			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,cols)))
 		except NotImplementedError:
 			self.create_table_if_nexists(name, table.columns)
@@ -291,7 +290,7 @@ class driver_base(object):
 
 	def select(self, columns, tables, conditions, props):
 		return self.execute(self.select_sql(
-			([self.identifier('rowid')]if len(tables)==1 and not props.get('distinct') else [])+map(self.expression,columns),
+			([(lambda t:self.column_name(t._name,t.rowid.name))(list(tables)[0])]if len(tables)==1 and not props.get('distinct') else [])+map(self.expression,columns),
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
 			props.get('distinct',False),

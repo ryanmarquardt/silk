@@ -22,7 +22,7 @@ class mysql(driver_base):
 			raise e
 	
 	webdb_types = {
-		'rowid':'INTEGER AUTO_INCREMENT PRIMARY KEY',
+		'rowid':'INTEGER PRIMARY KEY AUTO_INCREMENT',
 		'string':'VARCHAR(512)',
 		'integer':'INT',
 		'float':'REAL',
@@ -76,25 +76,25 @@ class mysql(driver_base):
 			if not ut:
 				raise Exception('Unknown column type %s' % v_type)
 			yield (str(name),ut,null!='YES',default)
-			
 
 	def create_table_if_nexists_sql(self, name, *coldefs):
 		if self.debug:
 			return """CREATE TEMPORARY TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
-		else:
-			return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
+		return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
 
 	def create_table_sql(self, name, *coldefs):
 		if self.debug:
 			return """CREATE TEMPORARY TABLE %s(%s);""" % (name, ', '.join(coldefs))
-		else:
-			return """CREATE TABLE %s(%s);""" % (name, ', '.join(coldefs))
+		return """CREATE TABLE %s(%s);""" % (name, ', '.join(coldefs))
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
 
 	def add_column_sql(self, table, column):
 		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
+
+	def drop_table_sql(self, table):
+		return """DROP TABLE %s;""" % (table)
 
 	def select_sql(self, columns, tables, where, distinct, orderby):
 		return """SELECT%s %s FROM %s%s%s;""" % (
