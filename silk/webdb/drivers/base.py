@@ -84,6 +84,48 @@ class COALESCE(op): pass
 COALESCE = COALESCE()
 
 
+"""The silk DAL expects the following methods to be available from its driver:
+
+driver.select(columns, tables, where, props) -> object providing fetchall and fetchone methods
+  columns: list of column objects
+  tables: set of table objects
+  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
+  props: keyword arguments to select calls (i.e. distinct)
+  
+driver.update(table, where, values) -> return value is ignored
+  table: table name
+  where: where_tree
+  values: dictionary of values to change
+
+driver.delete(table, where) -> return value is ignored
+  table: table name
+  where: where_tree
+
+driver.insert(table, values) -> returns rowid of inserted row (integer > 0)
+  table: table name
+  values: dictionary of values to insert
+
+driver.drop_table(table) -> return value is ignored
+  table: table name
+
+driver.commit() -> return value is ignored
+driver.rollback() -> return value is ignored
+driver.__enter__() -> return value is ignored
+driver.__exit__(object, exception, traceback) -> return value is ignored
+
+driver.create_table_if_nexists(name, table) -> return value is ignored
+
+driver.list_tables() -> list of names of tables in database
+
+driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
+  name: column name
+  v_type: type name of column
+  notnull: boolean
+  default: default value
+  
+driver.alter_table(name, table) -> return value is ignored
+"""
+
 class driver_base(object):
 	'''Base class for database drivers
 	
