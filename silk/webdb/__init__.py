@@ -25,35 +25,35 @@ that have already been defined.
 >>> list(mydb) #No tables defined yet
 []
 
->>> mydb.test_table = Table(StrColumn('key'), StrColumn('value'))
+>>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'))
 >>> list(mydb)
-[Table(StrColumn('key'), StrColumn('value'))]
+[<table 'test_table'>]
 
->>> mydb.test_table = Table(StrColumn('key'), StrColumn('value'), StrColumn('extra'))
+>>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> list(mydb)
-[Table(StrColumn('extra'), StrColumn('key'), StrColumn('value'))]
+[<table 'test_table'>]
 
 >>> mydb.conform()
 >>> list(mydb)
-[Table(StrColumn('key'), StrColumn('value'))]
+[<table 'test_table'>]
 
 Migrate modifies tables in the database to be like newly-assigned tables.
->>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'), StrColumn('extra'))
->>> mydb.migrate()
+>>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
+>>> #mydb.migrate()
 >>> mydb.test_table
-Table(IntColumn('key'), StrColumn('extra'), StrColumn('value'))
+<table 'test_table'>
 
 Conforming after a migration keeps the same columns, but other information might
 be lost. For example column data types might be lost (sqlite migrations don't
 change data types, boolean columns might be interpretted as integers, etc.)
 >>> mydb.conform()
 >>> mydb.test_table
-Table(StrColumn('extra'), StrColumn('key'), StrColumn('value'))
+<table 'test_table'>
 
 It is always recommended to conform your database *before* defining columns.
->>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'), StrColumn('extra'))
+>>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 
->>> mydb.test_types = Table(
+>>> mydb.define_table('test_types',
 ... 	IntColumn('a'),
 ... 	BoolColumn('b'),
 ... 	StrColumn('c'),
@@ -64,8 +64,8 @@ It is always recommended to conform your database *before* defining columns.
 ... )
 >>> _ = mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
 >>> for row in mydb.test_types.select():
-...   print sorted(row.items())
-[('a', 1), ('b', True), ('c', '3'), ('e', datetime.datetime(1969, 10, 5, 0, 0)), ('f', 6.0), ('g', '7'), ('i', 1)]
+...   print row
+Row(a=1, b=True, c=u'3', e=datetime.datetime(1969, 10, 5, 0, 0), f=6.0, g='7', i=1)
 
 Conforming and migrating are both optional. Attempting to manipulate the
 database without these calls may fail if table definitions don't match tables
@@ -81,16 +81,20 @@ Data
 Add some data by calling insert on a table. An integer referring to the new row
 is returned and can be used to retrieve it later.
 #>>> mydb = DB()
->>> mydb.test_table = Table(IntColumn('key'), StrColumn('value'))
+>>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'))
 
-Insert adds a row to the table and returns its row id
+Insert adds a row to the table.
 >>> mydb.test_table.insert(key='100', value='a')
-1
+
+Rows can be fetched by primarykey. If no primarykeys are specified, an auto-
+increment column is implicitly available. Autoincrement fields start from 1
 >>> row = mydb.test_table[1]
 >>> row.key
 100
 >>> row.value
-'a'
+u'a'
+>>> row.rowid
+1
 >>> del mydb.test_table[1]
 
 ===
@@ -100,13 +104,15 @@ Consistency
 The database acts as a context manager which controls data integrity. If several
 operations need to be treated atomically:
 
-If an error is raised, the all of the transactions are rolled back. Only the
-outer-most context manager commits the transaction. Individual calls that modify
+If an error is raised, and the database driver supports transactions, all of the
+operations in the current transaction are rolled back. Only the outer-most
+context manager commits the transaction. Individual calls that modify
 the database are wrapped in their own context managers, so they are committed
 automatically.
 >>> with mydb:
-...   mydb.test_table.insert(key=3, value='c')
-...   mydb.test_table.insert(key=4, value='d')
+...   if 'transactions' in mydb.__driver__.features:
+...     mydb.test_table.insert(key=3, value='c')
+...     mydb.test_table.insert(key=4, value='d')
 ...   raise Exception
 Traceback (most recent call last):
  ...
@@ -118,9 +124,9 @@ Exception
 ...   _ = mydb.test_table.insert(key=3, value='c')
 ...   _ = mydb.test_table.insert(key=7, value='g')
 >>> for row in mydb.test_table.select():
-...   print sorted(row.items())
-[('key', 3), ('value', 'c')]
-[('key', 7), ('value', 'g')]
+...   print row
+Row(key=3, value=u'c')
+Row(key=7, value=u'g')
 
 ===
 Querying
@@ -129,13 +135,13 @@ Querying
 Doing comparison, binary or arithmetic operations on columns produces 'Where'
 objects.
 >>> mydb.test_table.key <= 3
-Where([LESSEQUAL, IntColumn('key'), 3])
+Where([LESSEQUAL, 'test_table'.'key', 3])
 
 The resulting object can be queried. Standard SQL commands are provided. Using
 parentheses, a query can be set up and then selected:
 >>> for row in (mydb.test_table.key<=3).select():
-...   print sorted(row.items())
-[('key', 3), ('value', 'c')]
+...   print row
+Row(key=3, value=u'c')
 
 Rows in a query can be counted...
 >>> (mydb.test_table.key>1).count()
@@ -144,15 +150,15 @@ Rows in a query can be counted...
 or updated...
 >>> (mydb.test_table.value=='c').update(key=4)
 >>> for row in mydb.test_table.select():
-...   print row.rowid, sorted(row.items())
-1 [('key', 4), ('value', 'c')]
-2 [('key', 7), ('value', 'g')]
+...   print row
+Row(key=4, value=u'c')
+Row(key=7, value=u'g')
 
 or deleted...
 >>> (mydb.test_table.key > 5).delete()
 >>> for row in mydb.test_table.select():
-...   print sorted(row.items())
-[('key', 4), ('value', 'c')]
+...   print row
+Row(key=4, value=u'c')
 
 >>> _ = mydb.test_table.insert(key=4, value='d')
 >>> _ = mydb.test_table.insert(key=5, value='d')
@@ -174,17 +180,17 @@ d
 
 Order by one column
 >>> for row in mydb.test_table.select(orderby=mydb.test_table.rowid):
-...   print row.rowid, sorted(row.items())
-1 [('key', 4), ('value', 'c')]
-2 [('key', 4), ('value', 'd')]
-3 [('key', 5), ('value', 'd')]
+...   print row
+Row(key=4, value=u'c')
+Row(key=4, value=u'd')
+Row(key=5, value=u'd')
 
 Or more
 >>> for row in mydb.test_table.select(orderby=[reversed(mydb.test_table.key), mydb.test_table.value]):
-...   print sorted(row.items())
-[('key', 5), ('value', 'd')]
-[('key', 4), ('value', 'c')]
-[('key', 4), ('value', 'd')]
+...   print row
+Row(key=5, value=u'd')
+Row(key=4, value=u'c')
+Row(key=4, value=u'd')
 
 ===
 Cleaning Up
@@ -195,74 +201,88 @@ Remove tables by calling 'drop' on them.
 >>> mydb.test_types.drop()
 """
 import collections
+import copy
 import datetime
 import inspect
-import drivers
+import sys
 
-from silk import container, flatten, collection, ordered_collection
+import drivers
+from drivers.base import timestamp
+
+from silk import *
 
 class __Row__(object):
-	__slots__ = ['selection', 'values', 'rowid']
-	def __init__(self, selection, rowid, values):
+	"""Base class for Row objects - elements of Selection objects
+
+	
+	"""
+	__slots__ = ['selection', 'values']
+	def __init__(self, selection, values):
 		self.selection = selection
-		self.rowid = rowid
-		self.values = dict(zip(selection.names, values))
+		self.values = values
+
+	def as_dict(self):
+		return dict(zip(self.selection.names, self.values))
 		
 	def update(self, **kwargs):
 		'''Shortcut for updating a single row of the table
 		'''
-		if self.rowid is None:
+		if not self.selection.primarykey:
 			raise RecordError("Can only manipulate records from a single table")
+		my_primarykey = [self[c.name] for c in self.selection.primarykey]
 		table = self.selection.columns[0].table
-		(table.rowid == self.rowid).update(**kwargs)
-		self.values.update(kwargs)
+		query = (table._by_pk(my_primarykey))
+		query.update(**kwargs)
+		return query.select_one()
 		
 	def __iter__(self):
-		return (self.values[name] for name in self.selection.names)
-		
-	def keys(self):
-		return list(self.selection.names)
-		
-	def iteritems(self):
-		return ((name,self.values[name]) for name in self.selection.names)
-		
-	def items(self):
-		return list(self.iteritems())
+		for i in range(len(self.selection.explicit)):
+			yield self[i]
 		
 	def __contains__(self, key):
 		return key in self.values
 		
 	def __getitem__(self, key):
 		try:
-			return self.values[self.selection.names[int(key)]]
-		except ValueError:
 			return self.values[key]
+		except TypeError:
+			return self.values[self.selection.index(key)]
 	__getattr__ = __getitem__
 			
 	def __len__(self):
-		return len(self.values)
+		return len(self.selection.explicit)
 		
 	def __repr__(self):
-		return 'Row(%s)'%', '.join('%s=%r'%i for i in self.iteritems())
-		#return 'Row(%s)'%', '.join(map(repr,self.values.values()))
-
-#Row = __Row__
+		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self.selection.explicit,self.values))
 
 class Selection(object):
-	def __init__(self, columns, values):
-		self.columns = columns
-		self.names = tuple(getattr(c,'name',None) for c in columns)
+	def __init__(self, columns, explicit, primarykey, values):
+		self.columns = columns # self.columns == self.explicit + self.primarykey
+		self.explicit = explicit
+		self.primarykey = primarykey
+		self.names = {getattr(c,'name',None):i for i,c in enumerate(columns)}
 		self.values = values
-		referants = ()
-		if getattr(self.columns[0],'table',False):
-			referants = getattr(self.columns[0].table.rowid, 'referants', set())
-		r_props = dict((r.table._name, property(lambda row:(r==row.rowid))) for r in referants)
-		self.Row = type('Row', (__Row__,), r_props)
+		self.Row = type('Row', (__Row__,), {})
+
+	def index(self, name):
+		return self.names[name]
 		
 	def __iter__(self):
 		for value in self.values:
-			rowid = value[0] if len(value) > len(self.names) else None
-			yield self.Row(self, rowid, [getattr(c,'represent',ident)(v) for c,v in zip(self.columns,value[-len(self.columns):])])
+			yield self.Row(self, tuple(v if v is None else (getattr(c,'fromdb',None) or ident)(v) for c,v in zip(self.columns,value)))
+
+	def __contains__(self, seq):
+		if hasattr(seq, 'items'):
+			for row in self:
+				if kwargs < row.as_dict():
+					return True
+			return False
+		else:
+			seq = sequence(seq)
+			for row in self:
+				if row[:len(seq)] == seq:
+					return True
+			return False
 			
 	def one(self):
 		return iter(self).next()
@@ -274,149 +294,150 @@ class Expression(object):
 		return True
 
 	def __eq__(self, x):
-		return Where(self._db, self._op_args(drivers.base.EQUAL, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.EQUAL, self, x))
 	def __ne__(self, x):
-		return Where(self._db, self._op_args(drivers.base.NOTEQUAL, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.NOTEQUAL, self, x))
 	def __le__(self, x):
-		return Where(self._db, self._op_args(drivers.base.LESSEQUAL, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.LESSEQUAL, self, x))
 	def __ge__(self, x):
-		return Where(self._db, self._op_args(drivers.base.GREATEREQUAL, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.GREATEREQUAL, self, x))
 	def __lt__(self, x):
-		return Where(self._db, self._op_args(drivers.base.LESSTHAN, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.LESSTHAN, self, x))
 	def __gt__(self, x):
-		return Where(self._db, self._op_args(drivers.base.GREATERTHAN, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.GREATERTHAN, self, x))
 	
 	def __add__(self, x):
 		if isinstance(x, basestring) or \
 		self.type in ('string','text','data') or \
 		(isinstance(x, Column) and x.type in ('string','data')):
-			return Where(self._db, self._op_args(drivers.base.CONCATENATE, self, x))
+			return Where(self._db, self._tables, self._op_args(drivers.base.CONCATENATE, self, x))
 		else:
-			return Where(self._db, self._op_args(drivers.base.ADD, self, x))
+			return Where(self._db, self._tables, self._op_args(drivers.base.ADD, self, x))
 	def __sub__(self, x):
-		return Where(self._db, self._op_args(drivers.base.SUBTRACT, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.SUBTRACT, self, x))
 	def __mul__(self, x):
-		return Where(self._db, self._op_args(drivers.base.MULTIPLY, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.MULTIPLY, self, x))
 	def __div__(self, x):
-		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
 	def __floordiv__(self, x):
-		return Where(self._db, self._op_args(drivers.base.FLOORDIVIDE, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.FLOORDIVIDE, self, x))
 	def __div__(self, x):
-		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
 	def __truediv__(self, x):
-		return Where(self._db, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
 	def __mod__(self, x):
-		return Where(self._db, self._op_args(drivers.base.MODULO, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.MODULO, self, x))
 
 	def __and__(self, x):
-		return Where(self._db, self._op_args(drivers.base.AND, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.AND, self, x))
 	def __or__(self, x):
-		return Where(self._db, self._op_args(drivers.base.OR, self, x))
+		return Where(self._db, self._tables, self._op_args(drivers.base.OR, self, x))
 
 	def __invert__(self):
-		return Where(self._db, self._op_args(drivers.base.NOT, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.NOT, self))
 	def __abs__(self):
-		return Where(self._db, self._op_args(drivers.base.ABS, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.ABS, self))
 	def __neg__(self):
-		return Where(self._db, self._op_args(drivers.base.NEGATIVE, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.NEGATIVE, self))
 
 	def length(self):
-		return Where(self._db, self._op_args(drivers.base.LENGTH, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.LENGTH, self))
 	def __reversed__(self):
-		return Where(self._db, self._op_args(drivers.base.DESCEND, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.DESCEND, self))
 		
 	def sum(self):
-		return Where(self._db, self._op_args(drivers.base.SUM, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.SUM, self))
 	def average(self):
-		return Where(self._db, self._op_args(drivers.base.AVERAGE, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.AVERAGE, self))
 	def min(self):
-		return Where(self._db, self._op_args(drivers.base.MIN, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.MIN, self))
 	def max(self):
-		return Where(self._db, self._op_args(drivers.base.MAX, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.MAX, self))
 	def round(self, precision=None):
 		if precision is None:
-			return Where(self._db, self._op_args(drivers.base.ROUND, self))
+			return Where(self._db, self._tables, self._op_args(drivers.base.ROUND, self))
 		else:
-			return Where(self._db, self._op_args(drivers.base.ROUND, self, precision))
+			return Where(self._db, self._tables, self._op_args(drivers.base.ROUND, self, precision))
 
 	def like(self, pattern, escape=None):
 		if escape:
-			return Where(self._db, self._op_args(drivers.base.LIKE, self, pattern, escape))
+			return Where(self._db, self._tables, self._op_args(drivers.base.LIKE, self, pattern, escape))
 		else:
-			return Where(self._db, self._op_args(drivers.base.LIKE, self, pattern))
+			return Where(self._db, self._tables, self._op_args(drivers.base.LIKE, self, pattern))
 	def glob(self, pattern):
-		return Where(self._db, self._op_args(drivers.base.GLOB, self, pattern))
+		return Where(self._db, self._tables, self._op_args(drivers.base.GLOB, self, pattern))
 		
 	def strip(self):
-		return Where(self._db, self._op_args(drivers.base.STRIP, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.STRIP, self))
 	def lstrip(self):
-		return Where(self._db, self._op_args(drivers.base.LSTRIP, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.LSTRIP, self))
 	def rstrip(self):
-		return Where(self._db, self._op_args(drivers.base.RSTRIP, self))
+		return Where(self._db, self._tables, self._op_args(drivers.base.RSTRIP, self))
 	def replace(self, old, new):
-		return Where(self._db, self._op_args(drivers.base.REPLACE, self, old, new))
+		return Where(self._db, self._tables, self._op_args(drivers.base.REPLACE, self, old, new))
 	def __getitem__(self, index):
 		if isinstance(index, slice):
 			start = (index.start or 0) + 1
 			if index.step not in (None, 1):
 				raise ValueError('Slices of db columns must have step==1')
 			if index.stop is None:
-				return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, start))
+				return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, start))
 			elif index.stop >= 0:
-				return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, start, index.stop-start+1))
+				return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, start, index.stop-start+1))
 			else:
 				raise ValueError('Negative-valued slices not allowed')
-		return Where(self._db, self._op_args(drivers.base.SUBSTRING, self, index+1, 1))
+		return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, index+1, 1))
 		
 	def coalesce(self, *args):
-		return Where(self._db, self._op_args(drivers.base.COALESCE, self, *args))
+		return Where(self._db, self._tables, self._op_args(drivers.base.COALESCE, self, *args))
 	def between(self, min, max):
-		return Where(self._db, self._op_args(drivers.base.BETWEEN, self, min, max))
+		return Where(self._db, self._tables, self._op_args(drivers.base.BETWEEN, self, min, max))
 
 class Where(Expression):
-	def __init__(self, db, where_tree):
+	def __init__(self, db, tables, where_tree):
 		self._db = db
+		self._tables = tables
 		self._where_tree = where_tree
 
 	def _get_columns(self, columns):
 		if not columns:
-			columns = [table.ALL for table in self._get_tables()]
+			columns = [table.ALL for table in self._tables]
 		return flatten(columns)
-		
-	def _get_tables(self, where_tree=None):
-		tables = set()
-		where_tree = where_tree or self._where_tree
-		for entity in flatten(where_tree):
-			if isinstance(entity, Column):
-				tables.add(entity.table)
-			elif isinstance(entity, Where):
-				tables.update(entity._get_tables())
-		return tables
 		
 	def select(self, *columns, **props):
 		columns = self._get_columns(columns)
-		tables = self._get_tables(columns)
-		if not tables:
+		all_columns = columns[:]
+		primarykey = []
+		if not self._tables:
 			raise Exception('No tables! Using %s' % flatten(columns))
-		values = self._db.__driver__.select(columns, tables, self._where_tree, props)
-		return Selection(columns, values)
+		elif len(self._tables) == 1 and not props.get('distinct'):
+			primarykey = self._tables.copy().pop().primarykey
+			all_columns.extend(primarykey)
+		values = self._db.__driver__.select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return Selection(all_columns, columns, primarykey, values)
 		
 	def select_one(self, *columns, **props):
 		columns = self._get_columns(columns)
-		values = self._db.__driver__.select(columns, self._get_tables(columns), self._where_tree, props)
-		return Selection(columns, [values.fetchone()]).one()
+		all_columns = columns[:]
+		primarykey = []
+		if not self._tables:
+			raise Exception('No tables! Using %s' % flatten(columns))
+		elif len(self._tables) == 1 and not props.get('distinct'):
+			primarykey = self._tables.copy().pop().primarykey
+			all_columns.extend(primarykey)
+		values = self._db.__driver__.select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return Selection(all_columns, columns, primarykey, values).one()
 		
 	def count(self, **props):
-		tables = self._get_tables()
-		columns = [table.rowid for table in tables]
-		values = self._db.__driver__.select(columns, tables, self._where_tree, props)
+		columns = flatten(table.primarykey for table in self._tables)
+		values = self._db.__driver__.select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
 		return len(values.fetchall())
 		
 	def update(self, **values):
-		self._db.__driver__.update(self._get_tables().pop()._name, self._where_tree, values)
+		self._db.__driver__.update(self._tables.copy().pop()._name, self._where_tree, values)
 		
 	def delete(self):
-		self._db.__driver__.delete(self._get_tables().pop()._name, self._where_tree)
+		self._db.__driver__.delete(self._tables.copy().pop()._name, self._where_tree)
 		
 	def __repr__(self):
 		return 'Where(%r)'%self._where_tree
@@ -424,197 +445,187 @@ class Where(Expression):
 ident = lambda x:x
 
 class Column(Expression):
-	'''Column(name, notnull=False, default=None)
+	'''Column(name, from_xform, to_xform, required=False, default=None, unique=False)
 	
-	Subclasses must define three class attributes:
-	type: a string naming a datatype that the database can store. Valid types are:
-		'rowid' -> unique integer for each row
-		'string' -> str or unicode
-		'integer' -> int
-		'float' -> float
-		'boolean' -> bool
-		'data' -> buffer or bytes
-		'datetime' -> datetime.datetime
-	interpret: a callable object that converts a value to the database native type
-	represent: a callable object that converts a value from the database native type
+	to_xform -> a database native type (one of int,float,bool,str,unicode,bytes,datetime.datetime)
+	from_xform -> a callable which converts a database value into a value that the
+	   user expects. If None, the database native type will be returned
 	'''
-	interpret = staticmethod(ident)
-	represent = staticmethod(ident)
-	def __init__(self, name, notnull=False, default=None, table=None):
+	def __init__(self, name, todb, fromdb=None, required=False,
+	default=None, unique=False, primarykey=False, references=None, length=None,
+	autoincrement=False):
 		self.name = name
-		self.notnull = notnull
+		self.table = None
+		self.todb = todb
+		self.fromdb = fromdb or todb
+		self.required = bool(required)
 		self.default = default
-		self.table = table
-		
-	@classmethod
-	def cast(cls, type, interpret, represent):
-		self = cls
-		self.type = type
-		self.interpret = interpret
-		self.represent = represent
-		
-	def assign(self, table):
-		return self.__class__(
-			self.name,
-			notnull=self.notnull,
-			default=self.default,
-			table=table,
-		)
-		
-	def __repr__(self):
-		values = [`self.name`]
-		if self.notnull:
-			values.append('notnull=True')
-		if not self.default is None:
-			values.append('default=%r' % self.default)
-		return '%s(%s)' % (self.__class__.__name__,', '.join(values))
-		
+		self.unique = bool(unique)
+		self.primarykey = bool(primarykey)
+		self.references = references
+		self.length = length
+		self.autoincrement = bool(autoincrement)
+
+	@property
+	def _tables(self):
+		return {self.table}
+
 	@property
 	def _db(self):
 		return self.table._db
-
-def nullor(func, nullval=None):
-	def f(arg):
-		if arg is None:
-			return nullval
-		return func(arg)
-	f.func_name = func.func_name
-	return f
+		
+	def __repr__(self):
+		if self.table:
+			return '%r.%r' % (self.table._name, self.name)
+		else:
+			return repr(self.name)
 
 class RowidColumn(Column):
-	type = 'rowid'
-	interpret = lambda s,x:x and int(x)
-	represent = lambda s,x:x and int(x)
-	def __init__(self, *args, **kwargs):
-		Column.__init__(self, *args, **kwargs)
-		self.referants = set()
+	def __init__(self, name, *args, **kwargs):
+		kwargs['primarykey'] = True
+		kwargs['autoincrement'] = True
+		Column.__init__(self, name, int, int, *args, **kwargs)
 
 class IntColumn(Column):
-	type = 'integer'
-	interpret = lambda s,x:x and int(x)
-	represent = lambda s,x:x and int(x)
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, int, int, *args, **kwargs)
 
 class BoolColumn(Column):
-	type = 'boolean'
-	interpret = lambda s,x:x and bool(x)
-	represent = lambda s,x:x and bool(x)
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, bool, bool, *args, **kwargs)
 	
 class StrColumn(Column):
-	type = 'string'
-	interpret = lambda s,x:x and str(x)
-	represent = lambda s,x:x and str(x)
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, unicode, unicode, *args, **kwargs)
 
 class FloatColumn(Column):
-	type = 'float'
-	interpret = lambda s,x:x and float(x)
-	represent = lambda s,x:x and float(x)
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, float, float, *args, **kwargs)
 
 class DataColumn(Column):
-	type = 'data'
-	interpret = lambda s,x:x and bytes(x)
-	represent = lambda s,x:x and bytes(x)
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, bytes, bytes, *args, **kwargs)
 
 class DateTimeColumn(Column):
-	type = 'datetime'
-	interpret = lambda s,x:x and datetime.datetime(x)
-	@staticmethod
-	def represent(x):
-		return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') if x else x
+	def __init__(self, name, *args, **kwargs):
+		Column.__init__(self, name, timestamp, timestamp.parse, *args, **kwargs)
 
 class ReferenceColumn(Column):
-	type = 'reference'
-	interpret = lambda s,x:x and int(x)
-	represent = lambda s,x:x and int(x)
-	def __init__(self, name, reftable, *args, **kwargs):
-		self.reftable = reftable
-		Column.__init__(self, name, *args, **kwargs)
-
-	def assign(self, table):
-		new = self.__class__(
-			self.name,
-			self.reftable,
-			notnull=self.notnull,
-			default=self.default,
-			table=table,
-		)
-		self.reftable.rowid.referants.add(new)
-		return new
+	def __init__(self, name, references, *args, **kwargs):
+		kwargs['references'] = references
+		Column.__init__(self, name, int, int, *args, **kwargs)
 
 class Table(object):
-	def __init__(self, *columns, **kwargs):
-		if not columns:
-			raise TypeError("Tables must have at least one column")
-		self.__dict__['columns'] = ordered_collection(columns)
-		
-	@classmethod
-	def assign(cls, name, db, columns):
-		self = Table(*columns)
+	"""
+
+	self._columns: collection of all column objects
+	self.ALL: list of columns the user defined (excludes implicit or primarykey-only
+	  columns
+	self.primarykey: list of columns which together uniquely identify a row in
+	  the table
+	self._db: reference to db which contains this table
+	self._name: my name
+
+	>>> Table(None, 'table', ())
+	<table 'table'>
+	>>> t = Table(None, 'table', [Column('abc', str), Column('def', int)])
+	>>> t.ALL[0].table == t
+	True
+	>>> t.ALL[0].name
+	'abc'
+	>>> t.ALL[1].name
+	'def'
+	>>> t.primarykey[0].name
+	'rowid'
+	"""
+	def __init__(self, db, name, columns, primarykey=()):
 		self._db = db
 		self._name = name
-		rowid = None
+		self.ALL = columns
+		self._columns = collection('name', columns)
+		primarykey = sequence(primarykey)
 		for c in columns:
-			assert c.type
-			self.__dict__['columns'][c.name] = c
-			if isinstance(c, RowidColumn):
-				rowid = c
-		self.rowid = rowid or RowidColumn('rowid').assign(self)
-		columns = self.__dict__['columns']
-		for c in columns:
-			columns[c.name] = c.assign(self)
-		assert all(c.table for c in self.ALL), [c.name for c in self.ALL if c.table is None]
-		return self
-
-	@property
-	def ALL(self):
-		return list(self.columns)
+			if c.primarykey:
+				primarykey.insert(0, c)
+		if primarykey:
+			self.primarykey = []
+			for col in primarykey:
+				if isinstance(col, basestring):
+					col = self._columns[col]
+				else:
+					self._columns.add(col)
+				self.primarykey.append(col)
+		else:
+			rowid = RowidColumn('rowid')
+			self._columns.add(rowid)
+			self.primarykey = [rowid]
+		for col in self._columns:
+			col.table = self
 
 	def __getattr__(self, key):
-		return self.__dict__['columns'][key]
+		if key in self.__dict__:
+			return self.__dict__[key]
+		else:
+			return self._columns[key]
 		
 	def __hash__(self):
 		return hash(self._name)
 
+	def _by_pk(self, key):
+		key = sequence(key)
+		assert len(self.primarykey) == len(key)
+		selection = self.primarykey[0] == key[0]
+		for k,v in zip(self.primarykey[1:], key[1:]):
+			selection &= k==v
+		return selection
+
 	def __getitem__(self, key):
-		value = (self.rowid==key).select_one(self.ALL)
-		if not value:
-			raise KeyError("No row with rowid %i" % key)
-		return value
+		try:
+			return self._by_pk(key).select_one(self.ALL)
+		except StopIteration:
+			raise KeyError('No Row in database matching primary key %s'%repr(sequence(key))[1:-1])
 
 	def __delitem__(self, key):
-		(self.rowid==key).delete()
+		self._by_pk(key).delete()
 
 	def insert(self, **values):
-		return self._db.__driver__.insert(self._name, values)
+		db_values = []
+		for k,v in values.items():
+			try:
+				newv = self._columns[k].todb(v)
+				db_values.append(newv)
+			except TypeError:
+				print >>sys.stderr, k, self._columns[k].todb, repr(v)
+				raise
+			except KeyError:
+				raise KeyError('No such column in table: %s' % k)
+		self._db.__driver__.insert(self._name, values.keys(), db_values)
 
 	def insert_many(self, *records):
 		for record in records:
 			self.insert(**record)
 
 	def select(self, *columns, **props):
-		return Where(self._db, None).select(*(columns or self.ALL), **props)
-
+		return Where(self._db, {self}, None).select(*(columns or self.ALL), **props)
+		
 	def drop(self):
 		self._db.__driver__.drop_table(self._name)
 		del self._db[self._name]
 
 	def __repr__(self):
-		return 'Table(%s)' % ', '.join(sorted(map(repr,self.columns)))
+		return '<table %r>' % self._name
 		
 	def __nonzero__(self):
 		return True
-		
-	def __eq__(self, other):
-		for col in getattr(other,'columns',other):
-			if not isinstance(col, Column):
-				return False
-			if col.name not in self.columns:
-				return False
-			mycol = self.columns[col.name]
-			if col.type != mycol.type:
-				return False
-			a,b = dict(col.__dict__), dict(mycol.__dict__)
-			a.pop('table',None)
-			b.pop('table',None)
+
+	def __eq__(self, x):
+		if isinstance(x, Table):
+			x = x._columns
+		for a,b in zip(self._columns, x):
+			a = dict(vars(a))
+			a.pop('table', None)
+			b = dict(vars(b))
+			b.pop('table', None)
 			if a != b:
 				return False
 		return True
@@ -625,9 +636,9 @@ class DB(collection):
 	"""
 	
 	>>> mydb = DB.connect('sqlite')
-	>>> mydb.test = Table(StrColumn('data'))
+	>>> mydb.define_table('test', StrColumn('data'))
 	>>> list(mydb)
-	[Table(StrColumn('data'))]
+	[<table 'test'>]
 	"""
 	__driver__ = drivers.sqlite.sqlite()
 
@@ -639,32 +650,39 @@ class DB(collection):
 		
 	def __exit__(self, obj, exc, tb):
 		self.__driver__.__exit__(obj, exc, tb)
-	
-	def __setitem__(self, key, value):
-		value = Table.assign(key, self, getattr(value,'columns',value))
-		self.__driver__.create_table_if_nexists(key, value)
-		collection.__setitem__(self, key, value)
 
-	def __setattr__(self, key, value):
-		if key[0] == '_':
-			super(DB, self).__setattr__(key, value)
+	def define_table(self, name, *columns, **kwargs):
+		columns = list(columns)
+		primarykey = ()
+		for i,c in enumerate(columns):
+			if isinstance(c,Table):
+				newcols = map(copy.copy, c.ALL)
+				for col in newcols:
+					col.table = None
+				columns[i] = newcols
+				primarykey = map(copy.copy, c.primarykey)
+				for col in primarykey:
+					col.table = None
+		kwargs.setdefault('primarykey', ())
+		if kwargs['primarykey'] is None:
+			pass
 		else:
-			self[key] = value
+			kwargs['primarykey'] = kwargs['primarykey'] or primarykey
+		value = Table(self, name, flatten(columns), **kwargs)
+		self.__driver__.create_table_if_nexists(name, value._columns, [pk.name for pk in value.primarykey])
+		collection.__setitem__(self, name, value)
 
 	def __getattr__(self, key):
 		if key[0] == '_':
-			return super(DB, self).__getattr__(key)
+			return self.__dict__[key]
 		else:
 			return self[key]
 	
 	def __delattr__(self, key):
 		if key[0] == '_':
-			super(DB, self).__delattr__(key)
+			del self.__dict__[key]
 		else:
 			del self[key]
-
-	def where(self, *conditions):
-		return reduce(lambda x,y:x&y, conditions)
 
 	@classmethod
 	def connect(cls, name, *args, **kwargs):
@@ -676,23 +694,11 @@ class DB(collection):
 		return newcls()
 		
 	def conform(self):
-		coltypes = {
-			'string':StrColumn,
-			'rowid':RowidColumn,
-			'integer':IntColumn,
-			'float':FloatColumn,
-			'data':DataColumn,
-			'boolean':BoolColumn,
-			'datetime':DateTimeColumn,
-		}
 		for table in self.__driver__.list_tables():
 			columns = []
 			for name,v_type,notnull,default in self.__driver__.list_columns(table):
-				if name != 'rowid':
-					columns.append(coltypes[v_type](name, notnull=notnull, default=default))
-			t = Table(*columns)
-			t._db = self
-			t._name = table
+				columns.append(Column(name, v_type, required=notnull, default=default))
+			t = Table(self, table, columns)
 			collection.add(self, t)
 		
 	def migrate(self):
@@ -703,6 +709,7 @@ class DB(collection):
 			self.__driver__.create_table_if_nexists(name, self[name])
 		for name in names.intersection(db_tables):
 			#Alter if not the same
+			raise NotImplementedError
 			self.__driver__.alter_table(name, self[name])
 
 connect = DB.connect

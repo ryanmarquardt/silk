@@ -26,15 +26,13 @@ UnknownDriver: Unable to find database driver 'base'
 Table
 =====
 
->>> db.table1 = Table()
-Traceback (most recent call last):
- ...
-TypeError: Tables must have at least one column
->>> db.table1 = Table(StrColumn('bad identifier'))
+>>> db.define_table('no_cols') #Valid (implicitly contains rowid column)
+>>> db.define_table('table1', StrColumn('bad identifier'))
 Traceback (most recent call last):
  ...
 NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
->>> db.table1 = db.table2 = Table(StrColumn('data'))
+>>> db.define_table('table1', StrColumn('data'))
+>>> db.define_table('table2', db.table1)
 >>> db.table1 is db.table2
 False
 >>> db.table1 == db.table2
@@ -45,21 +43,16 @@ True
 'table2'
 >>> db.table1.data is db.table2.data
 False
->>> db.table1 == Table(StrColumn('data'))
-True
->>> db.table1 == [StrColumn('data')]
-True
->>> db.table1 == Table(IntColumn('data'))
-False
->>> db.table3 = Table(StrColumn('columns'))
->>> db.users = Table(
+>>> db.define_table('table3', StrColumn('columns'))
+>>> db.define_table('users',
 ... 	StrColumn('first_name'),
 ... 	StrColumn('last_name'),
 ... 	StrColumn('email'),
 ... 	IntColumn('age', default=18),
 ... 	DateTimeColumn('registered', default=datetime.datetime.now),
+... 	primarykey='email',
 ... )
->>> db.messages = Table(
+>>> db.define_table('messages',
 ... 	ReferenceColumn('owner', db.users),
 ... 	StrColumn('subject'),
 ... 	StrColumn('content'),
@@ -71,22 +64,19 @@ Table.insert
 -----
 
 >>> db.table1.insert(data='12345')
-1
 >>> db.table1.insert(nonexistant=True)
 Traceback (most recent call last):
  ...
 KeyError: 'No such column in table: nonexistant'
 >>> db.table1.insert(data=23456)
-2
 >>> for row in db.table1.select():
-...   print sorted(row.items())
-[('data', '12345')]
-[('data', '23456')]
+...   print row
+Row(data=u'12345')
+Row(data=u'23456')
 >>> for row in db.table2.select():
 ...   print row
 >>> db.table3.insert(columns='1')
-1
->>> (db.table3.columns['columns'] == '1').count()
+>>> (db.table3._columns['columns'] == '1').count()
 1
 
 >>> db.users.insert_many(
@@ -100,31 +90,30 @@ KeyError: 'No such column in table: nonexistant'
 Table.select
 -----
 
->>> check = lambda x:'\n'.join(str(sorted(row.items())) for row in x)
->>> print check(db.users.select())
-[('age', 18), ('email', 'magginator@email.com'), ('first_name', 'Maggie'), ('last_name', 'Reynolds'), ('registered', datetime.datetime(2012, 5, 5, 0, 0))]
-[('age', 23), ('email', 'bob.smith@email.com'), ('first_name', 'Bob'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
-[('age', 19), ('email', 'pat.smith@email.com'), ('first_name', 'Pat'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
-[('age', 45), ('email', 'wgf@email.com'), ('first_name', 'Werfina'), ('last_name', 'Fablesmok'), ('registered', datetime.datetime(2012, 5, 6, 0, 0))]
+>>> for row in db.users.select(): print row
+Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name=u'Pat', last_name=u'Smith', email=u'pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name=u'Werfina', last_name=u'Fablesmok', email=u'wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
 
->>> print check((db.users.age > 20).select())
-[('age', 23), ('email', 'bob.smith@email.com'), ('first_name', 'Bob'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
-[('age', 45), ('email', 'wgf@email.com'), ('first_name', 'Werfina'), ('last_name', 'Fablesmok'), ('registered', datetime.datetime(2012, 5, 6, 0, 0))]
+>>> for row in (db.users.age > 20).select(): print row
+Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name=u'Werfina', last_name=u'Fablesmok', email=u'wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
 
->>> print check(db.users.select(db.users.first_name, db.users.last_name, orderby=db.users.last_name))
-[('first_name', 'Werfina'), ('last_name', 'Fablesmok')]
-[('first_name', 'Maggie'), ('last_name', 'Reynolds')]
-[('first_name', 'Bob'), ('last_name', 'Smith')]
-[('first_name', 'Pat'), ('last_name', 'Smith')]
+>>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=db.users.last_name): print row
+Row(first_name=u'Werfina', last_name=u'Fablesmok')
+Row(first_name=u'Maggie', last_name=u'Reynolds')
+Row(first_name=u'Bob', last_name=u'Smith')
+Row(first_name=u'Pat', last_name=u'Smith')
 
->>> print check(db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,reversed(db.users.first_name)]))
-[('first_name', 'Werfina'), ('last_name', 'Fablesmok')]
-[('first_name', 'Maggie'), ('last_name', 'Reynolds')]
-[('first_name', 'Pat'), ('last_name', 'Smith')]
-[('first_name', 'Bob'), ('last_name', 'Smith')]
+>>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,reversed(db.users.first_name)]): print row
+Row(first_name=u'Werfina', last_name=u'Fablesmok')
+Row(first_name=u'Maggie', last_name=u'Reynolds')
+Row(first_name=u'Pat', last_name=u'Smith')
+Row(first_name=u'Bob', last_name=u'Smith')
 
->>> map(dict,db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name))
-[{'last_name': 'Fablesmok'}, {'last_name': 'Reynolds'}, {'last_name': 'Smith'}]
+>>> [row.as_dict() for row in db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name)]
+[{'last_name': u'Fablesmok'}, {'last_name': u'Reynolds'}, {'last_name': u'Smith'}]
 
 >>> db.users.select(db.users.age.sum()).one()[0]
 105.0
@@ -132,23 +121,22 @@ Table.select
 26.25
 >>> db.users.select(db.users.age.max()).one()[0]
 45
->>> print check(db.users.age.between(19,30).select())
-[('age', 23), ('email', 'bob.smith@email.com'), ('first_name', 'Bob'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
-[('age', 19), ('email', 'pat.smith@email.com'), ('first_name', 'Pat'), ('last_name', 'Smith'), ('registered', datetime.datetime(2010, 4, 12, 0, 0))]
+>>> for row in db.users.age.between(19,30).select(): print row
+Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name=u'Pat', last_name=u'Smith', email=u'pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
 
 
 =====
 Record
 =====
 
->>> record = db.users[1]
+>>> record = db.users['magginator@email.com']
 >>> print record
-Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
 >>> record.update(age=record.age+1) #Happy Birthday!
->>> print record
-Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
->>> db.users[1]
-Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+>>> db.users['magginator@email.com'] #Primary key is 'email' column
+Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
 >>> record.update(nonexistant=True)
 Traceback (most recent call last):
  ...
@@ -158,10 +146,16 @@ Traceback (most recent call last):
  ...
 NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
 
->>> map(tuple,(db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
-[('Bob',), ('Pat',)]
+>>> map(tuple, (db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
+[(u'Bob',), (u'Pat',)]
+>>> zip(*(db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
+[(u'Bob', u'Pat')]
 
->>> list(db.users[1].messages.select())
+>>> db.users['not.in.db@email.com']
+Traceback (most recent call last):
+ ...
+KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
+>>> list(db.users['magginator@email.com'].messages.select())
 []
 >>> [r[0] for r in db.users.select(db.users.last_name[0])]
 [u'R', u'S', u'S', u'F']

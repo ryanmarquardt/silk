@@ -1,6 +1,18 @@
 
-from silk import sequence
+from silk import sequence, flatten
 import sys
+import datetime
+
+def timestamp(arg):
+	return arg.replace()
+
+def parse(string):
+	if string is None: return None
+	elif not isinstance(string, (datetime.datetime, datetime.date, datetime.time)):
+		return datetime.datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
+	else: return string
+timestamp.parse = parse
+del parse
 
 class op(object):
 	def __repr__(self):
@@ -86,35 +98,6 @@ COALESCE = COALESCE()
 
 """The silk DAL expects the following methods to be available from its driver:
 
-driver.select(columns, tables, where, props) -> object providing fetchall and fetchone methods
-  columns: list of column objects
-  tables: set of table objects
-  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
-  props: keyword arguments to select calls (i.e. distinct)
-  
-driver.update(table, where, values) -> return value is ignored
-  table: table name
-  where: where_tree
-  values: dictionary of values to change
-
-driver.delete(table, where) -> return value is ignored
-  table: table name
-  where: where_tree
-
-driver.insert(table, values) -> returns rowid of inserted row (integer > 0)
-  table: table name
-  values: dictionary of values to insert
-
-driver.drop_table(table) -> return value is ignored
-  table: table name
-
-driver.commit() -> return value is ignored
-driver.rollback() -> return value is ignored
-driver.__enter__() -> return value is ignored
-driver.__exit__(object, exception, traceback) -> return value is ignored
-
-driver.create_table_if_nexists(name, table) -> return value is ignored
-
 driver.list_tables() -> list of names of tables in database
 
 driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
@@ -123,7 +106,40 @@ driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
   notnull: boolean
   default: default value
   
-driver.alter_table(name, table) -> return value is ignored
+driver.rename_table(table, name) -> return value is ignored
+
+driver.add_column(table, column) -> return value is ignored
+
+driver.drop_column(table, column) -> return value is ignored
+
+driver.create_table_if_nexists(name, columns, primarykeys) -> return value is ignored
+
+driver.delete(table, where) -> return value is ignored
+  table: table name
+  where: where_tree
+
+driver.drop_table(table) -> return value is ignored
+  table: table name
+
+driver.insert(table, columns, values) -> returns rowid of inserted row (integer > 0)
+  table: table name
+  values: dictionary of values to insert
+
+driver.select(tables, columns, where, distinct, orderby) -> iterator over result set
+  tables: set of table objects
+  columns: list of column objects
+  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
+  distinct: distinct
+  orderby: list of ordering columns
+  
+driver.update(table, columns, values, where) -> return value is ignored
+  table: table name
+  columns: list of columns to update
+  values: list of values to set
+  where: where_tree
+
+driver.commit() -> return value is ignored
+driver.rollback() -> return value is ignored
 """
 
 class driver_base(object):
@@ -192,6 +208,7 @@ class driver_base(object):
 		self.depth = 0
 		self.cursor = None
 		self.debug = debug
+		self.features = {'transactions'}
 
 	def __enter__(self):
 		self.depth += 1
@@ -203,14 +220,20 @@ class driver_base(object):
 		self.depth -= 1
 		if self.depth == 0:
 			if obj:
-				self.connection.rollback()
+				self.rollback()
 			else:
-				self.connection.commit()
+				self.commit()
 			self.cursor = None
+
+	def commit(self):
+		self.connection.commit()
+
+	def rollback(self):
+		self.connection.rollback()
 		
 	def execute(self, sql, values=()):
 		self.lastsql = sql
-		print >>sys.stderr, sql, values
+		#print >>sys.stderr, sql, values or ''
 		with self as cursor:
 			try:
 				cursor.execute(sql, values)
@@ -259,18 +282,16 @@ class driver_base(object):
 		return clause
 		
 	def format_column(self, column):
-		if hasattr(column,'reftable'):
-			type = self.map_type(column.type) % dict(table=column.reftable._name, column=column.reftable.rowid.name)
-		else:
-			type = self.map_type(column.type)
+		type = self.map_type(column.todb)
 		if type is None:
-			raise Exception('Unknown column type %s' % column.type)
-		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.notnull or not column.default is None) else ''
-		return '%(name)s %(type)s%(notnull)s%(default)s' % {
+			raise Exception('Unknown column type %s' % column.todb)
+		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.required or not column.default is None) else ''
+		return '%(name)s %(type)s%(notnull)s%(autoinc)s%(default)s' % {
 			'name': self.identifier(column.name),
 			'type': type,
-			'notnull': ' NOT NULL' if column.notnull else '',
-			'default': default
+			'notnull': ' NOT NULL' if column.required else '',
+			'default': default,
+			'autoinc': ' AUTO_INCREMENT' if column.autoincrement else ''
 		}
 
 	def map_type(self, t):
@@ -283,43 +304,23 @@ class driver_base(object):
 		if r:
 			return r
 
-	def create_table_if_nexists_sql(self, name, *columns):
-		'''create_table_if_nexists_sql(self, name, *columns) -> Stub
-		
-		Base classes should return SQL for creating a table if it doesn't
-		exist. '''
-		raise NotImplementedError
-
-	def create_table_if_nexists(self, name, table):
-		if hasattr(self, 'create_table_if_nexists_sql'):
-			cols = list(table.columns)
-			if table.rowid not in table.columns:
-				cols.insert(0, table.rowid)
-			self.execute(self.create_table_if_nexists_sql(
-				self.identifier(name),
-				*map(self.format_column, cols)
-			))
-		elif name not in self.list_tables:
-			self.create_table(name, table.columns)
-
-	def create_table_sql(self, name, *columns):
-		raise NotImplementedError
-
-	def create_table(self, name, table):
-		try:
-			cols = list(table.columns)
-			cols.insert(0, table.rowid)
-			self.execute(self.create_table_sql(self.identifier(name), *map(self.format_column,cols)))
-		except NotImplementedError:
-			self.create_table_if_nexists(name, table.columns)
 
 	def list_tables(self):
 		return (str(n) for (n,) in self.execute(self.list_tables_sql()))
 
-	def rename_table(self, orig, new):
-		self.execute(self.rename_table_sql(self.identifier(orig), self.identifier(new)))
+	def list_tables_sql(self):
+		raise NotImplementedError
 
-	def alter_table(self, name, table):
+	def list_columns(self, table):
+		raise NotImplementedError
+
+	def rename_table(self, table, name):
+		self.execute(self.rename_table_sql(self.identifier(table), self.identifier(name)))
+
+	def rename_table_sql(self, table, name):
+		raise NotImplementedError
+
+	def add_column(self, table, column):
 		with self:
 			db_cols = self.list_columns(name)
 			db_names = [c[0] for c in db_cols]
@@ -327,27 +328,74 @@ class driver_base(object):
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
 
+	def add_column_sql(self, table, column):
+		raise NotImplementedError
+
+	def drop_column(self, table, column):
+		raise NotImplementedError
+
+	def create_table_if_nexists(self, name, columns, primarykeys):
+		if hasattr(self, 'create_table_if_nexists_sql'):
+			self.execute(self.create_table_if_nexists_sql(
+				self.identifier(name),
+				map(self.format_column, columns),
+				map(self.identifier, primarykeys),
+			))
+		elif name not in self.list_tables:
+			self.create_table(name, columns, primarykeys)
+
+	def create_table_if_nexists_sql(self, name, columns, primarykeys):
+		'''create_table_if_nexists_sql(self, name, *columns) -> Stub
+		
+		Base classes should return SQL for creating a table if it doesn't
+		exist. All arguments are already formatted as strings.'''
+		raise NotImplementedError
+
+	def create_table_sql(self, name, columns):
+		raise NotImplementedError
+
+	def create_table(self, name, columns, primarykeys):
+		try:
+			self.execute(self.create_table_sql(self.identifier(name), map(self.format_column,columns), primarykeys))
+		except NotImplementedError:
+			self.create_table_if_nexists(name, table.columns)
+
+	def delete(self, table, conditions):
+		return self.execute(self.delete_sql(self.identifier(table), self.parse_where(conditions)))
+
+	def delete_sql(self, table, conditions):
+		raise NotImplementedError
+
 	def drop_table(self, table):
 		self.execute(self.drop_table_sql(self.identifier(table)))
 
-	def select(self, columns, tables, conditions, props):
+	def drop_table_sql(self, table):
+		raise NotImplementedError
+
+	def insert(self, table, columns, values):
+		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,columns)), values)
+		return cur.lastrowid
+
+	def insert_sql(self, table, columns):
+		raise NotImplementedError
+
+	def select(self, columns, tables, conditions, distinct, orderby):
 		return self.execute(self.select_sql(
-			([(lambda t:self.column_name(t._name,t.rowid.name))(list(tables)[0])]if len(tables)==1 and not props.get('distinct') else [])+map(self.expression,columns),
+			map(self.expression,columns),
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
-			props.get('distinct',False),
-			sequence(props.get('orderby',[])),
+			bool(distinct),
+			orderby,
 		))
 
-	def insert(self, table, values):
-		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,values.keys())), values.values())
-		return cur.lastrowid
+	def select_sql(self, columns, tables, conditions, distinct, orderby):
+		raise NotImplementedError
 
 	def update(self, table, conditions, values):
 		return self.execute(self.update_sql(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions)), values.values())
 
-	def delete(self, table, conditions):
-		return self.execute(self.delete_sql(self.identifier(table), self.parse_where(conditions)))
+	def update_sql(self, table, columns, values, conditions):
+		raise NotImplementedError
 
 
 	op_EQUAL = staticmethod(lambda a,b:'%s=%s'%(a,b))
@@ -386,4 +434,4 @@ class driver_base(object):
 	op_STRIP = staticmethod(lambda a,b=None:'trim(%s)'%a if b is None else 'trim(%s,%s)'%(a,b))
 	op_REPLACE = staticmethod(lambda a,b,c:'replace(%s,%s,%s)'%(a,b,c))
 	op_ROUND = staticmethod(lambda a,b=None:'round(%s)'%a if b is None else 'round(%s,%s'%(a,b))
-	op_COALESCE = staticmethod(lambda a,b,*c:'coalesce(%s,%s,%s)'%(a,b,','.join(c)) if c else 'coalesce(%s,%s)'%(a,b))
+	op_COALESCE = staticmethod(lambda a,b,*c:'coalesce(%s)'%(','.join((a,b)+c)))

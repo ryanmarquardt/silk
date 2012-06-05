@@ -21,25 +21,35 @@ class sqlite(driver_base):
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
 				e.errno = errno.ENOENT
 			raise e
-	
+
+	def format_column(self, column):
+		type = self.map_type(column.todb)
+		if type is None:
+			raise Exception('Unknown column type %s' % column.todb)
+		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.required or not column.default is None) else ''
+		return '%(name)s %(type)s%(notnull)s%(autoinc)s%(default)s' % {
+			'name': self.identifier(column.name),
+			'type': type,
+			'notnull': ' NOT NULL' if column.required else '',
+			'default': default,
+			'autoinc': ' AUTO_INCREMENT' if column.autoincrement and not column.primarykey else ''
+		}
+
 	webdb_types = {
-		'rowid':'INTEGER PRIMARY KEY',
-		'string':'TEXT',
-		'integer':'INT',
-		'float':'REAL',
-		'data':'BLOB',
-		'boolean':'INT',
-		'datetime':'TIMESTAMP',
-		'reference':'REFERENCES %(table)s(%(column)s)',
+		int:'INTEGER',
+		float:'REAL',
+		bool:'INT',
+		unicode:'TEXT',
+		bytes:'BLOB',
+		timestamp:'TIMESTAMP',
 	}
 	
 	driver_types = {
-		'TEXT':'string',
-		'INT':'integer',
-		'INTEGER':'rowid',
-		'REAL':'float',
-		'BLOB':'data',
-		'TIMESTAMP':'datetime',
+		'TEXT':unicode,
+		'INTEGER':int,
+		'REAL':float,
+		'BLOB':bytes,
+		'TIMESTAMP':datetime.datetime,
 	}
 	
 	def handle_exception(self, e):
@@ -57,11 +67,11 @@ class sqlite(driver_base):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
 			
 
-	def create_table_if_nexists_sql(self, name, *coldefs):
-		return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
+	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
+		return """CREATE TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys))
 
-	def create_table_sql(self, name, *coldefs):
-		return """CREATE TABLE %s(%s);""" % (name, ', '.join(coldefs))
+	def create_table_sql(self, name, coldefs, primarykeys):
+		return """CREATE TABLE %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join(primarykeys))
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
@@ -81,8 +91,8 @@ class sqlite(driver_base):
 			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
 		)
 
-	def insert_sql(self, table, names):
-		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(names), ','.join(list('?'*len(names))))
+	def insert_sql(self, table, columns):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(list('?'*len(columns))))
 
 	def update_sql(self, table, names, where):
 		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=?'%n for n in names), where)

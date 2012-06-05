@@ -103,7 +103,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 	...   def __init__(self, name, value):
 	...     self.name, self.value = name, value
 	...   def __repr__(self): return 'b(%r, %r)' % (self.name, self.value)
-	>>> a = collection()
+	>>> a = collection('name')
 	>>> a.add(b('robert', 'Sys Admin'))
 	>>> a.add(b('josephine', 'Q/A'))
 	>>> a['robert']
@@ -125,7 +125,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 	>>> a.pop()
 	b('stephanie', 'Sys Admin')
 	'''
-	def __init__(self, elements=(), namekey='name'):
+	def __init__(self, namekey, elements=()):
 		self._key = namekey
 		self._data = dict((getattr(e,namekey),e) for e in elements)
 
@@ -166,7 +166,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 			return self._data.popitem()[1]
 
 class ordered_collection(collection):
-	def __init__(self, elements=(), namekey='name'):
+	def __init__(self, namekey, elements=()):
 		self._key = namekey
 		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
 
