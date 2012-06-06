@@ -44,6 +44,7 @@ True
 >>> db.table1.data is db.table2.data
 False
 >>> db.define_table('table3', StrColumn('columns'))
+>>> db.define_table('table4', StrColumn('data'), primarykey=[]) #No indexing support
 >>> db.define_table('users',
 ... 	StrColumn('first_name'),
 ... 	StrColumn('last_name'),
@@ -85,6 +86,14 @@ Row(data=u'23456')
 ... 	{'first_name':'Pat','last_name':'Smith','email':'pat.smith@email.com','age':19,'registered':datetime.datetime(2010,4,12)},
 ... 	{'first_name':'Werfina','last_name':'Fablesmok','email':'wgf@email.com','age':'45','registered':datetime.datetime(2012,5,6)},
 ... )
+
+>>> db.table4.insert(data='abc')
+>>> db.table4[1]
+Traceback (most recent call last):
+ ...
+TypeError: Table 'table4' has no primarykey
+>>> (db.table4.data=='abc').select().one().primarykey
+()
 
 -----
 Table.select

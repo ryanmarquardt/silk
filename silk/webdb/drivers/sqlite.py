@@ -68,10 +68,10 @@ class sqlite(driver_base):
 			
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
-		return """CREATE TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys))
-
-	def create_table_sql(self, name, coldefs, primarykeys):
-		return """CREATE TABLE %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join(primarykeys))
+		if primarykeys:
+			return """CREATE TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys))
+		else:
+			return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)

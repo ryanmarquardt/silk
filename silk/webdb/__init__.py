@@ -220,6 +220,7 @@ class __Row__(object):
 	def __init__(self, selection, values):
 		self.selection = selection
 		self.values = values
+		self.primarykey = tuple(self[c.name] for c in selection.primarykey)
 
 	def as_dict(self):
 		return dict(zip(self.selection.names, self.values))
@@ -229,9 +230,8 @@ class __Row__(object):
 		'''
 		if not self.selection.primarykey:
 			raise RecordError("Can only manipulate records from a single table")
-		my_primarykey = [self[c.name] for c in self.selection.primarykey]
 		table = self.selection.columns[0].table
-		query = (table._by_pk(my_primarykey))
+		query = (table._by_pk(self.primarykey))
 		query.update(**kwargs)
 		return query.select_one()
 		
@@ -538,27 +538,28 @@ class Table(object):
 	>>> t.primarykey[0].name
 	'rowid'
 	"""
-	def __init__(self, db, name, columns, primarykey=()):
+	def __init__(self, db, name, columns, primarykey=None):
 		self._db = db
 		self._name = name
 		self.ALL = columns
 		self._columns = collection('name', columns)
-		primarykey = sequence(primarykey)
-		for c in columns:
-			if c.primarykey:
-				primarykey.insert(0, c)
-		if primarykey:
-			self.primarykey = []
-			for col in primarykey:
-				if isinstance(col, basestring):
-					col = self._columns[col]
-				else:
-					self._columns.add(col)
-				self.primarykey.append(col)
+		if primarykey is None:
+			pk = [c for c in columns if c.primarykey]
+			if pk:
+				self.primarykey = pk
+			else:
+				rowid = RowidColumn('rowid')
+				self._columns.add(rowid)
+				self.primarykey = [rowid]
 		else:
-			rowid = RowidColumn('rowid')
-			self._columns.add(rowid)
-			self.primarykey = [rowid]
+			self.primarykey = []
+			if primarykey:
+				for col in primarykey:
+					if isinstance(col, basestring):
+						col = self._columns[col]
+					else:
+						self._columns.add(col)
+					self.primarykey.append(col)
 		for col in self._columns:
 			col.table = self
 
@@ -572,12 +573,16 @@ class Table(object):
 		return hash(self._name)
 
 	def _by_pk(self, key):
-		key = sequence(key)
-		assert len(self.primarykey) == len(key)
-		selection = self.primarykey[0] == key[0]
-		for k,v in zip(self.primarykey[1:], key[1:]):
-			selection &= k==v
-		return selection
+		if self.primarykey:
+			key = sequence(key)
+			if len(self.primarykey) != len(key):
+				raise IndexError('Primarykey for %s requires %i values (got %i)' % (self._name, len(self.primarykey), len(key)))
+			assert len(self.primarykey) == len(key)
+			selection = self.primarykey[0] == key[0]
+			for k,v in zip(self.primarykey[1:], key[1:]):
+				selection &= k==v
+			return selection
+		raise TypeError('Table %r has no primarykey' % (self._name))
 
 	def __getitem__(self, key):
 		try:
@@ -663,11 +668,10 @@ class DB(collection):
 				primarykey = map(copy.copy, c.primarykey)
 				for col in primarykey:
 					col.table = None
-		kwargs.setdefault('primarykey', ())
-		if kwargs['primarykey'] is None:
-			pass
-		else:
-			kwargs['primarykey'] = kwargs['primarykey'] or primarykey
+		if primarykey and kwargs.get('primarykey') is None:
+			kwargs['primarykey'] = primarykey
+		elif kwargs.get('primarykey'):
+			kwargs['primarykey'] = sequence(kwargs['primarykey'])
 		value = Table(self, name, flatten(columns), **kwargs)
 		self.__driver__.create_table_if_nexists(name, value._columns, [pk.name for pk in value.primarykey])
 		collection.__setitem__(self, name, value)
