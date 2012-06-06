@@ -23,9 +23,9 @@ class sqlite(driver_base):
 			raise e
 
 	def format_column(self, column):
-		type = self.map_type(column.todb)
+		type = self.map_type(column.native_type)
 		if type is None:
-			raise Exception('Unknown column type %s' % column.todb)
+			raise Exception('Unknown column type %s' % column.native_type)
 		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.required or not column.default is None) else ''
 		return '%(name)s %(type)s%(notnull)s%(autoinc)s%(default)s' % {
 			'name': self.identifier(column.name),
@@ -41,7 +41,7 @@ class sqlite(driver_base):
 		bool:'INT',
 		unicode:'TEXT',
 		bytes:'BLOB',
-		timestamp:'TIMESTAMP',
+		datetime.datetime:'TIMESTAMP',
 	}
 	
 	driver_types = {

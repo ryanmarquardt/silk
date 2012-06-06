@@ -41,7 +41,7 @@ class mysql(driver_base):
 		bool:'TINYINT(1)',
 		unicode:'VARCHAR(512)',
 		bytes:'BLOB',
-		timestamp:'DATETIME',
+		datetime.datetime:'DATETIME',
 	}
 	
 	driver_types = {

@@ -45,6 +45,11 @@ True
 False
 >>> db.define_table('table3', StrColumn('columns'))
 >>> db.define_table('table4', StrColumn('data'), primarykey=[]) #No indexing support
+>>> db.define_table('table5', ReferenceColumn('badref', db.table4))
+Traceback (most recent call last):
+ ...
+TypeError: Cannot reference non-indexed table 'table4'
+
 >>> db.define_table('users',
 ... 	StrColumn('first_name'),
 ... 	StrColumn('last_name'),
@@ -53,6 +58,7 @@ False
 ... 	DateTimeColumn('registered', default=datetime.datetime.now),
 ... 	primarykey='email',
 ... )
+
 >>> db.define_table('messages',
 ... 	ReferenceColumn('owner', db.users),
 ... 	StrColumn('subject'),
@@ -125,7 +131,7 @@ Row(first_name=u'Bob', last_name=u'Smith')
 [{'last_name': u'Fablesmok'}, {'last_name': u'Reynolds'}, {'last_name': u'Smith'}]
 
 >>> db.users.select(db.users.age.sum()).one()[0]
-105.0
+105
 >>> db.users.select(db.users.age.average()).one()[0]
 26.25
 >>> db.users.select(db.users.age.max()).one()[0]
@@ -164,6 +170,8 @@ NameError: Column names can only contain letters, numbers, and underscores. Got 
 Traceback (most recent call last):
  ...
 KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
+>>> dir(db.users['magginator@email.com'])
+
 >>> list(db.users['magginator@email.com'].messages.select())
 []
 >>> [r[0] for r in db.users.select(db.users.last_name[0])]
@@ -176,3 +184,35 @@ KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
 Traceback (most recent call last):
 	...
 ValueError: Negative-valued slices not allowed
+>>> [r[0] for r in db.users.select(db.users.age[1:])]
+[9, 3, 9, 5]
+>>> [r[0] for r in db.users.select(db.users.first_name+' '+db.users.last_name)]
+[u'Maggie Reynolds', u'Bob Smith', u'Pat Smith', u'Werfina Fablesmok']
+
+=====
+Inter-table references
+=====
+
+>>> db.define_table('addresses',
+... 	StrColumn('name', primarykey=True),
+... 	StrColumn('domain', primarykey=True),
+... 	BoolColumn('active', default=False),
+... )
+>>> db.define_table('accounts',
+... 	ReferenceColumn('address', db.addresses.name+'@'+db.addresses.domain),
+... 	StrColumn('owner_name'),
+... )
+
+>>> db.addresses.insert(name='webmaster', domain='example.com', active=True)
+>>> db.addresses.insert(name='postmaster', domain='example.com', active=True)
+>>> db.addresses.insert(name='cerealmaster', domain='example.com')
+>>> wm = db.addresses['webmaster', 'example.com']
+>>> wm
+Row(name=u'webmaster', domain=u'example.com', active=True)
+
+>>> db.accounts.insert(address=wm, owner_name='The Webmaster')
+>>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
+Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
+
+>>> for row in row.addresses.select(): print row
+Row(name=u'webmaster', domain=u'example.com', active=True)

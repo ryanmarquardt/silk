@@ -213,63 +213,98 @@ from silk import *
 
 class __Row__(object):
 	"""Base class for Row objects - elements of Selection objects
-
 	
 	"""
-	__slots__ = ['selection', 'values']
+	__slots__ = ['_selection', '_values', 'primarykey']
 	def __init__(self, selection, values):
-		self.selection = selection
-		self.values = values
+		self._selection = selection
+		self._values = values
 		self.primarykey = tuple(self[c.name] for c in selection.primarykey)
 
 	def as_dict(self):
-		return dict(zip(self.selection.names, self.values))
+		return dict(zip(self._selection.names, self._values))
 		
 	def update(self, **kwargs):
 		'''Shortcut for updating a single row of the table
 		'''
-		if not self.selection.primarykey:
+		if not self._selection.primarykey:
 			raise RecordError("Can only manipulate records from a single table")
-		table = self.selection.columns[0].table
+		table = self._selection.columns[0].table
 		query = (table._by_pk(self.primarykey))
 		query.update(**kwargs)
 		return query.select_one()
 		
 	def __iter__(self):
-		for i in range(len(self.selection.explicit)):
+		for i in range(len(self._selection.explicit)):
 			yield self[i]
 		
 	def __contains__(self, key):
-		return key in self.values
+		return key in self._values
 		
 	def __getitem__(self, key):
 		try:
-			return self.values[key]
+			return self._values[key]
 		except TypeError:
-			return self.values[self.selection.index(key)]
+			return self._values[self._selection.index(key)]
 	__getattr__ = __getitem__
 			
 	def __len__(self):
-		return len(self.selection.explicit)
+		return len(self._selection.explicit)
 		
 	def __repr__(self):
-		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self.selection.explicit,self.values))
+		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self._selection.explicit,self._values))
+
+class Reference(object):
+	def __init__(self, table, lhs):
+		self.table = table
+		self.lhs = lhs
+		self.native_type = lhs.native_type
+		self.fromdb = lhs.fromdb
+
+	def query(self):
+		def getter(row):
+			print >>sys.stderr, self
+			return (self.lhs == row.primarykey)
+		return property(getter)
+
+	def todb(self, value):
+		if isinstance(value, __Row__):
+			value = value.primarykey
+			if len(value) == 1:
+				return value[0]
+			else:
+				return ','.join(value)
+		return self.lhs.todb(value)
 
 class Selection(object):
 	def __init__(self, columns, explicit, primarykey, values):
+		refs = {column.references.table._name:column.references.query() \
+			for column in columns if getattr(column,'references',None)}
+		if refs:
+			print >>sys.stderr, refs
+		refs['__slots__'] = []
 		self.columns = columns # self.columns == self.explicit + self.primarykey
 		self.explicit = explicit
 		self.primarykey = primarykey
 		self.names = {getattr(c,'name',None):i for i,c in enumerate(columns)}
 		self.values = values
-		self.Row = type('Row', (__Row__,), {})
+		self.Row = type('Row', (__Row__,), refs)
 
 	def index(self, name):
 		return self.names[name]
 		
 	def __iter__(self):
+		def conv(c,v):
+			try:
+				if isinstance(v,c.native_type) or v is None:
+					return v
+				else:
+					return c.native_type(v)
+			except TypeError:
+				print >>sys.stderr, c, v
+				raise
 		for value in self.values:
-			yield self.Row(self, tuple(v if v is None else (getattr(c,'fromdb',None) or ident)(v) for c,v in zip(self.columns,value)))
+			yield self.Row(self, tuple(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value)))
 
 	def __contains__(self, seq):
 		if hasattr(seq, 'items'):
@@ -294,110 +329,123 @@ class Expression(object):
 		return True
 
 	def __eq__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.EQUAL, self, x))
+		return Where(self, drivers.base.EQUAL, self, x)
 	def __ne__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.NOTEQUAL, self, x))
+		return Where(self, drivers.base.NOTEQUAL, self, x)
 	def __le__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.LESSEQUAL, self, x))
+		return Where(self, drivers.base.LESSEQUAL, self, x)
 	def __ge__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.GREATEREQUAL, self, x))
+		return Where(self, drivers.base.GREATEREQUAL, self, x)
 	def __lt__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.LESSTHAN, self, x))
+		return Where(self, drivers.base.LESSTHAN, self, x)
 	def __gt__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.GREATERTHAN, self, x))
+		return Where(self, drivers.base.GREATERTHAN, self, x)
 	
 	def __add__(self, x):
 		if isinstance(x, basestring) or \
-		self.type in ('string','text','data') or \
-		(isinstance(x, Column) and x.type in ('string','data')):
-			return Where(self._db, self._tables, self._op_args(drivers.base.CONCATENATE, self, x))
+		self.native_type in {str,bytes,unicode} or \
+		x.native_type in {str,bytes,unicode}:
+			self._text_affinity = True
+			return Where(self, drivers.base.CONCATENATE, self, x)
 		else:
-			return Where(self._db, self._tables, self._op_args(drivers.base.ADD, self, x))
+			return Where(self, drivers.base.ADD, self, x)
 	def __sub__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.SUBTRACT, self, x))
+		return Where(self, drivers.base.SUBTRACT, self, x)
 	def __mul__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.MULTIPLY, self, x))
+		return Where(self, drivers.base.MULTIPLY, self, x)
 	def __div__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self, drivers.base.DIVIDE, self, x)
 	def __floordiv__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.FLOORDIVIDE, self, x))
+		return Where(self, drivers.base.FLOORDIVIDE, self, x)
 	def __div__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self, drivers.base.DIVIDE, self, x)
 	def __truediv__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.DIVIDE, self, x))
+		return Where(self, drivers.base.DIVIDE, self, x)
 	def __mod__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.MODULO, self, x))
+		return Where(self, drivers.base.MODULO, self, x)
 
 	def __and__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.AND, self, x))
+		return Where(self, drivers.base.AND, self, x)
 	def __or__(self, x):
-		return Where(self._db, self._tables, self._op_args(drivers.base.OR, self, x))
+		return Where(self, drivers.base.OR, self, x)
 
 	def __invert__(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.NOT, self))
+		return Where(self, drivers.base.NOT, self)
 	def __abs__(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.ABS, self))
+		return Where(self, drivers.base.ABS, self)
 	def __neg__(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.NEGATIVE, self))
+		return Where(self, drivers.base.NEGATIVE, self)
 
 	def length(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.LENGTH, self))
+		return Where(self, drivers.base.LENGTH, self)
 	def __reversed__(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.DESCEND, self))
+		return Where(self, drivers.base.DESCEND, self)
 		
 	def sum(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.SUM, self))
+		return Where(self, drivers.base.SUM, self)
 	def average(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.AVERAGE, self))
+		return Where(self, drivers.base.AVERAGE, self, native_type=float)
 	def min(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.MIN, self))
+		return Where(self, drivers.base.MIN, self)
 	def max(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.MAX, self))
+		return Where(self, drivers.base.MAX, self)
 	def round(self, precision=None):
 		if precision is None:
-			return Where(self._db, self._tables, self._op_args(drivers.base.ROUND, self))
+			return Where(self, drivers.base.ROUND, self)
 		else:
-			return Where(self._db, self._tables, self._op_args(drivers.base.ROUND, self, precision))
+			return Where(self, drivers.base.ROUND, self, precision)
 
 	def like(self, pattern, escape=None):
 		if escape:
-			return Where(self._db, self._tables, self._op_args(drivers.base.LIKE, self, pattern, escape))
+			return Where(self, drivers.base.LIKE, self, pattern, escape)
 		else:
-			return Where(self._db, self._tables, self._op_args(drivers.base.LIKE, self, pattern))
+			return Where(self, drivers.base.LIKE, self, pattern)
 	def glob(self, pattern):
-		return Where(self._db, self._tables, self._op_args(drivers.base.GLOB, self, pattern))
+		return Where(self, drivers.base.GLOB, self, pattern)
 		
 	def strip(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.STRIP, self))
+		return Where(self, drivers.base.STRIP, self)
 	def lstrip(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.LSTRIP, self))
+		return Where(self, drivers.base.LSTRIP, self)
 	def rstrip(self):
-		return Where(self._db, self._tables, self._op_args(drivers.base.RSTRIP, self))
+		return Where(self, drivers.base.RSTRIP, self)
 	def replace(self, old, new):
-		return Where(self._db, self._tables, self._op_args(drivers.base.REPLACE, self, old, new))
+		return Where(self, drivers.base.REPLACE, self, old, new)
 	def __getitem__(self, index):
 		if isinstance(index, slice):
 			start = (index.start or 0) + 1
 			if index.step not in (None, 1):
 				raise ValueError('Slices of db columns must have step==1')
 			if index.stop is None:
-				return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, start))
+				return Where(self, drivers.base.SUBSTRING, self, start)
 			elif index.stop >= 0:
-				return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, start, index.stop-start+1))
+				return Where(self, drivers.base.SUBSTRING, self, start, index.stop-start+1)
 			else:
 				raise ValueError('Negative-valued slices not allowed')
-		return Where(self._db, self._tables, self._op_args(drivers.base.SUBSTRING, self, index+1, 1))
+		return Where(self, drivers.base.SUBSTRING, self, index+1, 1)
 		
 	def coalesce(self, *args):
-		return Where(self._db, self._tables, self._op_args(drivers.base.COALESCE, self, *args))
+		return Where(self, drivers.base.COALESCE, self, *args)
 	def between(self, min, max):
-		return Where(self._db, self._tables, self._op_args(drivers.base.BETWEEN, self, min, max))
+		return Where(self, drivers.base.BETWEEN, self, min, max)
 
 class Where(Expression):
-	def __init__(self, db, tables, where_tree):
-		self._db = db
-		self._tables = tables
-		self._where_tree = where_tree
+	def __init__(self, old, *wrapped, **kwargs):
+		if isinstance(old, Table):
+			self._db = old._db
+			self._tables = {old}
+			self._text_affinity = False
+			self._where_tree = []
+			self.todb = None
+			self.fromdb = None
+			self.native_type = None
+		else:
+			self._db = old._db
+			self._tables = old._tables
+			self._where_tree = old._op_args(*wrapped)
+			self.todb = kwargs.get('todb', old.todb)
+			self.fromdb = kwargs.get('fromdb', old.fromdb)
+			self.native_type = kwargs.get('native_type', old.native_type)
 
 	def _get_columns(self, columns):
 		if not columns:
@@ -451,13 +499,14 @@ class Column(Expression):
 	from_xform -> a callable which converts a database value into a value that the
 	   user expects. If None, the database native type will be returned
 	'''
-	def __init__(self, name, todb, fromdb=None, required=False,
+	def __init__(self, name, native_type, todb=None, fromdb=None, required=False,
 	default=None, unique=False, primarykey=False, references=None, length=None,
 	autoincrement=False):
 		self.name = name
 		self.table = None
+		self.native_type = native_type
 		self.todb = todb
-		self.fromdb = fromdb or todb
+		self.fromdb = fromdb
 		self.required = bool(required)
 		self.default = default
 		self.unique = bool(unique)
@@ -484,36 +533,49 @@ class RowidColumn(Column):
 	def __init__(self, name, *args, **kwargs):
 		kwargs['primarykey'] = True
 		kwargs['autoincrement'] = True
-		Column.__init__(self, name, int, int, *args, **kwargs)
+		Column.__init__(self, name, int, *args, **kwargs)
 
 class IntColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, int, int, *args, **kwargs)
+		Column.__init__(self, name, int, *args, **kwargs)
 
 class BoolColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, bool, bool, *args, **kwargs)
+		Column.__init__(self, name, bool, *args, **kwargs)
 	
 class StrColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, unicode, unicode, *args, **kwargs)
+		Column.__init__(self, name, unicode, *args, **kwargs)
 
 class FloatColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, float, float, *args, **kwargs)
+		Column.__init__(self, name, float, *args, **kwargs)
 
 class DataColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, bytes, bytes, *args, **kwargs)
+		Column.__init__(self, name, bytes, *args, **kwargs)
 
 class DateTimeColumn(Column):
 	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, timestamp, timestamp.parse, *args, **kwargs)
+		Column.__init__(self, name, datetime.datetime, todb=timestamp, fromdb=timestamp.parse, *args, **kwargs)
 
 class ReferenceColumn(Column):
 	def __init__(self, name, references, *args, **kwargs):
-		kwargs['references'] = references
-		Column.__init__(self, name, int, int, *args, **kwargs)
+		if isinstance(references, Table):
+			if references.primarykey:
+				if len(references.primarykey) == 1:
+					ref = Reference(references, references.primarykey[0])
+				else:
+					raise ValueError("Referencing by table requires single primarykey column")
+			else:
+				raise TypeError('Cannot reference non-indexed table %r' % references._name)
+		else:
+			if len(references._tables) == 1:
+				ref = Reference(references._tables.copy().pop(), references)
+			else:
+				raise ValueError("Reference columns must refer to a single table")
+		kwargs['references'] = ref
+		Column.__init__(self, name, ref.native_type, todb=ref.todb, fromdb=ref.fromdb, *args, **kwargs)
 
 class Table(object):
 	"""
@@ -597,8 +659,10 @@ class Table(object):
 		db_values = []
 		for k,v in values.items():
 			try:
-				newv = self._columns[k].todb(v)
-				db_values.append(newv)
+				todb = self._columns[k].todb
+				if todb:
+					v = todb(v)
+				db_values.append(v)
 			except TypeError:
 				print >>sys.stderr, k, self._columns[k].todb, repr(v)
 				raise
@@ -611,7 +675,7 @@ class Table(object):
 			self.insert(**record)
 
 	def select(self, *columns, **props):
-		return Where(self._db, {self}, None).select(*(columns or self.ALL), **props)
+		return Where(self).select(*(columns or self.ALL), **props)
 		
 	def drop(self):
 		self._db.__driver__.drop_table(self._name)
