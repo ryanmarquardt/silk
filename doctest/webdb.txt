@@ -127,7 +127,7 @@ Row(first_name=u'Maggie', last_name=u'Reynolds')
 Row(first_name=u'Pat', last_name=u'Smith')
 Row(first_name=u'Bob', last_name=u'Smith')
 
->>> [row.as_dict() for row in db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name)]
+>>> [vars(row) for row in db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name)]
 [{'last_name': u'Fablesmok'}, {'last_name': u'Reynolds'}, {'last_name': u'Smith'}]
 
 >>> db.users.select(db.users.age.sum()).one()[0]
@@ -170,10 +170,14 @@ NameError: Column names can only contain letters, numbers, and underscores. Got 
 Traceback (most recent call last):
  ...
 KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
->>> dir(db.users['magginator@email.com'])
+>>> maggie = db.users['magginator@email.com']
 
->>> list(db.users['magginator@email.com'].messages.select())
+>>> list((maggie.email == db.messages.owner).select())
 []
+
+>>> list(maggie.messages.select())
+[]
+
 >>> [r[0] for r in db.users.select(db.users.last_name[0])]
 [u'R', u'S', u'S', u'F']
 >>> [r[0] for r in db.users.select(db.users.last_name[3:5])]
@@ -214,5 +218,5 @@ Row(name=u'webmaster', domain=u'example.com', active=True)
 >>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
 Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
 
->>> for row in row.addresses.select(): print row
-Row(name=u'webmaster', domain=u'example.com', active=True)
+>>> for row in wm.accounts.select(): print row
+Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')

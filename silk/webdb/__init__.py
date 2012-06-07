@@ -211,18 +211,19 @@ from drivers.base import timestamp
 
 from silk import *
 
-class __Row__(object):
+class __Row__(tuple):
 	"""Base class for Row objects - elements of Selection objects
 	
 	"""
-	__slots__ = ['_selection', '_values', 'primarykey']
-	def __init__(self, selection, values):
-		self._selection = selection
-		self._values = values
-		self.primarykey = tuple(self[c.name] for c in selection.primarykey)
+	__slots__ = ()
 
-	def as_dict(self):
-		return dict(zip(self._selection.names, self._values))
+	@property
+	def primarykey(self):
+		return tuple(self[c.name] for c in self._selection.primarykey)
+
+	def _asdict(self):
+		return dict(zip(self._selection.names, tuple(self)))
+	__dict__ = property(_asdict)
 		
 	def update(self, **kwargs):
 		'''Shortcut for updating a single row of the table
@@ -238,21 +239,18 @@ class __Row__(object):
 		for i in range(len(self._selection.explicit)):
 			yield self[i]
 		
-	def __contains__(self, key):
-		return key in self._values
-		
 	def __getitem__(self, key):
 		try:
-			return self._values[key]
+			return tuple.__getitem__(self, key)
 		except TypeError:
-			return self._values[self._selection.index(key)]
+			return tuple.__getitem__(self, self._selection.index(key))
 	__getattr__ = __getitem__
 			
 	def __len__(self):
 		return len(self._selection.explicit)
 		
 	def __repr__(self):
-		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self._selection.explicit,self._values))
+		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self._selection.explicit,self))
 
 class Reference(object):
 	def __init__(self, table, lhs):
@@ -264,7 +262,7 @@ class Reference(object):
 	def query(self):
 		def getter(row):
 			print >>sys.stderr, self
-			return (self.lhs == row.primarykey)
+			return (self.lhs == self.rhs)
 		return property(getter)
 
 	def todb(self, value):
@@ -278,11 +276,11 @@ class Reference(object):
 
 class Selection(object):
 	def __init__(self, columns, explicit, primarykey, values):
-		refs = {column.references.table._name:column.references.query() \
-			for column in columns if getattr(column,'references',None)}
-		if refs:
-			print >>sys.stderr, refs
-		refs['__slots__'] = []
+		refs = {'__slots__':(),'_selection':self}
+		if primarykey and primarykey[0].table._referers:
+			#refs = {col.table._name:(col.references.lhs,col.references.rhs) for col in primarykey[0].table._referers}
+			refs.update({col.table._name:property(lambda row:(col==row.primarykey[0])) \
+				for col in primarykey[0].table._referers})
 		self.columns = columns # self.columns == self.explicit + self.primarykey
 		self.explicit = explicit
 		self.primarykey = primarykey
@@ -304,7 +302,7 @@ class Selection(object):
 				print >>sys.stderr, c, v
 				raise
 		for value in self.values:
-			yield self.Row(self, tuple(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value)))
+			yield self.Row(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value))
 
 	def __contains__(self, seq):
 		if hasattr(seq, 'items'):
@@ -428,6 +426,10 @@ class Expression(object):
 		return Where(self, drivers.base.COALESCE, self, *args)
 	def between(self, min, max):
 		return Where(self, drivers.base.BETWEEN, self, min, max)
+
+	def evaluate(self, row):
+		print >>sys.stderr, self, row
+		raise NotImplementedError
 
 class Where(Expression):
 	def __init__(self, old, *wrapped, **kwargs):
@@ -564,6 +566,7 @@ class ReferenceColumn(Column):
 		if isinstance(references, Table):
 			if references.primarykey:
 				if len(references.primarykey) == 1:
+					table = references
 					ref = Reference(references, references.primarykey[0])
 				else:
 					raise ValueError("Referencing by table requires single primarykey column")
@@ -571,9 +574,11 @@ class ReferenceColumn(Column):
 				raise TypeError('Cannot reference non-indexed table %r' % references._name)
 		else:
 			if len(references._tables) == 1:
-				ref = Reference(references._tables.copy().pop(), references)
+				table = references._tables.copy().pop()
+				ref = Reference(table, references)
 			else:
 				raise ValueError("Reference columns must refer to a single table")
+		table._referers.add(self)
 		kwargs['references'] = ref
 		Column.__init__(self, name, ref.native_type, todb=ref.todb, fromdb=ref.fromdb, *args, **kwargs)
 
@@ -605,6 +610,7 @@ class Table(object):
 		self._name = name
 		self.ALL = columns
 		self._columns = collection('name', columns)
+		self._referers = set()
 		if primarykey is None:
 			pk = [c for c in columns if c.primarykey]
 			if pk:
