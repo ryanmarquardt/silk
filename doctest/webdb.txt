@@ -218,5 +218,8 @@ Row(name=u'webmaster', domain=u'example.com', active=True)
 >>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
 Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
 
+>>> for row in (db.addresses.name+'@'+db.addresses.domain==wm.address).select(): print row
+Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
+
 >>> for row in wm.accounts.select(): print row
 Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
