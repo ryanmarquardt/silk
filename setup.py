@@ -9,6 +9,12 @@ setup(
 	author_email='ryan@integralws.com',
 	url='http://projects.integralws.com/webdoc',
 	description='Tools for WSGI applications',
-	packages=['silk','silk.webdoc','silk.webdb','silk.webdb.drivers'],
+	packages=[
+		'silk',
+		'silk.webdoc',
+		'silk.webdoc.html',
+		'silk.webdb',
+		'silk.webdb.drivers',
+	],
 	license='Simplified BSD License',
 )
