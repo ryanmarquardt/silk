@@ -252,34 +252,11 @@ class __Row__(tuple):
 	def __repr__(self):
 		return 'Row(%s)'%', '.join('%s=%r'%(k.name,v) for k,v in zip(self._selection.explicit,self))
 
-class Reference(object):
-	def __init__(self, table, lhs):
-		self.table = table
-		self.lhs = lhs
-		self.native_type = lhs.native_type
-		self.fromdb = lhs.fromdb
-
-	def query(self):
-		def getter(row):
-			print >>sys.stderr, self
-			return (self.lhs == self.rhs)
-		return property(getter)
-
-	def todb(self, value):
-		if isinstance(value, __Row__):
-			value = value.primarykey
-			if len(value) == 1:
-				return value[0]
-			else:
-				return ','.join(value)
-		return self.lhs.todb(value)
-
 class Selection(object):
 	def __init__(self, columns, explicit, primarykey, values):
 		refs = {'__slots__':(),'_selection':self}
 		if primarykey and primarykey[0].table._referers:
-			#refs = {col.table._name:(col.references.lhs,col.references.rhs) for col in primarykey[0].table._referers}
-			refs.update({col.table._name:property(lambda row:(col==row.primarykey[0])) \
+			refs.update({col.table._name:property(lambda row:(col==col.todb(row))) \
 				for col in primarykey[0].table._referers})
 		self.columns = columns # self.columns == self.explicit + self.primarykey
 		self.explicit = explicit
@@ -427,10 +404,6 @@ class Expression(object):
 	def between(self, min, max):
 		return Where(self, drivers.base.BETWEEN, self, min, max)
 
-	def evaluate(self, row):
-		print >>sys.stderr, self, row
-		raise NotImplementedError
-
 class Where(Expression):
 	def __init__(self, old, *wrapped, **kwargs):
 		if isinstance(old, Table):
@@ -562,25 +535,35 @@ class DateTimeColumn(Column):
 		Column.__init__(self, name, datetime.datetime, todb=timestamp, fromdb=timestamp.parse, *args, **kwargs)
 
 class ReferenceColumn(Column):
-	def __init__(self, name, references, *args, **kwargs):
-		if isinstance(references, Table):
-			if references.primarykey:
-				if len(references.primarykey) == 1:
-					table = references
-					ref = Reference(references, references.primarykey[0])
-				else:
-					raise ValueError("Referencing by table requires single primarykey column")
-			else:
-				raise TypeError('Cannot reference non-indexed table %r' % references._name)
-		else:
-			if len(references._tables) == 1:
-				table = references._tables.copy().pop()
-				ref = Reference(table, references)
-			else:
-				raise ValueError("Reference columns must refer to a single table")
+	def __init__(self, name, table, todb=None, *args, **kwargs):
+		#if isinstance(references, Table):
+			#if references.primarykey:
+				#if len(references.primarykey) == 1:
+					#table = references
+					#ref_table = references
+					#lhs = references.primarykey[0]
+				#else:
+					#raise ValueError("Referencing by table requires single primarykey column")
+			#else:
+				#raise TypeError('Cannot reference non-indexed table %r' % references._name)
+		#else:
+			#if len(references._tables) == 1:
+				#table = references._tables.copy().pop()
+				#ref_table = table
+				#lhs = references
+			#else:
+				#raise ValueError("Reference columns must refer to a single table")
 		table._referers.add(self)
-		kwargs['references'] = ref
-		Column.__init__(self, name, ref.native_type, todb=ref.todb, fromdb=ref.fromdb, *args, **kwargs)
+		kwargs['references'] = table
+		if not todb:
+			if len(table.primarykey) == 1:
+				todb = lambda row:row.primarykey[0]
+			elif len(table.primarykey) == 0:
+				raise TypeError("Cannot reference non-indexed table %r" % table._name)
+			else:
+				raise ValueError("Default ReferenceColumn todb function supports only 1 primary key.")
+		query = todb(table)
+		Column.__init__(self, name, query.native_type, todb=todb, fromdb=query.fromdb, *args, **kwargs)
 
 class Table(object):
 	"""

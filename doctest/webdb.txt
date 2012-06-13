@@ -203,22 +203,28 @@ Inter-table references
 ... 	BoolColumn('active', default=False),
 ... )
 >>> db.define_table('accounts',
-... 	ReferenceColumn('address', db.addresses.name+'@'+db.addresses.domain),
+... 	ReferenceColumn('address', db.addresses, lambda row:row.name+'@'+row.domain),
 ... 	StrColumn('owner_name'),
 ... )
 
 >>> db.addresses.insert(name='webmaster', domain='example.com', active=True)
 >>> db.addresses.insert(name='postmaster', domain='example.com', active=True)
 >>> db.addresses.insert(name='cerealmaster', domain='example.com')
+
+>>> for row in db.addresses.select(): print row
+Row(name=u'webmaster', domain=u'example.com', active=True)
+Row(name=u'postmaster', domain=u'example.com', active=True)
+Row(name=u'cerealmaster', domain=u'example.com', active=False)
+
 >>> wm = db.addresses['webmaster', 'example.com']
 >>> wm
 Row(name=u'webmaster', domain=u'example.com', active=True)
 
 >>> db.accounts.insert(address=wm, owner_name='The Webmaster')
->>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
+>>> for row in db.accounts.select(): print row
 Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
 
->>> for row in (db.addresses.name+'@'+db.addresses.domain==wm.address).select(): print row
+>>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
 Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
 
 >>> for row in wm.accounts.select(): print row
