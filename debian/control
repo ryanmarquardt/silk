@@ -34,3 +34,12 @@ Description: Data abstraction layer for python
  .
  This package includes the driver for sqlite3 databases, and common bits for all
  other drivers
+
+Package: python-silk-webdb-mysql
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-silk-webdb, python-mysqldb
+Description: Data abstraction layer for python
+ Webdb is a database abstraction interface which simplifies storing data in
+ relational databases.
+ .
+ This package includes the driver for mysql databases
