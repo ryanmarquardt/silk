@@ -468,12 +468,48 @@ class Where(Expression):
 ident = lambda x:x
 
 class Column(Expression):
-	'''Column(name, from_xform, to_xform, required=False, default=None, unique=False)
+	"""Object representing a single column in a database table.
+
+	Arguments:
+	name -- Name of the column. Must consist only of alpha-numerics and
+	  underscores.
+	native_type -- Python type which database should expect and produce. Must be
+	  one of int, bool, float, unicode, bytes or datetime. This value is used by
+	  the database driver to determine the type affinity of the database column
+	todb -- Function which converts a value to native_type for passing to the
+	  database driver. If todb is None the value is passed through unaltered.
+	  (default None)
+	fromdb -- Function which converts a value of native_type from the database
+	  to the desired type. If fromdb is None, the native_type is returned
+	  unaltered. (default None)
+	required -- Boolean value which determines whether the column must be given
+	  a value on insert or update. None is not allowed as a value of required
+	  columns. (default False)
+	default -- Value to insert when no value is specified for this column. This
+	  value is ignored if 'required' is true. If default is callable, it will be
+	  called with no arguments when an insert is performed. (default None)
+	unique -- Boolean value. If true, no value (except None) can occur more than
+	  once in this column. (default False)
+	primarykey -- Boolean value. If true, the values of this column uniquely
+	  identify a row (possibly in combination with other columns). Primary key
+	  columns are unique and required implicitly, and these attributes are
+	  ignored. (default False)
+	references -- Table which this Column refers to. Any value other than None
+	  depends on several other things happening. Subclass ReferenceColumn or
+	  study the source code if you need a new type of reference. (default None)
+	length -- Integer specifying the expected maximum length of a Column's
+	  value. Please note that this limit is only enforced at the driver level,
+	  so database engines that don't enforce size limits (e.g. sqlite) may store
+	  longer values. In order to enforce a strict length limit, use a todb
+	  function a la
+
+	      Column('a', length=24, todb=lambda x:x[:24])
+
+	   to truncate values.
+	autoincrement -- Boolean value. If true, an incrementally-increasing
+	 integer value is inserted by default by the database. (default False)
 	
-	to_xform -> a database native type (one of int,float,bool,str,unicode,bytes,datetime.datetime)
-	from_xform -> a callable which converts a database value into a value that the
-	   user expects. If None, the database native type will be returned
-	'''
+	"""
 	def __init__(self, name, native_type, todb=None, fromdb=None, required=False,
 	default=None, unique=False, primarykey=False, references=None, length=None,
 	autoincrement=False):
@@ -536,23 +572,6 @@ class DateTimeColumn(Column):
 
 class ReferenceColumn(Column):
 	def __init__(self, name, table, todb=None, *args, **kwargs):
-		#if isinstance(references, Table):
-			#if references.primarykey:
-				#if len(references.primarykey) == 1:
-					#table = references
-					#ref_table = references
-					#lhs = references.primarykey[0]
-				#else:
-					#raise ValueError("Referencing by table requires single primarykey column")
-			#else:
-				#raise TypeError('Cannot reference non-indexed table %r' % references._name)
-		#else:
-			#if len(references._tables) == 1:
-				#table = references._tables.copy().pop()
-				#ref_table = table
-				#lhs = references
-			#else:
-				#raise ValueError("Reference columns must refer to a single table")
 		table._referers.add(self)
 		kwargs['references'] = table
 		if not todb:
