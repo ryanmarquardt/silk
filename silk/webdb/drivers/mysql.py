@@ -1,8 +1,10 @@
 
 from .base import *
 
-import MySQLdb
 import errno
+import warning
+
+import MySQLdb
 
 class mysql(driver_base):
 	"""Driver for mysql databases
@@ -88,6 +90,11 @@ class mysql(driver_base):
 			if not ut:
 				raise Exception('Unknown column type %s' % v_type)
 			yield (str(name),ut,null!='YES',default)
+
+	def create_table_if_nexists(self, name, columns, primarykeys):
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			return super(mysql, self).create_table_if_nexists(self, name, columns, primarykeys)
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
 		if self.debug:
