@@ -256,8 +256,10 @@ class Selection(object):
 	def __init__(self, columns, explicit, primarykey, values):
 		refs = {'__slots__':(),'_selection':self}
 		if primarykey and primarykey[0].table._referers:
-			refs.update({col.table._name:property(lambda row:(col==col.todb(row))) \
-				for col in primarykey[0].table._referers})
+			refs.update({
+				col.table._name:property(lambda row:(col==col.todb(row))) \
+				for col in primarykey[0].table._referers
+			})
 		self.columns = columns # self.columns == self.explicit + self.primarykey
 		self.explicit = explicit
 		self.primarykey = primarykey

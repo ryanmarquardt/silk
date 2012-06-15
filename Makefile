@@ -1,11 +1,13 @@
 VERSION=$(shell python setup.py --version)
-PACKAGES=../python-silk_$(VERSION)_all.deb ../python-silk-common_$(VERSION)_all.deb ../python-silk-webdoc_$(VERSION)_all.deb ../python-silk-webdb_$(VERSION)_all.deb ../python-silk-webdb-all_$(VERSION)_all.deb
+FULLNAME=$(shell python setup.py --fullname)
+PACKAGES=python-silk_$(VERSION)_all.deb python-silk-common_$(VERSION)_all.deb python-silk-webdoc_$(VERSION)_all.deb python-silk-webdb_$(VERSION)_all.deb python-silk-webdb-mysql_$(VERSION)_all.deb
 
 all: deb
 .PHONY: all clean test public sdist deb install current
 
 clean:
 	@debuild clean
+	@python setup.py clean
 
 test: clean
 	@PYTHONPATH=$(PWD) python silk/__init__.py
@@ -20,10 +22,10 @@ current:
 	@git pull
 
 sdist:
-	@python setup.py sdist
+	@if python setup.py sdist ; then cd dist; tar -xf $(FULLNAME).tar.gz; fi
 
-deb:
-	@debuild -i -uc -us
+deb: sdist
+	@cd dist/$(FULLNAME) ; debuild -i -uc -us
 
-install:
-	@dpkg -i $(PACKAGES)
+install-deb:
+	@cd dist ; dpkg -i $(PACKAGES)
