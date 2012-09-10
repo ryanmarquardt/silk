@@ -542,49 +542,44 @@ class Column(Expression):
 		else:
 			return repr(self.name)
 
-class RowidColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		kwargs['primarykey'] = True
-		kwargs['autoincrement'] = True
-		Column.__init__(self, name, int, *args, **kwargs)
+def RowidColumn(name, *args, **kwargs):
+	kwargs['primarykey'] = True
+	kwargs['autoincrement'] = True
+	return Column(name, int, *args, **kwargs)
 
-class IntColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, int, *args, **kwargs)
+def IntColumn(name, *args, **kwargs):
+	return Column(name, int, *args, **kwargs)
 
-class BoolColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, bool, *args, **kwargs)
-	
-class StrColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, unicode, *args, **kwargs)
+def BoolColumn(name, *args, **kwargs):
+	return Column(name, bool, *args, **kwargs)
 
-class FloatColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, float, *args, **kwargs)
+def StrColumn(name, *args, **kwargs):
+	return Column(name, unicode, *args, **kwargs)
 
-class DataColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, bytes, *args, **kwargs)
+def FloatColumn(name, *args, **kwargs):
+	return Column(name, float, *args, **kwargs)
 
-class DateTimeColumn(Column):
-	def __init__(self, name, *args, **kwargs):
-		Column.__init__(self, name, datetime.datetime, todb=timestamp, fromdb=timestamp.parse, *args, **kwargs)
+def DataColumn(name, *args, **kwargs):
+	return Column(name, bytes, *args, **kwargs)
 
-class ReferenceColumn(Column):
-	def __init__(self, name, table, todb=None, *args, **kwargs):
-		table._referers.add(self)
-		kwargs['references'] = table
-		if not todb:
-			if len(table.primarykey) == 1:
-				todb = lambda row:row.primarykey[0]
-			elif len(table.primarykey) == 0:
-				raise TypeError("Cannot reference non-indexed table %r" % table._name)
-			else:
-				raise ValueError("Default ReferenceColumn todb function supports only 1 primary key.")
-		query = todb(table)
-		Column.__init__(self, name, query.native_type, todb=todb, fromdb=query.fromdb, *args, **kwargs)
+def DateTimeColumn(name, *args, **kwargs):
+	kwargs['todb'] = timestamp
+	kwargs['fromdb'] = timestamp.parse
+	return Column(name, datetime.datetime, *args, **kwargs)
+
+def ReferenceColumn(name, table, todb=None, *args, **kwargs):
+	table._referers.add(self)
+	kwargs['references'] = table
+	if not todb:
+		if len(table.primarykey) == 1:
+			todb = lambda row:row.primarykey[0]
+		elif len(table.primarykey) == 0:
+			raise TypeError("Cannot reference non-indexed table %r" % table._name)
+		else:
+			raise ValueError("Default ReferenceColumn todb function supports only 1 primary key.")
+	kwargs['todb'] = todb
+	kwargs['fromdb'] = query.fromdb
+	return Column(name, query.native_type, *args, **kwargs)
 
 class Table(object):
 	"""
