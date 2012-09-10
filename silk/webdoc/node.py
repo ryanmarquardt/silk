@@ -3,12 +3,73 @@ from collections import MutableMapping, MutableSequence
 
 is_string = lambda x:isinstance(x,basestring)
 
-__all__ = ['Node']
-class Node(MutableMapping, MutableSequence):
-	'''An object with a name, children and attributes, used to represent components
-	of a document.
+class Entity(MutableMapping):
+	'''
+	Represents an indivisible token in a document.
 	
-	>>> rep = lambda x:sorted(vars(x).items())
+	>>> Entity('html', _lang='en')
+	Entity('html', _lang='en')
+	>>> class HTMLStartEntity(Entity):
+	... 	def __str__(self):
+	... 		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+	>>> h = HTMLStartEntity('html', lang='en'); print h
+	<html lang='en'>
+	>>> h._lang = 'ru'; print h
+	<html lang='ru'>
+	>>> del h['lang']; print h
+	<html>
+	'''
+	def __init__(self, name, **attributes):
+		vars(self)['name'] = name
+		vars(self)['attributes'] = {}
+		for k,v in attributes.items():
+			if k[0] == '_':
+				k = k[1:]
+			self.attributes[k] = v
+
+	def __getitem__(self, key):
+		return self.attributes[key]
+
+	def __getattr__(self, key):
+		if key[0] == '_':
+			key = key[1:]
+		return self.get(key)
+
+	def __setitem__(self, key, value):
+		self.attributes[key] = value
+
+	def __setattr__(self, key, value):
+		if key[0] == '_':
+			key = key[1:]
+		self.__setitem__(key, value)
+
+	def __delitem__(self, key):
+		del self.attributes[key]
+
+	def __delattr__(self, key):
+		if key[0] == '_':
+			key = key[1:]
+		self.__delitem__(key)
+
+	def __iter__(self):
+		return iter(self.attributes)
+
+	def __len__(self):
+		return len(self.attributes)
+
+	def __nonzero__(self):
+		return True
+
+	def __repr__(self):
+		return '%s(%s)' % (
+			self.__class__.__name__,
+			', '.join([repr(self.name)]+['_%s=%r' % i for i in self.attributes.items()]),
+		)
+
+class Node(MutableMapping, MutableSequence):
+	'''
+	A list of entities, used for organizing them into a tree
+	
 	>>> Node.new('x')
 	<class 'abc.Node'>
 	>>> Node.new('x')()
@@ -91,6 +152,7 @@ class Node(MutableMapping, MutableSequence):
 	name = None
 	__sequence__ = False
 	def __init__(self, *children, **attributes):
+		
 		self.children = flatten(children)
 		self.attributes = dict((self._attr_key(k),v) for k,v in attributes.items())
 	
@@ -183,21 +245,23 @@ class Node(MutableMapping, MutableSequence):
 				if filter(element):
 					yield depth+1, element
 
-__all__.append('NoChildrenMixin')
-class NoChildrenMixin(object):
-	'''Node mixin which ignores getting and setting children
+#__all__.append('NoChildrenMixin')
+#class NoChildrenMixin(object):
+	#'''Node mixin which ignores getting and setting children
 	
-	This mixin is useful for node types which are always leaf nodes, for example
-	<br /> tags in html.'''
-	children = property(lambda s:[], lambda s,v:None)
+	#This mixin is useful for node types which are always leaf nodes, for example
+	#<br /> tags in html.'''
+	#children = property(lambda s:[], lambda s,v:None)
 
-__all__.append('NoAttributesMixin')
-class NoAttributesMixin(object):
-	'''Node mixin which ignores getting and setting attributes.
+#__all__.append('NoAttributesMixin')
+#class NoAttributesMixin(object):
+	#'''Node mixin which ignores getting and setting attributes.
 	
-	This mixin is useful for node types which never need attributes set, for
-	example raw text nodes.'''
-	attributes = property(lambda s:{}, lambda s,v:None)
+	#This mixin is useful for node types which never need attributes set, for
+	#example raw text nodes.'''
+	#attributes = property(lambda s:{}, lambda s,v:None)
+
+__all__ = ['Entity', 'Node']
 
 if __name__=='__main__':
 	import doctest

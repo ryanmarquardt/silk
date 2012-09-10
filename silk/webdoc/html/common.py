@@ -14,6 +14,31 @@ def _xml(value, attr=False):
 	else:
 		return xmlescape(str(value))
 
+class XMLEntity(Entity):
+	@staticmethod
+	def start(name, **attributes):
+		return XMLStartEntity(name, **attributes)
+
+	@staticmethod
+	def end(name, **attributes):
+		return XMLEndEntity(name, **attributes)
+
+	@staticmethod
+	def closed(name, **attributes):
+		return XMLClosedEntity(name, **attributes)
+
+class XMLStartEntity(XMLEntity):
+	def __str__(self):
+		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+
+class XMLEndEntity(XMLEntity):
+	def __str__(self):
+		return '</%s>' % self.name
+
+class XMLClosedEntity(XMLEntity):
+	def __str__(self):
+		return '<%s%s />' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+
 class XMLNode(Node):
 	'''Node which is represented as xml.
 	
