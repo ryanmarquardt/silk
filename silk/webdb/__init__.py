@@ -568,7 +568,6 @@ def DateTimeColumn(name, *args, **kwargs):
 	return Column(name, datetime.datetime, *args, **kwargs)
 
 def ReferenceColumn(name, table, todb=None, *args, **kwargs):
-	table._referers.add(self)
 	kwargs['references'] = table
 	if not todb:
 		if len(table.primarykey) == 1:
@@ -577,9 +576,12 @@ def ReferenceColumn(name, table, todb=None, *args, **kwargs):
 			raise TypeError("Cannot reference non-indexed table %r" % table._name)
 		else:
 			raise ValueError("Default ReferenceColumn todb function supports only 1 primary key.")
+	query = todb(table)
 	kwargs['todb'] = todb
 	kwargs['fromdb'] = query.fromdb
-	return Column(name, query.native_type, *args, **kwargs)
+	self = Column(name, query.native_type, *args, **kwargs)
+	table._referers.add(self)
+	return self
 
 class Table(object):
 	"""
