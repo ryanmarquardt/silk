@@ -93,7 +93,8 @@ class XMLNode(Node):
 		if key in ('class','_class'):
 			value = sequence(value)
 		super(XMLNode, self).__setitem__(key, value)
-class XMLNoChildNode(XMLNode, NoChildrenMixin):
+
+class XMLNoChildNode(XMLNode):
 	'''Node which is represented as xml, and forbidden to have children.
 	
 	>>> XMLNoChildNode.new('br')()
@@ -223,7 +224,7 @@ class Form(FORM):
 		self.setdefault('_method','POST')
 		self.setdefault('_enctype','multipart/form-data')
 
-class COMMENT(XMLNode, NoAttributesMixin):
+class COMMENT(XMLNode):
 	'''Includes comments.
 	
 	>>> print COMMENT('This is a comment')
@@ -234,7 +235,7 @@ class COMMENT(XMLNode, NoAttributesMixin):
 	def __str__(self):
 		return '<!--%s-->'%''.join(map(str,self.children))
 
-class CONDITIONAL_COMMENT(XMLNode, NoAttributesMixin):
+class CONDITIONAL_COMMENT(XMLNode):
 	'''Used to comment out text conditionally by browser
 	
 	>>> print CONDITIONAL_COMMENT('lt IE 7', 'Your browser is IE before version 7')
@@ -253,7 +254,7 @@ class CONDITIONAL_COMMENT(XMLNode, NoAttributesMixin):
 			kids=''.join(map(_xml,self.children))
 		)
 
-class XML(XMLNode, NoAttributesMixin):
+class XML(XMLNode):
 	'''Renders text without escaping it.
 	
 	>>> print XML('<abc />')
@@ -265,7 +266,7 @@ class XML(XMLNode, NoAttributesMixin):
 	def __str__(self):
 		return ''.join(map(str,self.children))
 
-class CAT(XMLNode, NoAttributesMixin):
+class CAT(XMLNode):
 	'''Concatenates child nodes.
 	
 	>>> from functools import partial

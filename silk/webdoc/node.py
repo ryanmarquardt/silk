@@ -245,22 +245,6 @@ class Node(MutableMapping, MutableSequence):
 				if filter(element):
 					yield depth+1, element
 
-#__all__.append('NoChildrenMixin')
-#class NoChildrenMixin(object):
-	#'''Node mixin which ignores getting and setting children
-	
-	#This mixin is useful for node types which are always leaf nodes, for example
-	#<br /> tags in html.'''
-	#children = property(lambda s:[], lambda s,v:None)
-
-#__all__.append('NoAttributesMixin')
-#class NoAttributesMixin(object):
-	#'''Node mixin which ignores getting and setting attributes.
-	
-	#This mixin is useful for node types which never need attributes set, for
-	#example raw text nodes.'''
-	#attributes = property(lambda s:{}, lambda s,v:None)
-
 __all__ = ['Entity', 'Node']
 
 if __name__=='__main__':

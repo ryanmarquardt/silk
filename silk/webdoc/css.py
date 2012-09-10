@@ -46,7 +46,7 @@ def _css(value):
 class CSSNode(Node):
 	pass
 
-class Block(CSSNode, NoAttributesMixin):
+class Block(CSSNode):
 	'''
 	
 	>>> print Block('body',
