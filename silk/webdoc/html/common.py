@@ -1,5 +1,5 @@
 from silk import *
-from node import *
+from silk.webdoc.node import *
 
 import collections
 from functools import partial
