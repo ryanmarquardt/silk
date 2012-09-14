@@ -5,6 +5,7 @@ Applications are passed two arguments: one Request object and one Response objec
 
 from silk import *
 
+import Cookie
 import wsgiref.util
 import urlparse
 
@@ -83,7 +84,7 @@ class Request(container):
 			software = self.env.SERVER_SOFTWARE,
 			protocol = self.env.SERVER_PROTOCOL,
 		)
-		self.cookies = dict(i.partition('=')[0::2] for i in (self.env.HTTP_COOKIE or '').split('; '))
+		self.cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(self.env.HTTP_COOKIE or '').values())
 
 class Response(object):
 	def __init__(self):
@@ -91,7 +92,11 @@ class Response(object):
 		self.headers = wsgiref.headers.Headers([('Content-type', 'text/html')])
 		self.view = None
 
-	#def set_cookie(self, name, value, comment=None, domain=None, max_age=None, path=None, secure=False, version=None):
+	def set_cookie(self, name, value, **attr):
+		m = Cookie.Morsel()
+		m.set(name, value, str(value))
+		m.update(attr)
+		self.headers['Set-Cookie'] = m.OutputString()
 
 	@property
 	def content_type(self):
