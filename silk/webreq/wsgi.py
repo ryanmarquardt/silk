@@ -137,7 +137,7 @@ class Document(object):
 	def __call__(self, request, response):
 		if not request.args:
 			response.content_type = self.mimetype
-			
+			response.content_length = len(self.contents)
 			return self.contents
 
 	@classmethod
