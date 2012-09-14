@@ -51,17 +51,11 @@ STATUS_MESSAGES = {
 
 def format_status(code):
 	return '%i %s' % (code,STATUS_MESSAGES[code])
-	if code == 200:
-		return '200 OK'
-	else:
-		raise NotImplementedError
 
 class uri(str):
 	def __new__(cls, env):
 		self = str.__new__(cls, wsgiref.util.request_uri(env))
 		self.scheme, self.host, self.path, _, self.query, self.anchor = urlparse.urlparse(self)
-		#self.scheme = wsgiref.util.guess_scheme(env)
-		#self.host = env.HTTP_HOST or env.SERVER_NAME
 		return self
 
 	def __repr__(self):
