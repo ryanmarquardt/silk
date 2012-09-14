@@ -92,9 +92,9 @@ class BaseRouter(object):
 	
 	def wsgi(self, environment, start_response):
 		request, response = self.RequestClass(environment), self.ResponseClass()
-		view = self.process(request, response)
+		content = self.render(self.process(request, response), response)
 		start_response(format_status(response.code), response.headers.items())
-		return self.render(view, response)
+		return content
 
 class PathRouter(BaseRouter):
 	def __init__(self):
@@ -107,11 +107,14 @@ class PathRouter(BaseRouter):
 		return f
 
 	def handler(self, request, response):
-		elements = tuple(request.uri.path[1:].split('/')) + (None,)
-		while elements:
-			elements = elements[:-1]
+		elements, args, shift = request.args, (), True
+		while shift:
 			if elements in self.handlers:
+				request.args = args
 				return self.handlers[elements](request, response)
+			shift = elements[-1:]
+			elements = elements[:-1]
+			args = shift + args
 
 	def __setitem__(self, key, value):
 		if not isinstance(key, tuple):
@@ -179,6 +182,18 @@ if __name__=='__main__':
 	@router('abc', '123')
 	def abc123(request, response):
 		return 'MJ!'
+
+	@router('upload')
+	def upload(request, response):
+		r = dict(request)
+		env = r.pop('env')
+		if request.method == 'POST' and request.env.CONTENT_LENGTH:
+			data = request.wsgi.input.read(int(request.env.CONTENT_LENGTH))
+		else:
+			data = ''
+		return '<br />'.join(map(str,[
+			"""<form method="post" enctype="multipart/form-data"><input name="upload" type="file"></input><input type="submit" /></form>""",
+			r, env, `data`]))
 
 	application = router.wsgi
 
