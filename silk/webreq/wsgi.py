@@ -1,14 +1,15 @@
 
 from silk import *
-from silk.webreq import Request, Response, HTTP, format_status
+from silk.webreq import Request as BaseRequest, Response as BaseResponse, HTTP, format_status
 
+import base64
 import collections
 import sys
 import traceback
 import wsgiref.util
 import wsgiref.headers
 
-class WSGIRequest(Request):
+class Request(BaseRequest):
 	"""An object representing the request's environment.
 
 	"""
@@ -16,10 +17,7 @@ class WSGIRequest(Request):
 		Request.__init__(self, environment)
 		self.wsgi = container((k[5:],self.env.pop(k)) for k,v in self.env.items() if k.startswith('wsgi.'))
 
-class WSGIResponse(Response):
-	@staticmethod
-	def Stream(filelike, blocksize=8192):
-		return wsgiref.util.FileWrapper(filelike, blocksize)
+class Response(BaseResponse): pass
 
 class View(object):
 	def __init__(self, text):
@@ -92,7 +90,7 @@ class BaseRouter(object):
 		elif isinstance(response.content, collections.Iterable):
 			return response.content
 	
-	def __call__(self, environment, start_response):
+	def wsgi(self, environment, start_response):
 		request, response = self.RequestClass(environment), self.ResponseClass()
 		view = self.process(request, response)
 		start_response(format_status(response.code), response.headers.items())
@@ -102,47 +100,86 @@ class PathRouter(BaseRouter):
 	def __init__(self):
 		self.handlers = {}
 
-	def routes(self, *elements):
+	def __call__(self, *elements):
 		def f(handler):
 			self.handlers[elements] = handler
 			return handler
 		return f
 
 	def handler(self, request, response):
-		elements = tuple(request.uri.path[1:].split('/'))
-		if elements in self.handlers:
-			return self.handlers[elements](request, response)
+		elements = tuple(request.uri.path[1:].split('/')) + (None,)
 		while elements:
 			elements = elements[:-1]
 			if elements in self.handlers:
 				return self.handlers[elements](request, response)
+
+	def __setitem__(self, key, value):
+		if not isinstance(key, tuple):
+			key = (key,)
+		self.handlers[key] = value
+
+	def __getitem__(self, key):
+		return self.handlers[key]
+
+	def __delitem__(self, key):
+		del self.handlers[key]
 
 def serve(host, port, router=BaseRouter):
 	from wsgiref.simple_server import make_server
 	httpd = make_server(host, port, router)
 	httpd.serve_forever()
 
-if __name__=='__main__':
-	my_router = PathRouter()
-	my_router.RequestClass = WSGIRequest
-	my_router.ResponseClass = WSGIResponse
-	routes = my_router.routes
+class Document(object):
+	def __init__(self, contents, mimetype='text/html'):
+		self.contents = contents
+		self.mimetype = mimetype
 
-	@routes()
+	def __call__(self, request, response):
+		if not request.args:
+			response.content_type = self.mimetype
+			
+			return self.contents
+
+	@classmethod
+	def Icon(cls, contents):
+		return cls(contents, mimetype='image/ico')
+
+	@classmethod
+	def Plain(cls, contents):
+		return cls(contents, mimetype='text/plain')
+
+class B64Document(Document):
+	def __init__(self, contents, mimetype='text/html'):
+		Document.__init__(self, base64.b64decode(contents), mimetype=mimetype)
+
+if __name__=='__main__':
+	router = PathRouter()
+	router.RequestClass = WSGIRequest
+	router.ResponseClass = WSGIResponse
+
+	router['favicon.ico'] = B64Document.Icon('AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAC/AAAAvgAAALMAAAA+TExMBgAAAABubm5AAAAAcQAAAHAAAABnAAAAVwAAAC5MTEwU8fHxAQAAAAAAAAAAAAAATgAAAD4AAAArAAAAP0xMTDPx8fEEbm5uKSsrKz3U1NQMkZGRAQAAAAoAAABbTExMW/Hx8QcAAAAAAAAAAAAAAAAAAAAA8fHxBkxMTE1MTExN8fHxBgAAAAAAAAAAAAAAAJGRkR0AAABEAAAAT0xMTDvx8fEEAAAAAAAAAAAAAAAAAAAAAPHx8QlMTExxTExMcfHx8QkAAAAA1NTUDCsrKzgAAABGDg4ORLOzsxUAAAAAAAAAAAAAAAAAAAAAAAAAAJGRkQQAAAASAAAAf0xMTHzx8fEJAAAAANTU1BYrKytrAAAASg4ODgEAAAAAs7OzEA4ODjORkZEXAAAAAAAAAACRkZELAAAAIgAAAIpMTEyD8fHxCgAAAADU1NQIKysrKAAAAEkAAABqAAAAWAAAAFgAAABqkZGRLgAAAAAAAAAAkZGREQAAADAAAACVTExMifHx8QoAAAAA1NTUBSsrKxZubm4P8fHxAUxMTBJMTEwS8fHxAQAAAAAAAAAAAAAAAJGRkRgAAABAAAAAn0xMTI/x8fELbm5uCQAAACwAAACebm5uavHx8QlMTEx6AAAAfQAAABaRkZEGAAAAAAAAAACRkZEZAAAAQwAAAJ5MTEyM8fHxC25ubiAAAABEAAAAcAAAAFwAAAA6AAAAgQAAAIYAAABIkZGRHQAAAAAAAAAAkZGRFgAAADoAAACSTExMg/Hx8Qpubm44AAAAXQAAAEYAAABBAAAARwAAAIEAAACBAAAASpGRkR4AAAAAAAAAAJGRkRIAAAAxAAAAhUxMTHnx8fEJbm5uUAAAAHgAAAAnAAAAEAAAABAAAAAzAAAANAAAABIAAAAmAAAAOAAAAACRkZEOAAAAKAAAAHlMTExv8fHxCG5ublgrKyuB1NTUGgAAAAAAAAAAAAAAAAAAAAAAAAAAbm5uKgAAAEoAAAAAkZGRCQAAAB0AAABsAAAAbwAAACYAAABLKysrWtTU1BIAAAAAAAAAAAAAAAAAAAAAAAAAAG5ubjoAAABmAAAAAAAAAADx8fEGTExMUkxMTFLx8fEGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8fHxBUxMTEYAAABXAAAAOwAAADArKysi1NTUBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPHx8QRMTEw2AAAAeQAAANoAAACUKysrSdTU1A8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/8AAP//AAD//wAA//8AAP//AADn/wAA5/8AAOd/AADn5wAA5+cAAO//AAD+/wAA//8AAP//AAD//wAA+f8AAA==')
+
+	@router()
 	def unmatched(request, response):
 		response.content_type = 'text/plain'
-		response.headers['Set-Cookie'] = 'name=value'
-		response.headers['Set-Cookie'] = 'name2="value2 3"'
+		response.set_cookie('name', 'value')
+		response.set_cookie('name2', 'value2')
 		r = dict(request)
 		env = r.pop('env')
 		return 'Hello World\n%r\n%r' % (r,env)
 
-	@routes('')
+	@router('')
 	def index(request, response):
-		return 'Hello World'
+		return 'Hello World\n%r' % (request.args,)
 
-	@routes('abc')
+	@router('abc')
 	def abc(request, response):
 		return '123'
 
-	serve('', 8000, my_router)
+	@router('abc', '123')
+	def abc123(request, response):
+		return 'MJ!'
+
+	application = router.wsgi
+
+	serve('', 8000, application)
