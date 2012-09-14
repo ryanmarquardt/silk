@@ -97,14 +97,14 @@ class Response(object):
 		return self.headers['Content-Type']
 	@content_type.setter
 	def content_type(self, new):
-		self.headers['Content-Type'] = new
+		self.headers['Content-Type'] = str(new)
 
 	@property
 	def content_length(self):
 		return self.headers['Content-Length']
 	@content_type.setter
 	def content_length(self, new):
-		self.headers['Content-Length'] = new
+		self.headers['Content-Length'] = str(new)
 
 	@staticmethod
 	def StreamObj(obj, blksize=8192):
