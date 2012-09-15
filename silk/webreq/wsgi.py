@@ -60,6 +60,9 @@ class BaseRouter(object):
 	def report_error(self, (exc, obj, tb), request, response):
 		traceback.print_exception(exc, obj, tb)
 
+	def receive_upload(self, infile, length):
+		raise NotImplementedError
+
 	def process(self, request, response):
 		try:
 			response.content = self.handler(request, response)
@@ -156,6 +159,8 @@ class B64Document(Document):
 		Document.__init__(self, base64.b64decode(contents), mimetype=mimetype)
 
 if __name__=='__main__':
+	from silk.webdoc.html import FORM, INPUT, P
+	
 	router = PathRouter()
 	router.RequestClass = Request
 	router.ResponseClass = Response
@@ -191,9 +196,9 @@ if __name__=='__main__':
 			data = request.wsgi.input.read(int(request.env.CONTENT_LENGTH))
 		else:
 			data = ''
-		return '<br />'.join(map(str,[
-			"""<form method="post" enctype="multipart/form-data"><input name="upload" type="file"></input><input type="submit" /></form>""",
-			r, env, `data`]))
+		return ''.join(map(str,[
+			FORM(INPUT(name='upload',type='file'),INPUT(type='submit'),method='post', enctype='multipart/form-data'),
+			P(`r`), P(env)] + [P(repr(x)) for x in data.split('\n')]))
 
 	application = router.wsgi
 
