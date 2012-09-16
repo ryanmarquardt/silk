@@ -6,6 +6,7 @@ Applications are passed two arguments: one Request object and one Response objec
 from silk import *
 
 import base64
+import cgi
 import collections
 import Cookie
 import sys
@@ -87,6 +88,20 @@ class URI(object):
 	def __repr__(self):
 		return `str(self)`
 
+def parse_form_data(infile, env):
+	content_type, attrs = cgi.parse_header(env.CONTENT_TYPE)
+	if content_type == 'multipart/form-data':
+		boundary = attrs['boundary']
+		line = infile.readline()
+		assert line == '--%s\r\n' % boundary
+		line = infile.readline()
+		while line != '\r\n':
+			
+			line = infile.readline()
+	elif content_type == 'application/x-www-form-urlencoded':
+		content_length = int(env.CONTENT_LENGTH or 0)
+		return urlparse.parse_qs(infile.read(content_length))
+
 class Request(container):
 	"""An object representing the request's environment.
 
@@ -96,11 +111,7 @@ class Request(container):
 		self.method = self.env.REQUEST_METHOD
 		self.uri = URI(wsgiref.util.request_uri(self.env))
 		self.args = tuple(self.uri.path[1:].split('/'))
-		self.get_vars = dict(urlparse.parse_qsl(self.env.QUERY_STRING, True))
-		if self.method == 'GET':
-			self.vars = self.get_vars
-		elif self.method == 'POST':
-			self.vars = self.post_vars
+		self.query_vars = dict(urlparse.parse_qsl(self.env.QUERY_STRING, True))
 		self.server = container(
 			name = self.env.SERVER_NAME,
 			port = self.env.SERVER_PORT,
@@ -109,6 +120,15 @@ class Request(container):
 		)
 		self.cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(self.env.HTTP_COOKIE or '').values())
 		self.wsgi = container((k[5:],self.env.pop(k)) for k,v in self.env.items() if k.startswith('wsgi.'))
+		if self.method in ('GET','HEAD'):
+			self.vars = self.query_vars
+		elif self.method == 'POST':
+			self.vars = {}
+			if self.env.CONTENT_LENGTH:
+				parse_form_data(self.wsgi.infile, self.env)
+					
+					
+					
 
 class Response(object):
 	def __init__(self):
@@ -185,7 +205,7 @@ class BaseRouter(object):
 	def report_error(self, (exc, obj, tb), request, response):
 		traceback.print_exception(exc, obj, tb)
 
-	def receive_upload(self, infile, length):
+	def receive_upload(self, iterable):
 		raise NotImplementedError
 
 	def process(self, request, response):
@@ -341,6 +361,7 @@ if __name__=='__main__':
 			data = ''
 		return ''.join(map(str,[
 			FORM(INPUT(name='upload',type='file'),INPUT(type='submit'),method='post', enctype='multipart/form-data'),
+			FORM(INPUT(name='name'),INPUT(type='submit'),method='post',enctype='application/x-www-form-urlencoded'),
 			P(`r`), P(env)] + [P(repr(x)) for x in data.split('\n')]))
 
 	scriptname = sys.argv[0].rpartition('/')[2]
