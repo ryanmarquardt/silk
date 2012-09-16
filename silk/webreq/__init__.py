@@ -110,6 +110,12 @@ class Request(container):
 		self.cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(self.env.HTTP_COOKIE or '').values())
 		self.wsgi = container((k[5:],self.env.pop(k)) for k,v in self.env.items() if k.startswith('wsgi.'))
 
+def _header(name, decode=lambda x:x, encode=str):
+	return property(
+		lambda self:decode(self.headers[name]),
+		lambda self,new:self.headers.__setitem__(name, encode(new)),
+	)
+
 class Response(object):
 	def __init__(self):
 		self.code = 200
@@ -122,19 +128,8 @@ class Response(object):
 		m.update(attr)
 		self.headers['Set-Cookie'] = m.OutputString()
 
-	@property
-	def content_type(self):
-		return self.headers['Content-Type']
-	@content_type.setter
-	def content_type(self, new):
-		self.headers['Content-Type'] = str(new)
-
-	@property
-	def content_length(self):
-		return self.headers['Content-Length']
-	@content_type.setter
-	def content_length(self, new):
-		self.headers['Content-Length'] = str(new)
+	content_type = _header('Content-Type')
+	content_length = _header('Content-Length')
 
 	@staticmethod
 	def StreamObj(obj, blksize=8192):
