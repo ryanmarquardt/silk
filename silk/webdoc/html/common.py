@@ -587,8 +587,7 @@ class HTMLDoc(HTML):
 				deprecated.update("""frame frameset""".split())
 			if dt_info.variant == 'Strict':
 				deprecated.update("""applet basefont center dir font iframe isindex menu noframes strike u""".split())
-		for depth,element in self.walk(lambda x:isinstance(x,Node) and x.name in deprecated):
-			yield depth,element
+		return self.walk(lambda x:isinstance(x,Node) and x.name in deprecated)
 
 if __name__=='__main__':
 	import doctest
