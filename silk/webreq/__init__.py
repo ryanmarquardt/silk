@@ -63,10 +63,17 @@ STATUS_MESSAGES = {
 def format_status(code):
 	return '%i %s' % (code,STATUS_MESSAGES[code])
 
+_header = lambda name:property(
+	(lambda self:self.headers.__getitem__(name)),
+	(lambda self,new:self.headers.__setitem__(name,new)),
+	(lambda self:self.headers.__delitem__(name)),
+)
+
 class Response(object):
 	def __init__(self):
 		self.code = 200
-		self.headers = HeaderList([('Content-type', 'text/html')])
+		self.headers = HeaderList()
+		self.content_type = 'text/html'
 		self.view = None
 
 	def set_cookie(self, name, value, **attr):

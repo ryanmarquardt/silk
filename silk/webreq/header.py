@@ -48,14 +48,21 @@ class HeaderList(list):
 
 	def __setitem__(self, name, value):
 		try:
-			idx = zip(self)[0].index(name)
-		except ValueError:
+			idx = zip(*self)[0].index(name)
+		except (ValueError, IndexError):
 			self.append(name, value)
 		else:
 			if isinstance(value, Header):
-				self[idx] = (name, value)
+				list.__setitem__(self, idx, (name, value))
 			else:
-				self[idx] = (name, Header(value))
+				list.__setitem__(self, idx, (name, Header(value)))
+
+	def __getitem__(self, name):
+		try:
+			idx = zip(*self)[0].index(name)
+		except (ValueError, IndexError):
+			raise KeyError
+		return list.__getitem__(self, idx)[1]
 
 	def wsgi(self):
 		return [(name, str(header)) for name, header in self]
