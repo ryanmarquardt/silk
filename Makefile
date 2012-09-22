@@ -1,6 +1,6 @@
 VERSION=$(shell python setup.py --version)
 FULLNAME=$(shell python setup.py --fullname)
-PACKAGES=python-silk_$(VERSION)_all.deb python-silk-common_$(VERSION)_all.deb python-silk-webdoc_$(VERSION)_all.deb python-silk-webdb_$(VERSION)_all.deb python-silk-webdb-mysql_$(VERSION)_all.deb
+PACKAGES=python-silk_$(VERSION)_all.deb python-silk-common_$(VERSION)_all.deb python-silk-webdoc_$(VERSION)_all.deb python-silk-webdb_$(VERSION)_all.deb python-silk-webdb-mysql_$(VERSION)_all.deb python-silk-webreq_$(VERSION)_all.deb
 
 all: deb
 .PHONY: all clean test public sdist deb install current
@@ -13,6 +13,7 @@ test: clean
 	@PYTHONPATH=$(PWD) python silk/__init__.py
 	@PYTHONPATH=$(PWD) python silk/webdoc/__init__.py
 	@PYTHONPATH=$(PWD) python silk/webdb/__init__.py
+	@PYTHONPATH=$(PWD) python silk/webreq/__init__.py
 	@PYTHONPATH=$(PWD) python -m doctest doctest/*.txt
 
 public: clean

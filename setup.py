@@ -15,6 +15,7 @@ setup(
 		'silk.webdoc.html',
 		'silk.webdb',
 		'silk.webdb.drivers',
+		'silk.webreq',
 	],
 	license='Simplified BSD License',
 )

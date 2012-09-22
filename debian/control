@@ -43,3 +43,10 @@ Description: Data abstraction layer for python
  relational databases.
  .
  This package includes the driver for mysql databases
+
+Package: python-silk-webreq
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-silk-common
+Description: WSGI request handler
+ Webreq provides classes and functions for turning your application into a WSGI
+ compliant web server.
