@@ -1,8 +1,8 @@
 #Sample file, producing web2py's standard layout
 
-from webdoc import *
-from webdoc.html import *
-import webdoc.css
+from silk.webdoc import *
+from silk.webdoc.html import *
+import silk.webdoc.css
 
 def AddToAny():
 	return [

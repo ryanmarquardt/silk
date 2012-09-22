@@ -6,6 +6,7 @@ Applications are passed two arguments: one Request object and one Response objec
 from silk import *
 
 import base64
+import cgi
 import collections
 import Cookie
 import sys
@@ -13,6 +14,11 @@ import traceback
 import urlparse
 import wsgiref.util
 import wsgiref.headers
+
+from formdata import FormData
+from query import Query
+from header import Header, HeaderList
+from uri import URI
 
 class HTTP(Exception):
 	def __init__(self, code, message):
@@ -57,69 +63,10 @@ STATUS_MESSAGES = {
 def format_status(code):
 	return '%i %s' % (code,STATUS_MESSAGES[code])
 
-class URI(object):
-	def __init__(self, uri=None, scheme='', host='', path=None, query=None, anchor=''):
-		if uri:
-			self.scheme, self.host, self.path, _, self.query, self.anchor = urlparse.urlparse(uri)
-		self.scheme = scheme or self.scheme
-		self.host = host or self.host
-		self.path = path or self.path or ['']
-		if isinstance(self.path, basestring):
-			self.path = self.path.split('/')
-		self.query = query or self.query or {}
-		self.anchor = anchor or self.anchor
-
-	@classmethod
-	def from_env(cls, env):
-		return cls(wsgiref.util.request_uri(env))
-
-	def __str__(self):
-		result = ''
-		if self.scheme or self.host:
-			result += '%s://%s' % (self.scheme or 'http', self.host or 'localhost')
-		result += '/'.join(self.path or (''))
-		if self.query:
-			result += '?'+'&'.join('%s=%s'%i for i in self.query.iteritems())
-		if self.anchor:
-			result += '#' + self.anchor
-		return result
-
-	def __repr__(self):
-		return `str(self)`
-
-class Request(container):
-	"""An object representing the request's environment.
-
-	"""
-	def __init__(self, environment):
-		self.env = container(environment)
-		self.method = self.env.REQUEST_METHOD
-		self.uri = URI(wsgiref.util.request_uri(self.env))
-		self.args = tuple(self.uri.path[1:].split('/'))
-		self.get_vars = dict(urlparse.parse_qsl(self.env.QUERY_STRING, True))
-		if self.method == 'GET':
-			self.vars = self.get_vars
-		elif self.method == 'POST':
-			self.vars = self.post_vars
-		self.server = container(
-			name = self.env.SERVER_NAME,
-			port = self.env.SERVER_PORT,
-			software = self.env.SERVER_SOFTWARE,
-			protocol = self.env.SERVER_PROTOCOL,
-		)
-		self.cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(self.env.HTTP_COOKIE or '').values())
-		self.wsgi = container((k[5:],self.env.pop(k)) for k,v in self.env.items() if k.startswith('wsgi.'))
-
-def _header(name, decode=lambda x:x, encode=str):
-	return property(
-		lambda self:decode(self.headers[name]),
-		lambda self,new:self.headers.__setitem__(name, encode(new)),
-	)
-
 class Response(object):
 	def __init__(self):
 		self.code = 200
-		self.headers = wsgiref.headers.Headers([('Content-type', 'text/html')])
+		self.headers = HeaderList([('Content-type', 'text/html')])
 		self.view = None
 
 	def set_cookie(self, name, value, **attr):
@@ -164,8 +111,8 @@ class BaseRouter(object):
 	  contained in self.unhandled_error
 	  
 	"""
-	RequestClass = Request
-	ResponseClass = Response
+	#RequestClass = Request
+	#ResponseClass = Response
 
 	unhandled_error = "The server has encountered a problem and can't recover. Please try again later."
 	error_view = View("Error: %(status)s %(message)s")
@@ -180,7 +127,7 @@ class BaseRouter(object):
 	def report_error(self, (exc, obj, tb), request, response):
 		traceback.print_exception(exc, obj, tb)
 
-	def receive_upload(self, infile, length):
+	def receive_upload(self, input_name, iterable, filename, content_type):
 		raise NotImplementedError
 
 	def process(self, request, response):
@@ -212,13 +159,52 @@ class BaseRouter(object):
 			return [view.render(response.content)]
 		elif isinstance(response.content, collections.Iterable):
 			return response.content
+
+	def create_request(self, environment):
+		uri = URI.from_env(environment)
+		request = container(
+			env = environment,
+			method = environment.get('REQUEST_METHOD','GET'),
+			uri = uri,
+			args = tuple(uri.path),
+			query = Query.parse(environment.get('QUERY_STRING','')),
+			server = container(
+				name = environment.get('SERVER_NAME',''),
+				port = int(environment.get('SERVER_PORT', 0)),
+				software = environment.get('SERVER_SOFTWARE', ''),
+				protocol = environment.get('SERVER_PROTOCOL', ''),
+			),
+			cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(environment.get('HTTP_COOKIE', '')).values()),
+			wsgi = container(
+				input = environment.get('wsgi.input', sys.stdin),
+				errors = environment.get('wsgi.errors', sys.stderr),
+				version = environment.get('wsgi.version', (1, 0)),
+				multithread = environment.get('wsgi.multithread', False),
+				multiprocess = environment.get('wsgi.multiprocess', True),
+				run_once = environment.get('wsgi.run_once', True),
+				url_scheme = uri.scheme,
+			),
+			headers = container(
+				content_type = Header.parse_value(environment.get('CONTENT_TYPE', '')),
+				content_length = int(environment.get('CONTENT_LENGTH') or 0),
+			),
+			post_vars = MultiDict(),
+		)
+		if request.method == 'POST' and request.headers.content_length:
+			FormData.handle_upload = self.receive_upload
+			request.post_vars = FormData.parse(request.wsgi.input, request.headers.content_type.key)
+		request.vars = request.post_vars or request.query
+		return request
+
+	def create_response(self):
+		return Response()
 	
 	def wsgi(self):
 		global application
 		def wsgi_handler(environment, start_response):
-			request, response = self.RequestClass(environment), self.ResponseClass()
+			request, response = self.create_request(environment), self.create_response()
 			content = self.render(self.process(request, response), response)
-			start_response(format_status(response.code), response.headers.items())
+			start_response(format_status(response.code), response.headers.wsgi())
 			return content
 		application = wsgi_handler
 		return wsgi_handler
@@ -250,11 +236,15 @@ class PathRouter(BaseRouter):
 	def __call__(self, *elements):
 		def f(handler):
 			self.handlers[elements] = handler
-			handler.url = URI()
+			handler.url = URI(path=list(elements))
 			return handler
 		return f
 
+	def set_uploader(self, function):
+		self.receive_upload = function
+
 	def handler(self, request, response):
+		print request.args
 		elements, args, shift = request.args, (), True
 		while shift:
 			if elements in self.handlers:
@@ -299,7 +289,7 @@ class B64Document(Document):
 		Document.__init__(self, base64.b64decode(contents), mimetype=mimetype)
 
 if __name__=='__main__':
-	from silk.webdoc.html import FORM, INPUT, P
+	from silk.webdoc.html import FORM, INPUT, P, PRE
 	
 	router = PathRouter()
 
@@ -316,7 +306,7 @@ if __name__=='__main__':
 
 	@router('')
 	def index(request, response):
-		return 'Hello World\n%r' % (request.args,)
+		return 'Hello World\n%r' % (request,)
 
 	@router('abc')
 	def abc(request, response):
@@ -336,7 +326,18 @@ if __name__=='__main__':
 			data = ''
 		return ''.join(map(str,[
 			FORM(INPUT(name='upload',type='file'),INPUT(type='submit'),method='post', enctype='multipart/form-data'),
-			P(`r`), P(env)] + [P(repr(x)) for x in data.split('\n')]))
+			FORM(INPUT(name='name'),INPUT(type='submit'),method='post',enctype='application/x-www-form-urlencoded'),
+			FORM(INPUT(name='name'),INPUT(type='submit'),method='get',enctype='application/x-www-form-urlencoded'),
+			PRE(request.vars),
+			P(`r`), P(`env`)] + [P(repr(x)) for x in data.split('\n')]))
+
+	@router.set_uploader
+	def handle_upload(self, name, iterable, filename, content_type):
+		return container(
+			filename = filename,
+			content_type = content_type,
+			content = ''.join(iterable),
+		)
 
 	scriptname = sys.argv[0].rpartition('/')[2]
 	if scriptname == 'wsgi.py':

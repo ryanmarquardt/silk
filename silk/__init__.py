@@ -170,7 +170,85 @@ class ordered_collection(collection):
 		self._key = namekey
 		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
 
-__all__ = ['container', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection']
+
+class MultiDict(collections.MutableMapping):
+	"""
+
+	>>> MultiDict()
+	MultiDict({})
+	>>> m = MultiDict([('a', 1), ('b', 2), ('a', 3)])
+	>>> m['a']
+	[1, 3]
+	>>> m['b']
+	[2]
+	>>> m.a
+	3
+	>>> m.b
+	2
+	>>> 'c' in m
+	False
+	>>> print m.c
+	None
+	"""
+	def __init__(self, init=(), **kwargs):
+		if isinstance(init, MultiDict):
+			self._dict = init._dict.__copy__()
+		else:
+			self._dict = collections.defaultdict(list)
+			self.update(init or kwargs)
+
+	def update(self, other):
+		for key, value in getattr(other, 'iteritems', other.__iter__)():
+			self[key] = value
+
+	def __contains__(self, key):
+		return key in self._dict
+
+	def __getitem__(self, key):
+		return self._dict[key]
+
+	def __setitem__(self, key, value):
+		self._dict[key].append(value)
+
+	def __delitem__(self, key):
+		del self._dict[key]
+
+	def __len__(self):
+		return len(self._dict)
+
+	def __iter__(self):
+		return iter(self._dict)
+
+	def pop(self, key, index=-1):
+		r = self._dict[key].pop(index)
+		if not self._dict[key]:
+			del self._dict[key]
+		return r
+
+	def get(self, key, default=None):
+		try:
+			return self._dict[key][-1]
+		except (IndexError, KeyError):
+			return default
+	__getattr__ = get
+
+	def __delattr__(self, key):
+		self._dict.pop(key)
+
+	def iteritems(self):
+		for key in self._dict:
+			for value in self._dict[key]:
+				yield key, value
+
+	def items(self):
+		return list(self.iteritems())
+
+	getlist = __getitem__
+
+	def __repr__(self):
+		return '%s(%s)' % (self.__class__.__name__,dict.__repr__(self._dict))
+
+__all__ = ['container', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection', 'MultiDict']
 
 if __name__=='__main__':
 	import doctest
