@@ -64,5 +64,5 @@ class HeaderList(list):
 			raise KeyError
 		return list.__getitem__(self, idx)[1]
 
-	def wsgi(self):
+	def as_list(self):
 		return [(name, str(header)) for name, header in self]

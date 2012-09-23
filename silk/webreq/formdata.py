@@ -20,11 +20,10 @@ def watch(iterable, *sentinels):
 			break
 		yield value
 
-def delimited(iterable, delim, *sentinels, **kwargs):
-	block_size = max(1024, kwargs.get('block_size', 8192))
+def delimited(iterable, delim, *sentinels):
 	remainder = ''
 	size = -len(delim)
-	for value in iter(lambda:iterable.readline(block_size), None):
+	for value in iterable:
 		if value in sentinels:
 			break
 		if value.endswith(delim):
@@ -32,6 +31,31 @@ def delimited(iterable, delim, *sentinels, **kwargs):
 		else:
 			value, remainder = remainder + value, ''
 		yield value
+
+def read_bounded(filelike, size, buffer_size=8192):
+	remaining = size
+	while remaining > 0:
+		buffer = filelike.read(min(buffer_size, remaining))
+		remaining -= len(buffer)
+		yield buffer
+
+def iter_lines(iterable, delim='\r\n'):
+	buffer = ''
+	for chunk in iterable:
+		buffer += chunk
+		while True:
+			line,d,buffer = buffer.partition(delim)
+			if d:
+				yield line+d
+			else:
+				buffer = line
+				break
+	while True:
+		line,d,buffer = buffer.partition(delim)
+		if line or d:
+			yield line+d
+		else:
+			return
 
 class FormData(MultiDict):
 	@classmethod
@@ -52,19 +76,19 @@ class FormData(MultiDict):
 		return ''.join(iterable)
 
 	@classmethod
-	def parse(cls, infile, content_type_header):
+	def parse(cls, infile, content_type_header, content_length, *extra_args, **extra_kwargs):
 		"""
 
 		Typically, called like:
 		#>>> v = FormData.parse(sys.stdin, env['CONTENT_TYPE'])
 		"""
 		self = cls()
-		def parse_multipart(infile, post_head, outerboundaries=()):
+		def parse_multipart(iterin, post_head, outerboundaries=()):
 			boundary = post_head['Content-Type']['boundary']
 			sep, term = '--%s\r\n' % boundary, '--%s--\r\n' % boundary
-			infile.readline() #Ignore initial boundary
+			iterin.next() #Ignore initial boundary
 			while True:
-				headers = dict(Header.parse(line) for line in watch(infile, '', '\r\n', *outerboundaries))
+				headers = dict(Header.parse(line) for line in watch(iterin, '', '\r\n', *outerboundaries))
 				if not headers:
 					break
 				cd = headers['Content-Disposition']
@@ -72,21 +96,21 @@ class FormData(MultiDict):
 				if 'Content-Type' in headers:
 					ct = headers['Content-Type']
 					if ct.key.startswith('multipart/'):
-						for name, content in parse_multipart(infile, headers, (sep, term)):
+						for name, content in parse_multipart(iterin, headers, (sep, term)):
 							yield name, content
 					else:
 						#File upload
 						yield name, self.handle_upload(name,
-							delimited(infile, '\r\n', '', sep, term, *outerboundaries),
-							cd.get('filename',''), ct.key)
+							delimited(iterin, '\r\n', '', sep, term, *outerboundaries),
+							cd.get('filename',''), ct.key, *extra_args, **extra_kwargs)
 				else:
 					#Text value
-					yield name, self.handle_value(name, delimited(infile, '\r\n', '', sep, term, *outerboundaries))
-		ct = content_type_header if isinstance(content_type_header, silk.webreq.header.Header) else Header.parse_value(content_type_header)
-		if ct.key == 'multipart/form-data':
-			self.update(parse_multipart(infile, {'Content-Type':ct}))
-		elif ct.key == 'application/x-www-form-urlencoded':
-			self.update(Query.parse(infile.readline(8192).strip()))
+					yield name, self.handle_value(name, delimited(iterin, '\r\n', '', sep, term, *outerboundaries), *extra_args, **extra_kwargs)
+		iterin = iter_lines(read_bounded(infile, content_length))
+		if content_type_header.key == 'multipart/form-data':
+			self.update(parse_multipart(iterin, {'Content-Type':content_type_header}))
+		elif content_type_header.key == 'application/x-www-form-urlencoded':
+			self.update(Query.parse(iterin.next().strip()))
 		return self
 
 if __name__=='__main__':

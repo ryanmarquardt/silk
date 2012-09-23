@@ -65,7 +65,7 @@ def format_status(code):
 
 _header = lambda name:property(
 	(lambda self:self.headers.__getitem__(name)),
-	(lambda self,new:self.headers.__setitem__(name,new)),
+	(lambda self,new:self.headers.__setitem__(name,str(new))),
 	(lambda self:self.headers.__delitem__(name)),
 )
 
@@ -118,8 +118,6 @@ class BaseRouter(object):
 	  contained in self.unhandled_error
 	  
 	"""
-	#RequestClass = Request
-	#ResponseClass = Response
 
 	unhandled_error = "The server has encountered a problem and can't recover. Please try again later."
 	error_view = View("Error: %(status)s %(message)s")
@@ -197,11 +195,14 @@ class BaseRouter(object):
 			),
 			post_vars = MultiDict(),
 		)
+		self.process_input(request)
+		return request
+
+	def process_input(self, request):
 		if request.method == 'POST' and request.headers.content_length:
 			FormData.handle_upload = self.receive_upload
-			request.post_vars = FormData.parse(request.wsgi.input, request.headers.content_type.key)
+			request.post_vars = FormData.parse(request.wsgi.input, request.headers.content_type, request.headers.content_length, request)
 		request.vars = request.post_vars or request.query
-		return request
 
 	def create_response(self):
 		return Response()
@@ -211,7 +212,7 @@ class BaseRouter(object):
 		def wsgi_handler(environment, start_response):
 			request, response = self.create_request(environment), self.create_response()
 			content = self.render(self.process(request, response), response)
-			start_response(format_status(response.code), response.headers.wsgi())
+			start_response(format_status(response.code), response.headers.as_list())
 			return content
 		application = wsgi_handler
 		return wsgi_handler
@@ -251,7 +252,6 @@ class PathRouter(BaseRouter):
 		self.receive_upload = function
 
 	def handler(self, request, response):
-		print request.args
 		elements, args, shift = request.args, (), True
 		while shift:
 			if elements in self.handlers:
@@ -327,23 +327,23 @@ if __name__=='__main__':
 	def upload(request, response):
 		r = dict(request)
 		env = r.pop('env')
-		if request.method == 'POST' and request.env.CONTENT_LENGTH:
-			data = request.wsgi.input.read(int(request.env.CONTENT_LENGTH))
-		else:
-			data = ''
 		return ''.join(map(str,[
 			FORM(INPUT(name='upload',type='file'),INPUT(type='submit'),method='post', enctype='multipart/form-data'),
 			FORM(INPUT(name='name'),INPUT(type='submit'),method='post',enctype='application/x-www-form-urlencoded'),
 			FORM(INPUT(name='name'),INPUT(type='submit'),method='get',enctype='application/x-www-form-urlencoded'),
 			PRE(request.vars),
-			P(`r`), P(`env`)] + [P(repr(x)) for x in data.split('\n')]))
+			P(`r`), P(`env`)]))
 
 	@router.set_uploader
 	def handle_upload(self, name, iterable, filename, content_type):
+		from hashlib import md5
+		hashsum = md5()
+		for i in iterable:
+			hashsum.update(i)
 		return container(
 			filename = filename,
 			content_type = content_type,
-			content = ''.join(iterable),
+			content = hashsum.hexdigest(),
 		)
 
 	scriptname = sys.argv[0].rpartition('/')[2]
