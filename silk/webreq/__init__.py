@@ -10,6 +10,7 @@ import cgi
 import collections
 import Cookie
 import sys
+import tempfile
 import traceback
 import urlparse
 import wsgiref.util
@@ -125,6 +126,7 @@ class BaseRouter(object):
 	def __init__(self, target=None):
 		if target:
 			self.handler = target
+		self.max_size = 1024**2
 
 	def handler(self, request, response):
 		raise NotImplementedError
@@ -132,8 +134,16 @@ class BaseRouter(object):
 	def report_error(self, (exc, obj, tb), request, response):
 		traceback.print_exception(exc, obj, tb)
 
-	def receive_upload(self, input_name, iterable, filename, content_type):
-		raise NotImplementedError
+	def receive_upload(self, input_name, iterable, filename, content_type, request):
+		tmp = tempfile.SpooledTemporaryFile(max_size=self.max_size)
+		for chunk in iterable:
+			tmp.write(chunk)
+		tmp.seek(0)
+		return container(
+			filename = filename,
+			content_type = content_type,
+			content = tmp,
+		)
 
 	def process(self, request, response):
 		try:
@@ -207,19 +217,19 @@ class BaseRouter(object):
 	def create_response(self):
 		return Response()
 	
-	def wsgi(self):
-		global application
-		def wsgi_handler(environment, start_response):
-			request, response = self.create_request(environment), self.create_response()
-			content = self.render(self.process(request, response), response)
-			start_response(format_status(response.code), response.headers.as_list())
-			return content
-		application = wsgi_handler
-		return wsgi_handler
+	def _handle(self, environment):
+		request, response = self.create_request(environment), self.create_response()
+		response.content = self.render(self.process(request, response), response)
+		return response
+	
+	def wsgi_handler(self, environment, start_response):
+		response = self._handle(environment)
+		start_response(format_status(response.code), response.headers.as_list())
+		return response.content
 
 	def test_serve(self, host='', port=8000):
 		from wsgiref.simple_server import make_server
-		httpd = make_server(host, port, self.wsgi())
+		httpd = make_server(host, port, self.wsgi_handler)
 		try:
 			httpd.serve_forever()
 		except KeyboardInterrupt:
@@ -227,6 +237,8 @@ class BaseRouter(object):
 
 	def cgi(self):
 		raise NotImplementedError
+		import os
+		response = self._handle(os.environ)
 
 	def fcgi(self):
 		raise NotImplementedError
@@ -244,7 +256,7 @@ class PathRouter(BaseRouter):
 	def __call__(self, *elements):
 		def f(handler):
 			self.handlers[elements] = handler
-			handler.url = URI(path=list(elements))
+			handler.path = elements
 			return handler
 		return f
 
@@ -348,7 +360,7 @@ if __name__=='__main__':
 
 	scriptname = sys.argv[0].rpartition('/')[2]
 	if scriptname == 'wsgi.py':
-		application = router.wsgi()
+		application = router.wsgi_handler
 	elif scriptname == 'cgi.py':
 		router.cgi()
 	else:
