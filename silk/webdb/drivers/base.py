@@ -1,5 +1,5 @@
 
-from silk import sequence, flatten
+from ... import sequence, flatten
 import sys
 import datetime
 

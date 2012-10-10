@@ -35,8 +35,8 @@ display: none;
 border-width: 1px;
 """
 
-from silk import *
-from node import *
+from .. import *
+from .node import *
 
 from functools import partial
 
@@ -640,7 +640,3 @@ __all__ = ['ANIMATION', 'APPEARANCE', 'BACKFACE_VISIBILITY', 'BACKGROUND',
 'TEXT', 'TOP', 'TRANSFORM', 'TRANSITION', 'Unit', 'Units', 'VERTICAL_ALIGN',
 'VISIBILITY', 'WHITE_SPACE', 'WIDOWS', 'WIDTH', 'WORD_BREAK', 'WORD_SPACING',
 'WORD_WRAP', 'Z_INDEX', 'css', 'url']
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()

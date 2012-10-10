@@ -2,7 +2,7 @@
 from .base import *
 
 import errno
-import warning
+import warnings
 
 import MySQLdb
 

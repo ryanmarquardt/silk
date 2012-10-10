@@ -13,7 +13,6 @@ del DIR
 del FONT
 del FRAME
 del FRAMESET
-del ISINDEX
 del NOFRAMES
 del STRIKE
 del TT

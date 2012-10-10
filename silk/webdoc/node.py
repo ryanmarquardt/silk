@@ -1,4 +1,4 @@
-from silk import *
+from .. import *
 from collections import MutableMapping, MutableSequence
 
 is_string = lambda x:isinstance(x,basestring)
@@ -246,7 +246,3 @@ class Node(MutableMapping, MutableSequence):
 					yield depth+1, element
 
 __all__ = ['Entity', 'Node']
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()

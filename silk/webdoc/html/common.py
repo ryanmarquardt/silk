@@ -1,5 +1,5 @@
-from silk import *
-from silk.webdoc.node import *
+from ... import *
+from ..node import *
 
 import collections
 from functools import partial
@@ -128,6 +128,7 @@ class A(XMLNode): name = 'a'
 class ABBR(XMLNode): name = 'abbr'
 class ACRONYM(XMLNode): name = 'acronym'
 class ADDRESS(XMLNode): name = 'address'
+class APPLET(XMLNode): name = 'applet'
 class B(XMLNode): name = 'b'
 class BDO(XMLNode): name = 'bdo'
 class BIG(XMLNode): name = 'big'
@@ -588,7 +589,3 @@ class HTMLDoc(HTML):
 			if dt_info.variant == 'Strict':
 				deprecated.update("""applet basefont center dir font iframe isindex menu noframes strike u""".split())
 		return self.walk(lambda x:isinstance(x,Node) and x.name in deprecated)
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()

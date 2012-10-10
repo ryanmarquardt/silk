@@ -6,11 +6,11 @@ import sys
 import os
 from urlparse import parse_qsl
 
-from silk import container, MultiDict
-import silk.webreq.header
-from silk.webreq.header import Header, HeaderList
-from silk.webreq.uri import URI
-from silk.webreq.query import Query
+from .. import container, MultiDict
+from . import header
+from .header import Header, HeaderList
+from .uri import URI
+from .query import Query
 
 __all__ = ["FormData"]
 
@@ -112,7 +112,3 @@ class FormData(MultiDict):
 		elif content_type_header.key == 'application/x-www-form-urlencoded':
 			self.update(Query.parse(iterin.next().strip()))
 		return self
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()

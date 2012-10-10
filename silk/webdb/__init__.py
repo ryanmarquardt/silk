@@ -206,10 +206,10 @@ import datetime
 import inspect
 import sys
 
-import drivers
-from drivers.base import timestamp
+from . import drivers
+from .drivers.base import timestamp
 
-from silk import *
+from .. import *
 
 class __Row__(tuple):
 	"""Base class for Row objects - elements of Selection objects
@@ -788,15 +788,3 @@ class DB(collection):
 			self.__driver__.alter_table(name, self[name])
 
 connect = DB.connect
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()
-
-	fdoc = '\n'.join(__doc__.split('\n')[8:])
-	fdoc = fdoc.replace('%','%%')
-	fdoc = fdoc.replace('DB()','DB.connect(%(conn)s, debug=True)')
-	for driver in drivers.__all__:
-		conn = ','.join(map(repr,(driver,)+getattr(getattr(drivers,driver),driver).test_args))
-		o = type('',(object,),{'__doc__':fdoc%dict(conn=conn)})
-		doctest.run_docstring_examples(o, globals(), name=__file__+'(%s)'%driver)

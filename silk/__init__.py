@@ -249,7 +249,3 @@ class MultiDict(collections.MutableMapping):
 		return '%s(%s)' % (self.__class__.__name__,dict.__repr__(self._dict))
 
 __all__ = ['container', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection', 'MultiDict']
-
-if __name__=='__main__':
-	import doctest
-	doctest.testmod()

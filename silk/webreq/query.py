@@ -2,7 +2,7 @@
 
 from urlparse import parse_qsl
 
-from silk import MultiDict
+from .. import MultiDict
 
 class Query(MultiDict):
 	"""

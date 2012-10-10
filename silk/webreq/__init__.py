@@ -3,7 +3,7 @@ r"""
 Applications are passed two arguments: one Request object and one Response object
 """
 
-from silk import *
+from .. import *
 
 import base64
 import cgi
@@ -16,10 +16,10 @@ import urlparse
 import wsgiref.util
 import wsgiref.headers
 
-from formdata import FormData
-from query import Query
-from header import Header, HeaderList
-from uri import URI
+from .formdata import FormData
+from .query import Query
+from .header import Header, HeaderList
+from .uri import URI
 
 class HTTP(Exception):
 	def __init__(self, code, message):

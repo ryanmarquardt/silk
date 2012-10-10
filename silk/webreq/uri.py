@@ -4,8 +4,8 @@ from urlparse import urlsplit, urlunsplit
 from urllib import urlencode
 from wsgiref.util import request_uri
 
-from silk import MultiDict
-from silk.webreq.query import Query
+from .. import MultiDict
+from .query import Query
 
 class URI(object):
 	def __init__(self, uri='', scheme='', host='', path=None, query=None, anchor=''):
