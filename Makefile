@@ -14,6 +14,7 @@ clean:
 
 test: build
 	$(TESTPYTHON) doctest/rundoctests.py
+	$(TESTPYTHON) doctest/testwebdbdrivers.py
 	$(TESTPYTHON) -m doctest doctest/*.txt
 
 public: clean
