@@ -106,6 +106,8 @@ class XMLNoChildNode(XMLNode):
 	>>> XMLNoChildNode.new('br')('ignored', _not='this')
 	XMLNoChildNode('br')(_not='this')
 	'''
+	def __init__(self, *children, **attributes):
+		super(XMLNoChildNode, self).__init__(**attributes)
 
 class XMLNotEmptyNode(XMLNode):
 	'''XMLNode which always renders with a start and end tag.
