@@ -190,6 +190,7 @@ class MultiDict(collections.MutableMapping):
 	>>> print m.c
 	None
 	"""
+	__sequence__ = True
 	def __init__(self, init=(), **kwargs):
 		if isinstance(init, MultiDict):
 			self._dict = init._dict.__copy__()
