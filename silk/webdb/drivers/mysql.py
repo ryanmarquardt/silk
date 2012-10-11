@@ -94,7 +94,7 @@ class mysql(driver_base):
 	def create_table_if_nexists(self, name, columns, primarykeys):
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore")
-			return super(mysql, self).create_table_if_nexists(self, name, columns, primarykeys)
+			return super(mysql, self).create_table_if_nexists(name, columns, primarykeys)
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
 		if self.debug:
