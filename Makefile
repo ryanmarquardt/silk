@@ -13,9 +13,9 @@ clean:
 	@python setup.py clean
 
 test: build
-	$(TESTPYTHON) doctest/rundoctests.py
-	$(TESTPYTHON) doctest/testwebdbdrivers.py
-	$(TESTPYTHON) -m doctest doctest/*.txt
+	@$(TESTPYTHON) doctest/rundoctests.py
+	@$(TESTPYTHON) doctest/testwebdbdrivers.py
+	@$(TESTPYTHON) -m doctest doctest/*.txt
 
 public: clean
 	@if test -n "`git status --porcelain`" ; then git status; exit 1; else git push; fi
