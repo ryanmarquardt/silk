@@ -7,7 +7,7 @@ setup(
 	version='0.0.1',
 	author='Ryan Marquardt',
 	author_email='ryan@integralws.com',
-	url='http://projects.integralws.com/webdoc',
+	url='http://github.com/orbnauticus/silk',
 	description='Tools for WSGI applications',
 	packages=[
 		'silk',
