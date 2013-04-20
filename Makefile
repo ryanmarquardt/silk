@@ -24,5 +24,5 @@ deb:
 	@if python setup.py sdist ; then cd dist; tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us; fi
 	@echo "Packages can be found under dist/"
 
-install-deb:
+install-deb: deb
 	@cd dist ; dpkg -i $(PACKAGES)
