@@ -5,7 +5,7 @@ PACKAGES=python-silk_$(VERSION)_all.deb python-silk-common_$(VERSION)_all.deb py
 TESTPYTHON=PYTHONPATH=$(PWD)/build/lib.linux-$(shell uname -p)-2.7 python
 DOCTEST=$(TESTPYTHON) -m doctest
 
-all: deb
+all: build
 .PHONY: all clean test public sdist deb install current build
 
 clean:
@@ -17,20 +17,12 @@ test: build
 	@$(TESTPYTHON) doctest/testwebdbdrivers.py
 	@$(TESTPYTHON) -m doctest doctest/*.txt
 
-public: clean
-	@if test -n "`git status --porcelain`" ; then git status; exit 1; else git push; fi
-
-current:
-	@git pull
-
 build:
 	@python setup.py build
 
-sdist:
-	@if python setup.py sdist ; then cd dist; tar -xf $(FULLNAME).tar.gz; fi
-
-deb: sdist
-	@cd dist/$(FULLNAME) ; debuild -i -uc -us
+deb:
+	@if python setup.py sdist ; then cd dist; tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us; fi
+	@echo "Packages can be found under dist/"
 
 install-deb:
 	@cd dist ; dpkg -i $(PACKAGES)
