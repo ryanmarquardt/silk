@@ -63,7 +63,7 @@ class Block(CSSNode):
 			else:
 				mychildren.append(child)
 		for k,v in attributes.items():
-			mychildren.append(Property(k)(*sequence(val)))
+			mychildren.append(Property(k)(*sequence(v)))
 		super(Block, self).__init__(*mychildren)
 		
 	def __str__(self):
