@@ -85,7 +85,7 @@ def is_sequence(x):
 
 def flatten(x):
 	'''Converts nested iterators into a single list. As with sequence(x), strings
-	are not considered to be iterators.
+	are not considered to be iterators. Depth-first algorithm.
 	
 	>>> flatten(1)
 	[1]
@@ -93,8 +93,8 @@ def flatten(x):
 	['123']
 	>>> flatten([1, [2], [[3]]])
 	[1, 2, 3]
-	>>> flatten([1, [2, [3, [[4]]]]])
-	[1, 2, 3, 4]
+	>>> flatten([1, [2, [3, [[4]], 5]]])
+	[1, 2, 3, 4, 5]
 	'''
 	return [a for i in x for a in flatten(i)] if is_sequence(x) else [x]
 
