@@ -28,6 +28,8 @@ class container(dict):
 	__setattr__ = dict.__setitem__
 	__delattr__ = dict.__delitem__
 
+cont = container
+
 def sequence(x):
 	'''Converts its argument into a list, but is sensitive to arguments that are \
 	iterable but not iterators (i.e. strings)
@@ -249,4 +251,4 @@ class MultiDict(collections.MutableMapping):
 	def __repr__(self):
 		return '%s(%s)' % (self.__class__.__name__,dict.__repr__(self._dict))
 
-__all__ = ['container', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection', 'MultiDict']
+__all__ = ['container', 'cont', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection', 'MultiDict']
