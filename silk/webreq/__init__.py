@@ -148,16 +148,18 @@ class BaseRouter(object):
 	def process(self, request, response):
 		try:
 			response.content = self.handler(request, response)
-			if response.content is None:
+			if response.content is None or response.content is NotImplemented:
 				raise HTTP(404, request.path)
 			return response.view
-		except HTTP, e:
+		except (HTTP,NotImplementedError), e:
+			if isinstance(e,NotImplementedError):
+				e = HTTP(404, request.path)
 			response.code = e.code
 			if e.code == 303:
 				response.headers['Location'] = e.message
 				response.content = []
 			else:
-				response.content = {'code':e.code, 'status':format_status(e.code), 'message':e.message}
+				response.content = dict(code=e.code, status=format_status(e.code), message=e.message)
 				return self.error_view
 		except:
 			try:
