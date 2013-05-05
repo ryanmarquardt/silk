@@ -1,7 +1,7 @@
 
-=====
+==========
 DB.connect
-=====
+==========
 
 >>> from silk.webdb import *
 >>> db = DB.connect('sqlite', 'path/to/database.sqlite')
@@ -66,9 +66,9 @@ TypeError: Cannot reference non-indexed table 'table4'
 ... 	DateTimeColumn('sent', default=datetime.datetime.now),
 ... )
 
------
+------------
 Table.insert
------
+------------
 
 >>> db.table1.insert(data='12345')
 >>> db.table1.insert(nonexistant=True)
@@ -101,9 +101,9 @@ TypeError: Table 'table4' has no primarykey
 >>> (db.table4.data=='abc').select().one().primarykey
 ()
 
------
+------------
 Table.select
------
+------------
 
 >>> for row in db.users.select(): print row
 Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
@@ -141,9 +141,9 @@ Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23,
 Row(first_name=u'Pat', last_name=u'Smith', email=u'pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
 
 
-=====
+======
 Record
-=====
+======
 
 >>> record = db.users['magginator@email.com']
 >>> print record
@@ -193,9 +193,9 @@ ValueError: Negative-valued slices not allowed
 >>> [r[0] for r in db.users.select(db.users.first_name+' '+db.users.last_name)]
 [u'Maggie Reynolds', u'Bob Smith', u'Pat Smith', u'Werfina Fablesmok']
 
-=====
+======================
 Inter-table references
-=====
+======================
 
 >>> db.define_table('addresses',
 ... 	StrColumn('name', primarykey=True),
