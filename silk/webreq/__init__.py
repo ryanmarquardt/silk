@@ -87,11 +87,11 @@ class Response(object):
 	content_length = _header('Content-Length')
 
 	@staticmethod
-	def StreamObj(obj, blksize=8192):
+	def stream(obj, blksize=8192):
 		return wsgiref.util.FileWrapper(obj, blksize)
 
 	@staticmethod
-	def StreamPath(path, blksize=8192):
+	def stream_path(path, blksize=8192):
 		return wsgiref.util.FileWrapper(open(path, 'rb'), blksize)
 
 class View(object):
