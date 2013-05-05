@@ -297,7 +297,10 @@ class Selection(object):
 			return False
 			
 	def one(self):
-		return iter(self).next()
+		try:
+			return iter(self).next()
+		except StopIteration:
+			return None
 
 class Expression(object):
 	def _op_args(self, op, *args):
