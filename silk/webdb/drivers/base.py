@@ -398,10 +398,10 @@ class driver_base(object):
 		raise NotImplementedError
 
 
-	op_EQUAL = staticmethod(lambda a,b:'%s IS %s'%(a,b))
+	op_EQUAL = staticmethod(lambda a,b:'%s %s %s'%(a,'IS'if'NULL'in(a,b)else'=',b))
 	op_LESSEQUAL = staticmethod(lambda a,b:'%s<=%s'%(a,b))
 	op_GREATERTHAN = staticmethod(lambda a,b:'%s>%s'%(a,b))
-	op_NOTEQUAL = staticmethod(lambda a,b:'%s IS NOT %s'%(a,b))
+	op_NOTEQUAL = staticmethod(lambda a,b:'%s %s %s'%(a,'IS NOT'if'NULL'in(a,b)else'!=',b))
 	op_LESSTHAN = staticmethod(lambda a,b:'%s<%s'%(a,b))
 	op_GREATEREQUAL = staticmethod(lambda a,b:'%s>=%s'%(a,b))
 	op_ADD = staticmethod(lambda a,b:'%s+%s'%(a,b))
