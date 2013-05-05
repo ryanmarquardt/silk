@@ -27,28 +27,28 @@ that have already been defined.
 
 >>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'))
 >>> list(mydb)
-[<table 'test_table'>]
+[<Table 'test_table'>]
 
 >>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> list(mydb)
-[<table 'test_table'>]
+[<Table 'test_table'>]
 
 >>> mydb.conform()
 >>> list(mydb)
-[<table 'test_table'>]
+[<Table 'test_table'>]
 
 Migrate modifies tables in the database to be like newly-assigned tables.
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> #mydb.migrate()
 >>> mydb.test_table
-<table 'test_table'>
+<Table 'test_table'>
 
 Conforming after a migration keeps the same columns, but other information might
 be lost. For example column data types might be lost (sqlite migrations don't
 change data types, boolean columns might be interpretted as integers, etc.)
 >>> mydb.conform()
 >>> mydb.test_table
-<table 'test_table'>
+<Table 'test_table'>
 
 It is always recommended to conform your database *before* defining columns.
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
@@ -595,7 +595,7 @@ class Table(object):
 	self._name: my name
 
 	>>> Table(None, 'table', ())
-	<table 'table'>
+	<Table 'table'>
 	>>> t = Table(None, 'table', [Column('abc', str), Column('def', int)])
 	>>> t.ALL[0].table == t
 	True
@@ -689,7 +689,7 @@ class Table(object):
 		del self._db[self._name]
 
 	def __repr__(self):
-		return '<table %r>' % self._name
+		return '<%s %r>' % (self.__class__.__name__, self._name)
 		
 	def __nonzero__(self):
 		return True
@@ -714,7 +714,7 @@ class DB(collection):
 	>>> mydb = DB.connect('sqlite')
 	>>> mydb.define_table('test', StrColumn('data'))
 	>>> list(mydb)
-	[<table 'test'>]
+	[<Table 'test'>]
 	"""
 	__driver__ = drivers.sqlite.sqlite()
 
