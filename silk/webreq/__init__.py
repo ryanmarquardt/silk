@@ -229,14 +229,6 @@ class BaseRouter(object):
 		start_response(format_status(response.code), response.headers.as_list())
 		return response.content
 
-	def test_serve(self, host='', port=8000):
-		from wsgiref.simple_server import make_server
-		httpd = make_server(host, port, self.wsgi_handler)
-		try:
-			httpd.serve_forever()
-		except KeyboardInterrupt:
-			exit(0)
-
 	def cgi(self):
 		raise NotImplementedError
 		import os
@@ -250,6 +242,56 @@ class BaseRouter(object):
 
 	def scgi(self):
 		raise NotImplementedError
+
+	def serve(self, method=None, one=False, **kwargs):
+		"""
+		>>> @BaseRouter
+		... def router(request, response):
+		...   return 'Hello World! %s' % request.uri
+		>>> exec router.serve(method='test', path='/hello', headers=False)
+		Hello World! http://localhost/hello
+		"""
+		if method is None:
+			method = sys.argv[0].rpartition('/')[2]
+			if method.endswith('.py'):
+				method = method[:-3]
+			elif method.endswith('.pyc'):
+				method = method[:-4]
+		method = method.lower()
+		if method == 'test':
+			path = kwargs.pop('path', '/')
+			response = self._handle({
+				'wsgi.url_scheme':'http',
+				'PATH_INFO':path,
+				'SERVER_NAME':'localhost',
+				'SERVER_PORT':'80'
+			})
+			print ''.join(self.render(None, response))
+		elif method == 'wsgi':
+			name = kwargs['name']
+			return 'application = %s.wsgi_handler' % name
+		elif method == 'cgi':
+			self.cgi()
+		elif method == 'fcgi':
+			self.fcgi()
+		elif method == 'scgi':
+			self.scgi()
+		elif method == 'mod_python':
+			self.mod_python()
+		else:
+			host = kwargs.pop('host', '')
+			port = kwargs.pop('port', 8000)
+			one = kwargs.pop('one', False)
+			from wsgiref.simple_server import make_server
+			httpd = make_server(host, port, self.wsgi_handler)
+			if one:
+				httpd.handle_request()
+			else:
+				try:
+					httpd.serve_forever()
+				except KeyboardInterrupt:
+					exit(0)
+		return ''
 
 class PathRouter(BaseRouter):
 	def __init__(self):
@@ -360,10 +402,4 @@ if __name__=='__main__':
 			content = hashsum.hexdigest(),
 		)
 
-	scriptname = sys.argv[0].rpartition('/')[2]
-	if scriptname == 'wsgi.py':
-		application = router.wsgi_handler
-	elif scriptname == 'cgi.py':
-		router.cgi()
-	else:
-		router.test_serve()
+	exec router.serve('router')
