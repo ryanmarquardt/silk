@@ -1,0 +1,96 @@
+Silk is a collection of libraries useful for building web applications. Silk is currently divided into several packages:
+
+* ``webdb``: A database abstraction layer, inspired by web2py's DAL, but less verbose.
+* ``webdoc``: Document generation tools for generating views of data, including templating and HTML and CSS helpers
+* ``webreq``: HTTP request handler supporting WSGI (recommended), CGI, FastCGI, SCGI and Apache's mod_python.
+
+Each package can be used independently. For example, an HTTP server that doesn't produce HTML can be built using webreq alone, or a cli database client can be written using only webdb. Webdoc's template parser can produce formatted text, or standards-compliant HTML documents can be produced using only python functions.
+
+The common code to all packages is small but essential and very useful. It is limited to a single python file available with:
+
+>>> import silk
+
+which contains four classes and three helper functions. Silk's unifying datatypes are based around three notions: `Containers`_, `Sequences`_, and `Collections`_.
+
+==========
+Data Types
+==========
+Containers
+----------
+
+``container`` is a subclass of ``dict`` whose members can be retrieved as attributes as well. Dictionaries where keys are also valid identifiers can be more clearly expressed using containers. This is especially useful for nested dictionaries. As an example, compare the following.
+
+>>> from silk import cont
+>>> request = cont(env=cont(method='GET', server=cont(name='silk',port=80)))
+
+*Note: this is an abbridged version of the structure for forming requests in* ``webreq``
+
+Using traditional item access:
+	
+>>> print request['env']['server']['name']
+silk
+
+Using ``container``'s attribute access:
+
+>>> print request.env.server.name
+silk
+
+Attribute access is implemented using the builtin dict's get method. If an item is not in the container, ``None`` is produced on attribute access rather than raising an error.
+
+>>> print request.env.server.version
+None
+>>> print request.env.server['version']
+Traceback (most recent call last):
+ ...
+KeyError: 'version'
+
+Any mapping can be converted into a container by passing it as the only argument. ``container`` is implemented by overwriting the ``__getattr__``, ``__setattr__``, and ``__delattr__`` methods with ``dict.get``, ``dict.__setitem__``, and ``dict.__delitem__`` respectively. Notably, ``dict``'s ``__init__`` and ``update`` methods are inherited unaltered.
+
+---------
+Sequences
+---------
+
+Iterables include any data type which has multiple member objects. When dealing with arguments of unknown type, it is useful to distinguish between text types and other iterables. Sequences are iterables which are also iterators. Currently this includes the builtins ``list`` and ``tuple`` and excludes ``str`` and ``unicode``.
+
+Rather than subclassing the list builtin, the concept of sequences are implemented using two functions: ``sequence`` which converts its argument into a list, and ``is_sequence`` which determines whether its argument is an iterator.
+
+>>> from silk import sequence, is_sequence
+
+>>> sequence([1, 2, 3])
+[1, 2, 3]
+
+>>> sequence('123')
+['123']
+
+>>> sequence(('123',))
+['123']
+
+Technically, ``is_sequence`` is a duck-typing method, checking whether its argument has an ``__iter__`` method or a ``__sequence__`` attribute which evaluates ``True``. If an object's ``__sequence__`` attribute evaluates false, it will never be converted to a list. For example,
+
+>>> class a(tuple):
+...   __sequence__ = False
+
+>>> class b(tuple):
+...   __sequence__ = True
+
+>>> is_sequence(a([1]))
+False
+
+>>> print sequence(a([1]))
+[(1,)]
+
+>>> is_sequence(b([1]))
+True
+
+>>> print sequence(b([1]))
+[1]
+
+One more function, ``flatten``, does a depth-first search of its argument and returns a sequence of all the non-sequence objects it finds. Sequences, are used heavily in the ``webdoc`` package, where flatten gives more flexibility in passing children to a node.
+
+>>> from silk.webdoc.html import DIV
+>>> print DIV(DIV('a'), DIV(map(DIV,['b', 'c', 'd']), 'e'))
+<div><div>a</div><div><div>b</div><div>c</div><div>d</div>e</div></div>
+
+-----------
+Collections
+-----------
