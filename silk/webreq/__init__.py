@@ -149,11 +149,11 @@ class BaseRouter(object):
 		try:
 			response.content = self.handler(request, response)
 			if response.content is None or response.content is NotImplemented:
-				raise HTTP(404, request.path)
+				raise HTTP(404, request.uri.path)
 			return response.view
 		except (HTTP,NotImplementedError), e:
 			if isinstance(e,NotImplementedError):
-				e = HTTP(404, request.path)
+				e = HTTP(404, request.uri.path)
 			response.code = e.code
 			if e.code == 303:
 				response.headers['Location'] = e.message
@@ -179,11 +179,12 @@ class BaseRouter(object):
 
 	def create_request(self, environment):
 		uri = URI.from_env(environment)
+		path = uri.path.lstrip('/')
 		request = container(
 			env = environment,
 			method = environment.get('REQUEST_METHOD','GET'),
 			uri = uri,
-			args = tuple(uri.path),
+			args = tuple(path.split('/') if path else ()),
 			query = Query.parse(environment.get('QUERY_STRING','')),
 			server = container(
 				name = environment.get('SERVER_NAME',''),

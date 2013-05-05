@@ -17,16 +17,6 @@ class URI(object):
 		self.anchor = anchor or self.anchor
 
 	@property
-	def path(self):
-		return self.__dict__['path']
-	@path.setter
-	def path(self, new):
-		new = new or '/'
-		if isinstance(new, basestring):
-			new = new[1:].split('/')
-		self.__dict__['path'] = new
-
-	@property
 	def query(self):
 		return self.__dict__['query']
 	@query.setter
@@ -48,7 +38,7 @@ class URI(object):
 		return cls(request_uri(env))
 
 	def __str__(self):
-		return urlunsplit((self.scheme, self.host, self.get_path(), self.get_query(), self.anchor))
+		return urlunsplit((self.scheme, self.host, self.path, self.get_query(), self.anchor))
 
 	def __repr__(self):
 		return 'URI(%r)' % (str(self),)
