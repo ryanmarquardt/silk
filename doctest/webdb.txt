@@ -193,6 +193,9 @@ ValueError: Negative-valued slices not allowed
 >>> [r[0] for r in db.users.select(db.users.first_name+' '+db.users.last_name)]
 [u'Maggie Reynolds', u'Bob Smith', u'Pat Smith', u'Werfina Fablesmok']
 
+>>> len(list((db.users.last_name != None).select()))
+4
+
 ======================
 Inter-table references
 ======================
