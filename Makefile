@@ -6,7 +6,7 @@ TESTPYTHON=PYTHONPATH=$(PWD)/build/lib.linux-$(shell uname -p)-2.7 python
 DOCTEST=$(TESTPYTHON) -m doctest
 
 all: build
-.PHONY: all clean test public sdist deb install current build
+.PHONY: all clean test public sdist deb install current build doc
 
 clean:
 	@debuild clean
@@ -26,3 +26,8 @@ deb:
 
 install-deb: deb
 	@cd dist ; dpkg -i $(PACKAGES)
+
+docs: $(patsubst %.txt,%.html,$(wildcard doctest/*.txt))
+
+doctest/%.html: doctest/%.txt
+	$(DOCTEST) $^ && rst2html $^ $@
