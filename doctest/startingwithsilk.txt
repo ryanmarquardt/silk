@@ -1,0 +1,61 @@
+Silk is a collection of libraries useful for building web applications. Silk is currently divided into several packages:
+
+* ``webdb``: A database abstraction layer, inspired by web2py's DAL, but less verbose.
+* ``webdoc``: Document generation tools for generating views of data, including templating and HTML and CSS helpers
+* ``webreq``: HTTP request handler supporting WSGI (recommended), CGI, FastCGI, SCGI and Apache's mod_python.
+
+Each package can be used independently. For example, an HTTP server that doesn't produce HTML can be built using webreq alone, or a cli database client can be written using only webdb. Webdoc's template parser can produce formatted text, or standards-compliant HTML documents can be produced using only python functions.
+
+=========
+Importing
+=========
+
+For integrated projects,
+	
+>>> from silk.globals import *
+
+will pull in useful objects from all available silk packages. This is functionally equivalent to importing ``*`` from ``silk.webdoc``, ``silk.webdb``, and ``silk.webreq``, but with checks that each is available.
+
+========
+Overview
+========
+
+Silk follows the model-view-controller (MVC) pattern of developing web applications. In order to create a proper, working web application, the following steps need to be accomplished.
+
+#. Create your model: Create a ``webdb`` ``DB`` object and define tables to store your data.
+#. Write a controller: Write a ``webreq`` router, or configure one of the default routers.
+#. Create some views: Views define how data is displayed, using ``webdoc`` document types and templates.
+
+===============
+Hello World
+===============
+
+The absolute minimum required to generate a response from a silk application requires a) creating a router and b) starting it.
+
+>>> @BaseRouter
+... def router(request, response):
+...   return 'Hello World!'
+
+>>> exec router.serve(method='test')
+Hello World!
+
+In this tutorial we will be using the 'test' method of serving pages. This instructs the router to generate a dummy request and print the response. If method is not specified, the router will try to guess which method to use based on the execution environment. It defaults to a builtin server (``wsgiref.simple_server``) listening on all interfaces on port 8000.
+
+--------------------
+Anatomy of a Request
+--------------------
+
+Each time a page is requested, a request and a response object are created and passed as arguments to the router's ``handle`` method. The definition above can also be achieved by subclassing BaseRouter like so
+
+>>> class Router(BaseRouter):
+...   def handle(self, request, response):
+...     return 'Hello World!'
+
+``request`` is a container with information about the HTTP request and execution environment. A complete listing of information requests are populated with is available in the documentation. Some interesting attributes include:
+
+* ``request.uri``: An object representing the text in the user's address bar. The URI is broken into its component parts: [scheme]://[host][path]?[query]#[anchor]
+* ``request.method``: The HTTP command used with the request. Usually 'GET' or 'POST'. The latter indicates a form was used to submit information.
+* ``request.vars``: A MultiDict (see documentation for silk module) of submitted information. If the router is handling a POST request, this comes from the uploaded data. If it is a GET request, it comes from the query part of the URI.
+* ``request.headers``: HTTP headers sent by the client
+
+
