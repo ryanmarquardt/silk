@@ -1,36 +1,52 @@
-Silk is a collection of libraries useful for building web applications. Silk is currently divided into several packages:
+Silk is a collection of libraries useful for building web applications. Silk is
+currently divided into several packages:
 
-* ``webdb``: A database abstraction layer, inspired by web2py's DAL, but less verbose.
-* ``webdoc``: Document generation tools for generating views of data, including templating and HTML and CSS helpers
-* ``webreq``: HTTP request handler supporting WSGI (recommended), CGI, FastCGI, SCGI and Apache's mod_python.
+* ``webdb``: A database abstraction layer, inspired by web2py's DAL, but less
+             verbose.
+* ``webdoc``: Document generation tools for generating views of data, including
+              templating and HTML and CSS helpers
+* ``webreq``: HTTP request handler supporting WSGI (recommended), CGI, FastCGI,
+              SCGI and Apache's mod_python.
 
-Each package can be used independently. For example, an HTTP server that doesn't produce HTML can be built using webreq alone, or a cli database client can be written using only webdb. Webdoc's template parser can produce formatted text, or standards-compliant HTML documents can be produced using only python functions.
+Each package can be used independently. For example, an HTTP server that doesn't
+produce HTML can be built using webreq alone, or a cli database client can be
+written using only webdb. Webdoc's template parser can produce formatted text,
+or standards-compliant HTML documents can be produced using only python
+functions.
 
 =========
 Importing
 =========
 
 For integrated projects,
-	
+
 >>> from silk.globals import *
 
-will pull in useful objects from all available silk packages. This is functionally equivalent to importing ``*`` from ``silk.webdoc``, ``silk.webdb``, and ``silk.webreq``, but with checks that each is available.
+will pull in useful objects from all available silk packages. This is
+functionally equivalent to importing ``*`` from ``silk.webdoc``, ``silk.webdb``,
+and ``silk.webreq``, but with checks that each is available.
 
 ========
 Overview
 ========
 
-Silk follows the model-view-controller (MVC) pattern of developing web applications. In order to create a proper, working web application, the following steps need to be accomplished.
+Silk follows the model-view-controller (MVC) pattern of developing web
+applications. In order to create a proper, working web application, the
+following steps need to be accomplished.
 
-#. Create your model: Create a ``webdb`` ``DB`` object and define tables to store your data.
-#. Write a controller: Write a ``webreq`` router, or configure one of the default routers.
-#. Create some views: Views define how data is displayed, using ``webdoc`` document types and templates.
+#. Create your model: Create a ``webdb`` ``DB`` object and define tables to
+   store your data.
+#. Write a controller: Write a ``webreq`` router, or configure one of the
+   default routers.
+#. Create some views: Views define how data is displayed, using ``webdoc``
+   document types and templates.
 
 ===============
 Hello World
 ===============
 
-The absolute minimum required to generate a response from a silk application requires a) creating a router and b) starting it.
+The absolute minimum required to generate a response from a silk application
+requires a) creating a router and b) starting it.
 
 >>> @BaseRouter
 ... def router(request, response):
@@ -39,23 +55,182 @@ The absolute minimum required to generate a response from a silk application req
 >>> exec router.serve(method='test')
 Hello World!
 
-In this tutorial we will be using the 'test' method of serving pages. This instructs the router to generate a dummy request and print the response. If method is not specified, the router will try to guess which method to use based on the execution environment. It defaults to a builtin server (``wsgiref.simple_server``) listening on all interfaces on port 8000.
+In this tutorial we will be using the 'test' method of serving pages. This
+instructs the router to generate a dummy request and print the response. If
+``method`` is not specified, the router will try to guess which method to use
+based on the execution environment. It defaults to a builtin server
+(``wsgiref.simple_server``) listening on all interfaces on port 8000.
 
 --------------------
 Anatomy of a Request
 --------------------
 
-Each time a page is requested, a request and a response object are created and passed as arguments to the router's ``handle`` method. The definition above can also be achieved by subclassing BaseRouter like so
+Each time a page is requested, a request and a response object are created and
+passed as arguments to the router's ``handle`` method. The definition above can
+also be achieved by subclassing BaseRouter like so
 
 >>> class Router(BaseRouter):
-...   def handle(self, request, response):
+...   def handler(self, request, response):
 ...     return 'Hello World!'
 
-``request`` is a container with information about the HTTP request and execution environment. A complete listing of information requests are populated with is available in the documentation. Some interesting attributes include:
+``request`` is a container with information about the HTTP request and execution
+environment. A complete listing of information requests are populated with is
+available in the documentation. Some interesting attributes include:
 
-* ``request.uri``: An object representing the text in the user's address bar. The URI is broken into its component parts: [scheme]://[host][path]?[query]#[anchor]
-* ``request.method``: The HTTP command used with the request. Usually 'GET' or 'POST'. The latter indicates a form was used to submit information.
-* ``request.vars``: A MultiDict (see documentation for silk module) of submitted information. If the router is handling a POST request, this comes from the uploaded data. If it is a GET request, it comes from the query part of the URI.
+* ``request.uri``: An object representing the text in the user's address bar.
+  The URI is broken into its component parts:
+  ``[scheme]://[host][path]?[query]#[anchor]``
+* ``request.method``: The HTTP command used with the request. Usually 'GET' or
+  'POST'. The latter indicates a form was used to submit
+  information.
+* ``request.vars``: A MultiDict (see documentation for silk module) of submitted
+  information. If the router is handling a POST request, this
+  comes from the uploaded data. If it is a GET request, it
+  comes from the query part of the URI.
 * ``request.headers``: HTTP headers sent by the client
 
+---------------------
+Anatomy of a Response
+---------------------
 
+Responding to a client's request takes two parts. Whatever is returned by the
+router's handler method is formatted and delivered (more on this in the section
+on views) as the response content.
+
+Silk tries to handle returned data sensibly.
+
+* If ``None`` or nothing is returned, a 404 Path Not Found error is raised
+* If text is returned (``str`` or ``unicode`` or a subclass), it is delivered
+  as-is
+* If the content is a ``dict`` or other mapping, ``response.view`` is used to
+  format it as text.
+* Any other iterable object is interpretted as a sequence of raw data to be
+  streamed to the client. ``response.stream`` is a handy utility function which
+  will stream any file-like object to the client.
+
+Other information about the response is given by modifying
+``handler``'s ``response`` argument.
+
+* ``response.content_type``: A shortcut for setting the Content-Type header,
+  which provides the MIME type of the content. Defaults to ``'text/html'``.
+* ``response.view``: A view object which will be used to format data returned
+  by the handler as a mapping.
+* ``response.code``: The HTTP response code. ``200``, the default, indicates a
+  successful response. This attribute should generally not be set directly. To
+  indicate an error to the client, raise an HTTP exception with the desired code
+  as its first argument.
+* ``response.headers``: A list of all HTTP headers. By default, only
+  Content-Type is set.
+
+==========
+Hello Data
+==========
+
+We've received and responded to requests, and we know a little bit about how
+content is delivered. We need to connect our handler to data in order for it to
+really be useful. ``webdb`` allows silk to connect to databases. Our
+``silk.globals`` import up above brought in everything we need, but if you're
+using ``webdb`` on its own, run
+
+>>> from silk.webdb import *
+
+-------------------
+Making a Connection
+-------------------
+
+We need to connect to a database and define some tables before we can store any
+data. The DB object lets us make connections. Running
+
+>>> db = DB()
+
+or
+
+>>> db = DB.connect('sqlite')
+
+connects to a sqlite database in memory. ``DB()`` accepts no arguments, but
+providing a path as a second argument to ``DB``'s ``connect`` method lets us
+store data on the file system.
+
+Let's say we're writing an intranet site for tracking employee data. We'll need
+a table describing each employee:
+
+>>> db.define_table('employees',
+...   Column('name', str),
+...   Column('age', int),
+...   Column('email', str),
+... )
+
+``db`` is a ``collection`` of all defined tables. The ``employees`` table we
+just created can be retrieved with attribute or item access.
+
+>>> db.employees is db['employees']
+True
+
+Let's add some employees.
+
+>>> db.employees.insert(name='Miriam', age=42, email='miriam@company.com')
+>>> db.employees.insert(name='Hank', age=65)
+>>> db.employees.insert(name='Jessie', age=22, email='jessie@company.com')
+
+Each table automatically includes a column ``rowid`` which assigns a unique
+integer to each record. Records can be accessed by rowid from the table
+
+>>> db.employees[1]
+Row(name='Miriam', age=42, email='miriam@company.com')
+
+You can also get data out by building queries. It's easier than you might think,
+and doesn't require learning any SQL. To get all employees over age 50:
+
+>>> for employee in (db.employees.age > 50).select():
+...   print employee
+Row(name='Hank', age=65, email=None)
+
+To get all employees with an email address:
+
+>>> for employee in (db.employees.email != None).select(orderby=db.employees.email):
+...   print employee
+Row(name='Jessie', age=22, email='jessie@company.com')
+Row(name='Miriam', age=42, email='miriam@company.com')
+
+---------------
+Serving up Data
+---------------
+
+Let's rewrite our router to use some of this new data.
+
+>>> @BaseRouter
+... def router(request, response):
+...   return 'Average age at this company: %i' % db.employees.select(db.employees.age.average()).one()[0]
+
+>>> exec router.serve(method='test')
+Average age at this company: 43
+
+Using a table's select method queries all the rows in the table. You'll notice
+we provided an argument to the select method this time. Arguments to select are
+all of the columns that should be retrieved. We used a special aggregate column
+which applied a function to all of the values that were retrieved. The ``one``
+method returns the first row from the result set and we chose the only value in
+that row.
+
+We can do so much more, though. It would be nice to have a page on each person
+to review their information. 
+
+>>> @BaseRouter
+... def router(request, response):
+...   if len(request.args) == 0:
+...     return 'Average age at this company: %i' % db.employees.select(db.employees.age.average()).one()[0]
+...   elif len(request.args) == 1:
+...     employees = (db.employees.name == request.args[0]).select().one()
+...     return 'Employee Information\nName: %(name)s\nAge: %(age)s\nEmail: %(email)s' % vars(employee)
+
+>>> exec router.serve(method='test')
+Average age at this company: 43
+
+>>> exec router.serve(method='test', path='/Miriam')
+Employee Information
+Name: Miriam
+Age: 42
+Email: miriam@company.com
+
+>>> exec router.serve(method='test', path='/Miriam/nosuchpath')
+Error: 404 Not Found /Miriam/nosuchpath
