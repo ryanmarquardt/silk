@@ -222,7 +222,7 @@ class __Row__(tuple):
 		return tuple(self[c.name] for c in self._selection.primarykey)
 
 	def _asdict(self):
-		return dict(zip(self._selection.names, tuple(self)))
+		return dict((k.name,self[k.name]) for k in self._selection.columns)
 	__dict__ = property(_asdict)
 		
 	def update(self, **kwargs):
