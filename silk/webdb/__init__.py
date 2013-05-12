@@ -411,8 +411,8 @@ class Expression(object):
 
 class Where(Expression):
 	def __init__(self, old, *wrapped, **kwargs):
+		self._db = old._db
 		if isinstance(old, Table):
-			self._db = old._db
 			self._tables = {old}
 			self._text_affinity = False
 			self._where_tree = []
@@ -420,7 +420,6 @@ class Where(Expression):
 			self.fromdb = None
 			self.native_type = None
 		else:
-			self._db = old._db
 			self._tables = old._tables
 			self._where_tree = old._op_args(*wrapped)
 			self.todb = kwargs.get('todb', old.todb)
