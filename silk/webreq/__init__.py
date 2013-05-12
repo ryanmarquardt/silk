@@ -95,11 +95,16 @@ class Response(object):
 		return wsgiref.util.FileWrapper(open(path, 'rb'), blksize)
 
 class View(object):
+	def __init__(self, renderer=None):
+		self.render = renderer
+
+class TextView(object):
 	def __init__(self, text):
 		self.text = text
 
 	def render(self, vars):
 		return self.text % vars
+
 
 class BaseRouter(object):
 	r"""Base class for routing of web requests
@@ -121,12 +126,13 @@ class BaseRouter(object):
 	"""
 
 	unhandled_error = "The server has encountered a problem and can't recover. Please try again later."
-	error_view = View("Error: %(status)s %(message)s")
+	error_view = TextView("Error: %(status)s %(message)s")
 
 	def __init__(self, target=None):
 		if target:
 			self.handler = target
 		self.max_size = 1024**2
+		self.default_view = None
 
 	def handler(self, request, response):
 		raise NotImplementedError
@@ -150,7 +156,6 @@ class BaseRouter(object):
 			response.content = self.handler(request, response)
 			if response.content is None or response.content is NotImplemented:
 				raise HTTP(404, request.uri.path)
-			return response.view
 		except (HTTP,NotImplementedError), e:
 			if isinstance(e,NotImplementedError):
 				e = HTTP(404, request.uri.path)
@@ -173,7 +178,7 @@ class BaseRouter(object):
 		if isinstance(response.content, basestring):
 			return [response.content]
 		elif isinstance(response.content, collections.Mapping):
-			return [view.render(response.content)]
+			return [str(view.render(response.content))]
 		elif isinstance(response.content, collections.Iterable):
 			return response.content
 
@@ -218,11 +223,13 @@ class BaseRouter(object):
 		request.vars = request.post_vars or request.query
 
 	def create_response(self):
-		return Response()
+		response = Response()
+		response.view = self.default_view
+		return response
 	
 	def _handle(self, environment):
 		request, response = self.create_request(environment), self.create_response()
-		response.content = self.render(self.process(request, response), response)
+		response.content = self.render(self.process(request, response) or response.view, response)
 		return response
 	
 	def wsgi_handler(self, environment, start_response):
@@ -267,7 +274,7 @@ class BaseRouter(object):
 				'SERVER_NAME':'localhost',
 				'SERVER_PORT':'80'
 			})
-			print ''.join(self.render(None, response))
+			print ''.join(response.content)
 		elif method == 'wsgi':
 			name = kwargs['name']
 			return 'application = %s.wsgi_handler' % name
