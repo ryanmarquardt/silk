@@ -269,6 +269,8 @@ class XML(XMLNode):
 	def __str__(self):
 		return ''.join(map(str,self.children))
 
+NBSP = XML('&nbsp;')
+
 class CAT(XMLNode):
 	'''Concatenates child nodes.
 	
