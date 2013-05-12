@@ -233,7 +233,7 @@ class __Row__(tuple):
 		table = self._selection.columns[0].table
 		query = (table._by_pk(self.primarykey))
 		query.update(**kwargs)
-		return query.select_one()
+		return query.select().one()
 		
 	def __iter__(self):
 		for i in range(len(self._selection.explicit)):
@@ -444,18 +444,6 @@ class Where(Expression):
 		values = self._db.__driver__.select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
 		return Selection(all_columns, columns, primarykey, values)
 		
-	def select_one(self, *columns, **props):
-		columns = self._get_columns(columns)
-		all_columns = columns[:]
-		primarykey = []
-		if not self._tables:
-			raise Exception('No tables! Using %s' % flatten(columns))
-		elif len(self._tables) == 1 and not props.get('distinct'):
-			primarykey = self._tables.copy().pop().primarykey
-			all_columns.extend(primarykey)
-		values = self._db.__driver__.select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
-		return Selection(all_columns, columns, primarykey, values).one()
-		
 	def count(self, **props):
 		columns = flatten(table.primarykey for table in self._tables)
 		values = self._db.__driver__.select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
@@ -657,10 +645,10 @@ class Table(object):
 		raise TypeError('Table %r has no primarykey' % (self._name))
 
 	def __getitem__(self, key):
-		try:
-			return self._by_pk(key).select_one(self.ALL)
-		except StopIteration:
+		result = self._by_pk(key).select(self.ALL).one()
+		if result is None:
 			raise KeyError('No Row in database matching primary key %s'%repr(sequence(key))[1:-1])
+		return result
 
 	def __delitem__(self, key):
 		self._by_pk(key).delete()
