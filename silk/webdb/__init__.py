@@ -393,7 +393,9 @@ class Expression(object):
 		return Where(self, drivers.base.REPLACE, self, old, new)
 	def __getitem__(self, index):
 		if isinstance(index, slice):
-			start = (index.start or 0) + 1
+			start = (index.start or 0)
+			if start >= 0:
+				start += 1
 			if index.step not in (None, 1):
 				raise ValueError('Slices of db columns must have step==1')
 			if index.stop is None:
