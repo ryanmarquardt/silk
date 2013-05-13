@@ -391,6 +391,10 @@ class Expression(object):
 		return Where(self, drivers.base.RSTRIP, self)
 	def replace(self, old, new):
 		return Where(self, drivers.base.REPLACE, self, old, new)
+	def endswith(self, suffix):
+		return self[-len(suffix):] == suffix
+	def startswith(self, prefix):
+		return self[:len(prefix)] == prefix
 	def __getitem__(self, index):
 		if isinstance(index, slice):
 			start = (index.start or 0)
