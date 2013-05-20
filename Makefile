@@ -24,6 +24,9 @@ test: build
 build: $(SRCFILES)
 	@python setup.py build
 
+install:
+	@python setup.py install
+
 debian/python-silk-common.install: BLANK
 	ls silk | grep \\.py$$ | awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
 
