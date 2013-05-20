@@ -1,7 +1,8 @@
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/__init__.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/node.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/__init__.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/common.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/html4.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/html5.py
 debian/tmp/usr/lib/python*/*-packages/silk/webdoc/css.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/__init__.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/stencil.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/node.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/html5.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/__init__.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/html4.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdoc/html/common.py

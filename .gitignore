@@ -3,10 +3,10 @@ MANIFEST
 dist/*
 build/*
 debian/*
+debian/*.install
 !debian/changelog
 !debian/compat
 !debian/control
 !debian/copyright
-!debian/*.install
 !debian/rules
 !debian/pyversions

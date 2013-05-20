@@ -1,4 +1,4 @@
-debian/tmp/usr/lib/python*/*-packages/silk/webdb/__init__.py
-debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/__init__.py
 debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/base.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/__init__.py
 debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/sqlite.py
+debian/tmp/usr/lib/python*/*-packages/silk/webdb/__init__.py

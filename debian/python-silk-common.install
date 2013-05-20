@@ -1,2 +1,2 @@
-debian/tmp/usr/lib/python*/*-packages/silk/__init__.py
-debian/tmp/usr/lib/python*/*-packages/silk/globals.py
+debian/tmp/usr/lib/python*/*-packages/globals.py
+debian/tmp/usr/lib/python*/*-packages/__init__.py
