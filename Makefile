@@ -28,26 +28,35 @@ install:
 	@python setup.py install
 
 debian/python-silk-common.install: BLANK
-	ls silk | grep \\.py$$ | awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
+	@ls silk | grep \\.py$$ | \
+		awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
 
 debian/python-silk-webdb.install: BLANK
-	ls -d silk/webdb/* silk/webdb/drivers/* | egrep '/(__init__|base|sqlite)\.py$$' | awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
+	@ls -d silk/webdb/* silk/webdb/drivers/* | \
+		egrep '/(__init__|base|sqlite)\.py$$' | \
+		awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
 
 debian/python-silk-webdb-mysql.install: BLANK
-	echo "debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/mysql.py" > $@
+	@echo "debian/tmp/usr/lib/python*/*-packages/silk/webdb/drivers/mysql.py" > $@
 
 debian/python-silk-webdoc.install: BLANK
-	find silk/webdoc | grep \\.py$$ | awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
+	@find silk/webdoc | grep \\.py$$ | \
+		awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
 
 debian/python-silk-webreq.install: BLANK
-	find silk/webreq | grep \\.py$$ | awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
+	@find silk/webreq | grep \\.py$$ | \
+		awk '{ print "debian/tmp/usr/lib/python*/*-packages/" $$0}' > $@
 
-debian/install: debian/python-silk-common.install debian/python-silk-webdb.install debian/python-silk-webdb-mysql.install debian/python-silk-webdoc.install debian/python-silk-webreq.install 
+debian/install: debian/python-silk-common.install \
+                debian/python-silk-webdb.install \
+                debian/python-silk-webdb-mysql.install \
+                debian/python-silk-webdoc.install \
+                debian/python-silk-webreq.install 
 
 dist/%.deb: debian/%.install
 
 deb: $(FULLNAME).tar.gz debian/install
-	@cd dist; $(UNSUDO) tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us
+	@cd dist; tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us
 	@echo "Packages can be found under dist/"
 
 sdist: $(FULLNAME).tar.gz
