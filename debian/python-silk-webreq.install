@@ -1,5 +1,0 @@
-debian/tmp/usr/lib/python*/*-packages/silk/webreq/__init__.py
-debian/tmp/usr/lib/python*/*-packages/silk/webreq/formdata.py
-debian/tmp/usr/lib/python*/*-packages/silk/webreq/header.py
-debian/tmp/usr/lib/python*/*-packages/silk/webreq/query.py
-debian/tmp/usr/lib/python*/*-packages/silk/webreq/uri.py
