@@ -1,3 +1,20 @@
+"""Silk is a collection of libraries useful for building web applications.
+
+Silk is currently divided into several packages:
+
+* ``webdb``: A database abstraction layer, inspired by web2py's DAL, but less
+             verbose.
+* ``webdoc``: Document generation tools for generating views of data, including
+              templating and HTML and CSS helpers
+* ``webreq``: HTTP request handler supporting WSGI (recommended), CGI, FastCGI,
+              SCGI and Apache's mod_python.
+
+Each package can be used independently. For example, an HTTP server that doesn't
+produce HTML can be built using webreq alone, or a cli database client can be
+written using only webdb. Webdoc's template parser can produce formatted text,
+or standards-compliant HTML documents can be produced using only python
+functions.
+"""
 
 import collections
 
