@@ -56,8 +56,12 @@ debian/install: debian/python-silk-common.install \
 dist/%.deb: debian/%.install
 
 deb: $(FULLNAME).tar.gz debian/install
-	@cd dist; tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us
-	@echo "Packages can be found under dist/"
+	@if test ! $$(which debuild); then \
+		echo "Command not found: debuild. Install package devscripts."; \
+	else \
+		cd dist; tar -xf $(FULLNAME).tar.gz; cd $(FULLNAME) ; debuild -i -uc -us; \
+		echo "Packages can be found under dist/"; \
+	fi
 
 sdist: $(FULLNAME).tar.gz
 
@@ -67,9 +71,13 @@ $(FULLNAME).tar.gz:
 $(PACKAGES): deb
 
 install-deb: $(PACKAGES)
-	@dpkg -i $(PACKAGES)
+	@sudo dpkg -i $(PACKAGES)
 
 docs: $(patsubst %.txt,%.html,$(wildcard doctest/*.txt))
 
 doctest/%.html: doctest/%.txt
-	@$(DOCTEST) $^ && rst2html $^ $@
+	@if test ! $$(which rst2html); then \
+		echo "Command not found: rst2html. Install package python-docutils."; \
+	else \
+		$(DOCTEST) $^ && rst2html $^ $@; \
+	fi
