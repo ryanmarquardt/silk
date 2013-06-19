@@ -1,5 +1,9 @@
 """Database abstraction layer
 
+webdb is a database abstraction layer inspired by web2py's DAL. The goal
+of webdb is to be more succinct and offer better cross-table integration.
+
+
 Use the connect method to open a database connection.
 >>> mydb = DB.connect('sqlite','path/to/database.sqlite')
 Traceback (most recent call last):
@@ -9,19 +13,23 @@ IOError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
 By default, an in-memory database is created.
 >>> mydb = DB()
 
-Currently only sqlite databases are supported. Other databases will be supported
-with drivers. See webdb.drivers documentation for more information.
+Currently only sqlite and mysql databases are supported. Other databases
+may be supported with drivers. See webdb.drivers documentation for more
+information.
 
 ===
 Tables
 ===
 
-Tables are defined by assigning them to attributes of a database. Two special
-methods help with definitions.
+Tables are created using the ``define_table`` method of any database
+object. Two special methods help with table definitions: ``conform`` and
+``migrate``.
 
-Conform reads table definitions from the database, overriding any tables
-that have already been defined.
+``conform`` reads table definitions from the database, overriding any
+tables that have already been defined.
+
 >>> mydb.conform()
+
 >>> list(mydb) #No tables defined yet
 []
 

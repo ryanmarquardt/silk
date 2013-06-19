@@ -1,3 +1,50 @@
+"""silk.webdb.drivers.base: Base class and common objects for webdb drivers
+
+The silk DAL expects the following methods to be available from its driver:
+
+driver.list_tables() -> list of names of tables in database
+
+driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
+  name: column name
+  v_type: type name of column
+  notnull: boolean
+  default: default value
+  
+driver.rename_table(table, name) -> return value is ignored
+
+driver.add_column(table, column) -> return value is ignored
+
+driver.drop_column(table, column) -> return value is ignored
+
+driver.create_table_if_nexists(name, columns, primarykeys) -> return value is ignored
+
+driver.delete(table, where) -> return value is ignored
+  table: table name
+  where: where_tree
+
+driver.drop_table(table) -> return value is ignored
+  table: table name
+
+driver.insert(table, columns, values) -> returns rowid of inserted row (integer > 0)
+  table: table name
+  values: dictionary of values to insert
+
+driver.select(tables, columns, where, distinct, orderby) -> iterator over result set
+  tables: set of table objects
+  columns: list of column objects
+  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
+  distinct: distinct
+  orderby: list of ordering columns
+  
+driver.update(table, columns, values, where) -> return value is ignored
+  table: table name
+  columns: list of columns to update
+  values: list of values to set
+  where: where_tree
+
+driver.commit() -> return value is ignored
+driver.rollback() -> return value is ignored
+"""
 
 from ... import sequence, flatten
 import sys
@@ -95,112 +142,68 @@ SUBSTRING = SUBSTRING()
 class COALESCE(op): pass
 COALESCE = COALESCE()
 
-
-"""The silk DAL expects the following methods to be available from its driver:
-
-driver.list_tables() -> list of names of tables in database
-
-driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
-  name: column name
-  v_type: type name of column
-  notnull: boolean
-  default: default value
-  
-driver.rename_table(table, name) -> return value is ignored
-
-driver.add_column(table, column) -> return value is ignored
-
-driver.drop_column(table, column) -> return value is ignored
-
-driver.create_table_if_nexists(name, columns, primarykeys) -> return value is ignored
-
-driver.delete(table, where) -> return value is ignored
-  table: table name
-  where: where_tree
-
-driver.drop_table(table) -> return value is ignored
-  table: table name
-
-driver.insert(table, columns, values) -> returns rowid of inserted row (integer > 0)
-  table: table name
-  values: dictionary of values to insert
-
-driver.select(tables, columns, where, distinct, orderby) -> iterator over result set
-  tables: set of table objects
-  columns: list of column objects
-  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
-  distinct: distinct
-  orderby: list of ordering columns
-  
-driver.update(table, columns, values, where) -> return value is ignored
-  table: table name
-  columns: list of columns to update
-  values: list of values to set
-  where: where_tree
-
-driver.commit() -> return value is ignored
-driver.rollback() -> return value is ignored
-"""
-
 class driver_base(object):
 	'''Base class for database drivers
 	
-	This class abstracts away a lot of the logic needed to implement a database
-	driver for webdb. Derived classes must overload the following methods to
-	have a working driver. If the task is best accomplished using a single SQL
-	command, the method ending in '_sql' should be defined, as the alternatives
-	use those to accomplish their tasks. For more information, view documentation
-	on each specific method
+	This class abstracts away a lot of the logic needed to implement a
+	database driver for webdb. Derived classes must overload the
+	following methods to have a working driver. If the task is best
+	accomplished using a single SQL command, the method ending in
+	'_sql' should be defined, as the alternatives use those to
+	accomplish their tasks. For more information, view documentation
+	on each specific method.
 	
-	  * list_tables or list_tables_sql
-	     - list all tables in the database. Implements: db.conform
-	  * list_columns or list_columns_sql
-	     - list all columns defined in a table. Implements: db.conform
-	  * create_table, create_table_sql, create_table_if_nexists,
-	    or create_table_if_nexists_sql
-	     - create tables (if missing). Implements: db.__setattr__, db.migrate
-	  * rename_table or rename_table_sql.
-	     - changes a table's name. Implements: db.migrate
-	  * add_column or add_column_sql
-	     - adds a new column to a table. Implements: db.migrate
-	  * select or select_sql
-	     - retrieves rows from a table. Implements: Where.select, table.select
-	  * insert or insert_sql
-	     - adds rows to a table. Implements: table.insert
-	  * update or update_sql
-	     - alters records in a table. Implements: Where.update, row.update
-	  * delete or delete_sql
-	     - removes records from a table. Implements: Where.delete, row.delete,
-	       table.__delitem__, table.__delattr__
+	list_tables or list_tables_sql
+	    list all tables in the database. Implements: db.conform
+	list_columns or list_columns_sql
+	    list all columns defined in a table. Implements: db.conform
+	create_table, create_table_sql, create_table_if_nexists, or create_table_if_nexists_sql
+	    create tables (if missing). Implements: db.__setattr__, db.migrate
+	rename_table or rename_table_sql.
+	    changes a table's name. Implements: db.migrate
+	add_column or add_column_sql
+	    adds a new column to a table. Implements: db.migrate
+	select or select_sql
+	    retrieves rows from a table. Implements: Where.select, table.select
+	insert or insert_sql
+	    adds rows to a table. Implements: table.insert
+	update or update_sql
+	    alters records in a table. Implements: Where.update, row.update
+	delete or delete_sql
+	    removes records from a table. Implements: Where.delete, row.delete,
+	    table.__delitem__, table.__delattr__
 	
 	Additionally, the following variables must be defined.
 	
-	  * webdb_types: a dictionary mapping webdb column types to names of database
-	      column types. Used for defining tables
-	  * driver_types: a dictionary mapping database column types to webdb column
-	      types. Used when conforming.
+	webdb_types
+	    a dictionary mapping webdb column types to names of database
+	    column types. Used for defining tables.
+	driver_types
+	    a dictionary mapping database column types to webdb column
+	    types. Used when conforming.
 	
-	The following methods should be defined by subclasses if the database uses
-	non-standard syntax
+	The following methods should be defined by subclasses if the
+	database uses non-standard syntax
 	
-	  * identifier
-	     - checks that a table or column name uses valid characters, and is properly
-	       escaped (to avoid keywords). Default encloses name in double quotes (")
-	  * literal
-	     - formats a literal value to be used in an sql expression. 
-	  * column_name
-	     - returns the name of a column. Default returns dot (.) joined result
-	       of identifier on its arguments, i.e. "table"."column" 
-	  * format_column
-	     - returns a column definition for its Column object argument
+	identifier
+	    checks that a table or column name uses valid characters, and
+	    is properly escaped (to avoid keywords). Default encloses name
+	    in double quotes (")
+	literal
+	    formats a literal value to be used in an sql expression. 
+	column_name
+	    returns the name of a column. Default returns dot (.) joined
+	    result of identifier on its arguments, i.e. ``"table"."column"``
+	format_column
+	    returns a column definition for its Column object argument
 
-	The following methods may be defined by subclasses, but are not required for
-	normal use.
+	The following methods may be defined by subclasses, but are not
+	required for normal use.
 	
-	  * drop_column or drop_column_sql
-	     - removes a column and all its data from a table. Columns in a table
-	       which don't appear in a table definition are ignored.
-	       Implements: table.drop_column
+	drop_column or drop_column_sql
+	    removes a column and all its data from a table. Columns in a
+	    table which don't appear in a table definition are ignored.
+	    Implements: table.drop_column
 	'''
 
 	def __init__(self, connection, debug=False):
