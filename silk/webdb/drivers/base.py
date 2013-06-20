@@ -298,15 +298,10 @@ class driver_base(object):
 		}
 
 	def map_type(self, t):
-		r = self.webdb_types.get(t)
-		if r:
-			return r
+		return self.webdb_types.get(t) or None
 			
 	def unmap_type(self, t):
-		r = self.driver_types.get(t)
-		if r:
-			return r
-
+		return self.driver_types.get(t) or None
 
 	def list_tables(self):
 		return (str(n) for (n,) in self.execute(self.list_tables_sql()))
