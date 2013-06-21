@@ -57,7 +57,7 @@ class sqlite(driver_base):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""
 
 	def list_columns(self, table):
-		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info("%s");""" % table):
+		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info(%s);""" % table):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):

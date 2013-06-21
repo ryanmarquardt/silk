@@ -331,6 +331,9 @@ class driver_base(object):
 	def list_tables_sql(self):
 		raise NotImplementedError
 
+	def _list_columns(self, table):
+		return self.list_columns(self.identifier(table))
+
 	def list_columns(self, table):
 		raise NotImplementedError
 

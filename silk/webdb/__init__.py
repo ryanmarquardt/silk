@@ -776,7 +776,7 @@ class DB(collection):
 		Reads database for table definitions"""
 		for table in self.__driver__.list_tables():
 			columns = []
-			for name,v_type,notnull,default in self.__driver__.list_columns(table):
+			for name,v_type,notnull,default in self.__driver__._list_columns(table):
 				columns.append(Column(name, v_type, required=notnull, default=default))
 			t = Table(self, table, columns)
 			collection.add(self, t)
