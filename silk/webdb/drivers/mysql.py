@@ -55,19 +55,12 @@ class mysql(driver_base):
 				#raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 
 	def unmap_type(self, t):
-		name, y, size = t.partition('(')
-		if y:
-			size = int(size[:-1])
+		name, _, size = t.partition('(')
 		if name in ('int','tinyint'):
-			return int if size > 1 else bool
-		elif name in ('text','varchar'):
-			return unicode
-		elif name == 'timestamp':
-			return datetime.datetime
-		elif name in ('double','real'):
-			return float
-		elif name in ('blob',):
-			return bytes
+			return int if int((size or '0 ')[:-1]) > 1 else bool
+		return {'text':unicode, 'varchar':unicode,
+			'timestamp':datetime.datetime, 'double':float, 'real':float,
+			'blob':bytes}.get(name)
 	
 	def list_tables_sql(self):
 		return """SHOW TABLES;"""
