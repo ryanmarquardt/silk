@@ -49,14 +49,6 @@ class mysql(driver_base):
 		bytes:'BLOB',
 		datetime.datetime:'DATETIME',
 	}
-	
-	driver_types = {
-		'TEXT':unicode,
-		'INTEGER':int,
-		'REAL':float,
-		'BLOB':bytes,
-		'DATETIME':datetime.datetime,
-	}
 
 	def handle_exception(self, e):
 		if isinstance(e, MySQLdb.OperationalError):
@@ -70,15 +62,15 @@ class mysql(driver_base):
 		if y:
 			size = int(size[:-1])
 		if name in ('int','tinyint'):
-			return 'integer' if size > 1 else 'boolean'
+			return int if size > 1 else bool
 		elif name in ('text','varchar'):
-			return 'string'
+			return unicode
 		elif name == 'timestamp':
-			return 'datetime'
+			return datetime.datetime
 		elif name in ('double','real'):
-			return 'float'
+			return float
 		elif name in ('blob',):
-			return 'data'
+			return bytes
 	
 	def list_tables_sql(self):
 		return """SHOW TABLES;"""
