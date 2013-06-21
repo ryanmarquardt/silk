@@ -61,6 +61,10 @@ def parse(string):
 timestamp.parse = parse
 del parse
 
+def pstrip(s):
+	x = len(s) - max(len(s.lstrip('(')), len(s.rstrip(')')))
+	return s[x:-x] if x else s
+
 class op(object):
 	def __repr__(self):
 		return self.__class__.__name__
@@ -397,7 +401,7 @@ class driver_base(object):
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
 			bool(distinct),
-			orderby,
+			[pstrip(self.expression(o)) for o in orderby],
 		)
 
 	def select(self, columns, tables, where, distinct, orderby):

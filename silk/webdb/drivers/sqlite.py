@@ -54,21 +54,19 @@ class sqlite(driver_base):
 		'BLOB':bytes,
 		'TIMESTAMP':datetime.datetime,
 	}
-	
+
 	def handle_exception(self, e):
 		if isinstance(e, sqlite3.OperationalError):
 			msg = e.args[0]
 			if 'has no column named' in msg or msg.startswith('no such column: '):
 				raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 
-	
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""
-		
+
 	def list_columns(self, table):
 		for _,name,v_type,notnull,default,_ in self.execute("""PRAGMA table_info("%s");""" % table):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
-			
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
 		if primarykeys:
@@ -91,7 +89,7 @@ class sqlite(driver_base):
 			', '.join(columns),
 			', '.join(tables),
 			where,
-			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
+			' ORDER BY %s'%', '.join(orderby) if orderby else '',
 		)
 
 	def insert_sql(self, table, columns, values):

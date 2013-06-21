@@ -124,7 +124,7 @@ class mysql(driver_base):
 			', '.join(columns),
 			', '.join(tables),
 			where,
-			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
+			' ORDER BY %s'%', '.join(orderby) if orderby else '',
 		)
 
 	def insert(self, table, columns, placeholders, values):
