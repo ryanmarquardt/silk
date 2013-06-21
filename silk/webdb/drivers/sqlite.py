@@ -12,6 +12,9 @@ class sqlite(driver_base):
 	in memory.
 	"""
 	test_args = ()
+	
+	param_marker = '?'
+	
 	def __init__(self, path=':memory:', debug=False):
 		self.path = path
 		try:
@@ -91,11 +94,11 @@ class sqlite(driver_base):
 			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
 		)
 
-	def insert_sql(self, table, columns):
-		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(list('?'*len(columns))))
+	def insert_sql(self, table, columns, values):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
 
-	def update_sql(self, table, names, where):
-		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=?'%n for n in names), where)
+	def update_sql(self, table, columns, values, where):
+		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,values)), where)
 
 	def delete_sql(self, table, where):
 		return """DELETE FROM %s%s;""" % (table, where)

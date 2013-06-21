@@ -14,6 +14,9 @@ class mysql(driver_base):
 	"""
 	test_args = ('silk_test','silk_test')
 	test_kwargs = {'engine':'InnoDB'}
+	
+	param_marker = '%s'
+	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
 		try:
 			driver_base.__init__(self, MySQLdb.connect(host=host, user=user, passwd=password or '', db=database), debug)
@@ -124,15 +127,15 @@ class mysql(driver_base):
 			' ORDER BY %s'%', '.join(self.expression(o).strip('()') for o in orderby) if orderby else '',
 		)
 
-	def insert(self, table, columns, values):
-		cur = self.execute(self.insert_sql(table, columns), values)
+	def insert(self, table, columns, placeholders, values):
+		cur = self.execute(self.insert_sql(table, columns, placeholders), values)
 		return self.connection.insert_id()
 
-	def insert_sql(self, table, names):
-		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(names), ','.join(['%s']*len(names)))
+	def insert_sql(self, table, columns, values):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
 
-	def update_sql(self, table, names, where):
-		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%%s'%n for n in names), where)
+	def update_sql(self, table, columns, values, where):
+		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,values)), where)
 
 	def delete_sql(self, table, where):
 		return """DELETE FROM %s%s;""" % (table, where)

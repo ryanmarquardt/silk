@@ -284,6 +284,9 @@ class driver_base(object):
 			clause = ''
 		return clause
 		
+	def parameters(self, count):
+		return [self.param_marker for i in range(count)]
+		
 	def format_column(self, column):
 		type = self.map_type(column.native_type)
 		if type is None:
@@ -378,10 +381,10 @@ class driver_base(object):
 		
 	def _insert(self, table, columns, values):
 		"""Sanitize data from DB and call insert"""
-		return self.insert(self.identifier(table), map(self.identifier,columns), values)
+		return self.insert(self.identifier(table), map(self.identifier,columns), self.parameters(len(columns)), values)
 
-	def insert(self, table, columns, values):
-		cur = self.execute(self.insert_sql(table, columns), values)
+	def insert(self, table, columns, placeholders, values):
+		cur = self.execute(self.insert_sql(table, columns, placeholders), values)
 		return cur.lastrowid
 
 	def insert_sql(self, table, columns):
@@ -407,8 +410,8 @@ class driver_base(object):
 		"""Sanitize data from DB and call update"""
 		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions), values.values())
 
-	def update(self, table, names, where, values):
-		return self.execute(self.update_sql(table, names, where), values)
+	def update(self, table, columns, where, values):
+		return self.execute(self.update_sql(table, columns, self.parameters(len(columns)), where), values)
 
 	def update_sql(self, table, columns, values, conditions):
 		raise NotImplementedError
