@@ -100,9 +100,13 @@ class mysql(driver_base):
 			return super(mysql, self).create_table_if_nexists(name, columns, primarykeys)
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
-		if self.debug:
-			return """CREATE TEMPORARY TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys), self.engine)
-		return """CREATE TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys), self.engine)
+		return """CREATE%s TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (
+			' TEMPORARY' if self.debug else '',
+			name,
+			', '.join(coldefs),
+			', '.join('%s ASC'%p for p in primarykeys),
+			self.engine
+		)
 
 	def create_table_sql(self, name, coldefs, primarykeys):
 		if self.debug:
