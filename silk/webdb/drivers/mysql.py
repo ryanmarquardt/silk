@@ -19,10 +19,7 @@ class mysql(driver_base):
 	id_quote = '`'
 	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
-		try:
-			driver_base.__init__(self, MySQLdb.connect(host=host, user=user, passwd=password or '', db=database), debug)
-		except MySQLdb.OperationalError, e:
-			raise e
+		driver_base.__init__(self, MySQLdb.connect(host=host, user=user, passwd=password or '', db=database), debug)
 		self.database = database
 		self.host = host
 		self.user = user
