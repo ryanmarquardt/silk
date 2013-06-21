@@ -343,13 +343,11 @@ class driver_base(object):
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
 
+	def _add_column(self, table, column):
+		self.add_column(self.identifier(table), self.format_column(column))
+
 	def add_column(self, table, column):
-		with self:
-			db_cols = self.list_columns(name)
-			db_names = [c[0] for c in db_cols]
-			for column in table.columns:
-				if column.name not in db_names:
-					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
+		self.execute(self.add_column_sql(table, column))
 
 	def add_column_sql(self, table, column):
 		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
