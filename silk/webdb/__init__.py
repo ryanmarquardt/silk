@@ -773,6 +773,9 @@ class DB(collection):
 		return newcls()
 		
 	def conform(self):
+		"""DB.conform()
+		
+		Reads database for table definitions"""
 		for table in self.__driver__.list_tables():
 			columns = []
 			for name,v_type,notnull,default in self.__driver__.list_columns(table):
@@ -781,6 +784,9 @@ class DB(collection):
 			collection.add(self, t)
 		
 	def migrate(self):
+		"""DB.migrate()
+		
+		Alters database to match defined tables"""
 		names = set(self.keys())
 		db_tables = set(self.__driver__.list_tables())
 		for name in names - db_tables:
