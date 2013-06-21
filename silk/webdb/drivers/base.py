@@ -425,6 +425,33 @@ class driver_base(object):
 	def update_sql(self, table, columns, values, conditions):
 		raise NotImplementedError
 
+	def rename_table_sql(self, orig, new):
+		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
+
+	def add_column_sql(self, table, column):
+		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
+
+	def drop_table_sql(self, table):
+		return """DROP TABLE %s;""" % (table)
+
+	def select_sql(self, columns, tables, where, distinct, orderby):
+		return """SELECT%s %s FROM %s%s%s;""" % (
+			' DISTINCT' if distinct else '',
+			', '.join(columns),
+			', '.join(tables),
+			where,
+			' ORDER BY %s'%', '.join(orderby) if orderby else '',
+		)
+
+	def insert_sql(self, table, columns, values):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
+
+	def update_sql(self, table, columns, values, where):
+		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,values)), where)
+
+	def delete_sql(self, table, where):
+		return """DELETE FROM %s%s;""" % (table, where)
+
 
 	op_EQUAL = staticmethod(lambda a,b:'%s %s %s'%(a,'IS'if'NULL'in(a,b)else'=',b))
 	op_LESSEQUAL = staticmethod(lambda a,b:'%s<=%s'%(a,b))
