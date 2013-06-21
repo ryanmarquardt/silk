@@ -75,11 +75,11 @@ class mysql(driver_base):
 	def create_table_if_nexists(self, name, columns, primarykeys):
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore")
-			return self.execute("""CREATE%s TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (
+			return self.execute("""CREATE%s TABLE IF NOT EXISTS %s(%s%s) ENGINE=%s;""" % (
 				' TEMPORARY' if self.debug else '',
 				name,
 				', '.join(columns),
-				', '.join('%s ASC'%p for p in primarykeys),
+				(', PRIMARY KEY (%s)' % ', '.join('%s ASC'%p for p in primarykeys)) if primarykeys else '',
 				self.engine
 			))
 

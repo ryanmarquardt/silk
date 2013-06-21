@@ -91,6 +91,8 @@ is returned and can be used to retrieve it later.
 #>>> mydb = DB()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'))
 
+>>> mydb.define_table('test_table_x', IntColumn('key'), primarykey=[])
+
 Insert adds a row to the table.
 >>> mydb.test_table.insert(key='100', value='a')
 
