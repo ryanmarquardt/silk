@@ -15,7 +15,7 @@ class mysql(driver_base):
 	test_args = ('silk_test','silk_test')
 	test_kwargs = {'engine':'InnoDB'}
 	
-	param_marker = '%s'
+	parameters = driver_base.parameters_format
 	id_quote = '`'
 	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):

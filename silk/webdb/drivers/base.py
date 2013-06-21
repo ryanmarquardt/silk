@@ -287,8 +287,20 @@ class driver_base(object):
 			clause = ''
 		return clause
 
-	def parameters(self, count):
-		return [self.param_marker for i in range(count)]
+	def parameters_qmark(self, columns):
+		return ['?' for c in columns]
+
+	def parameters_format(self, columns):
+		return ['%s' for c in columns]
+
+	def parameters_numeric(self, columns):
+		return [':%i' % i for _,i in enumerate(columns)]
+
+	def parameters_named(self, columns):
+		return [':%s' % c for c in columns]
+
+	def parameters_pyformat(self, columns):
+		return ['%%(%s)s' % c for c in columns]
 
 	def normalize_column(self, column):
 		r = container(vars(column))
@@ -325,9 +337,6 @@ class driver_base(object):
 	def rename_table(self, table, name):
 		self.execute(self.rename_table_sql(self.identifier(table), self.identifier(name)))
 
-	def rename_table_sql(self, table, name):
-		raise NotImplementedError
-
 	def add_column(self, table, column):
 		with self:
 			db_cols = self.list_columns(name)
@@ -335,9 +344,6 @@ class driver_base(object):
 			for column in table.columns:
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
-
-	def add_column_sql(self, table, column):
-		raise NotImplementedError
 
 	def drop_column(self, table, column):
 		raise NotImplementedError
@@ -377,27 +383,18 @@ class driver_base(object):
 	def delete(self, table, conditions):
 		return self.execute(self.delete_sql(table, conditions))
 
-	def delete_sql(self, table, conditions):
-		raise NotImplementedError
-
 	def drop_table(self, table):
 		self.execute(self.drop_table_sql(self.identifier(table)))
 
-	def drop_table_sql(self, table):
-		raise NotImplementedError
-		
 	def _insert(self, table, columns, values):
 		"""Sanitize data from DB and call insert"""
-		return self.insert(self.identifier(table), map(self.identifier,columns), self.parameters(len(columns)), values)
+		return self.insert(self.identifier(table), map(self.identifier,columns), self.parameters(columns), values)
 
 	def insert(self, table, columns, placeholders, values):
 		return self.insert_rowid(self.execute(self.insert_sql(table, columns, placeholders), values))
 
 	def insert_rowid(self, cur):
 		return cur.lastrowid
-
-	def insert_sql(self, table, columns):
-		raise NotImplementedError
 
 	def _select(self, columns, tables, conditions, distinct, orderby):
 		"""Sanitize data from DB and call select"""
@@ -412,18 +409,12 @@ class driver_base(object):
 	def select(self, columns, tables, where, distinct, orderby):
 		return self.execute(self.select_sql(columns, tables, where, distinct, orderby))
 
-	def select_sql(self, columns, tables, conditions, distinct, orderby):
-		raise NotImplementedError
-
 	def _update(self, table, conditions, values):
 		"""Sanitize data from DB and call update"""
-		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions), values.values())
+		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions), self.parameters(values.keys()), values.values())
 
-	def update(self, table, columns, where, values):
-		return self.execute(self.update_sql(table, columns, self.parameters(len(columns)), where), values)
-
-	def update_sql(self, table, columns, values, conditions):
-		raise NotImplementedError
+	def update(self, table, columns, where, parameters, values):
+		return self.execute(self.update_sql(table, columns, parameters, where), values)
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)

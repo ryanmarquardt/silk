@@ -13,7 +13,7 @@ class sqlite(driver_base):
 	"""
 	test_args = ()
 	
-	param_marker = '?'
+	parameters = driver_base.parameters_qmark
 	id_quote = '"'
 	
 	def __init__(self, path=':memory:', debug=False):
