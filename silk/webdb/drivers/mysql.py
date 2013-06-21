@@ -108,11 +108,6 @@ class mysql(driver_base):
 			self.engine
 		)
 
-	def create_table_sql(self, name, coldefs, primarykeys):
-		if self.debug:
-			return """CREATE TEMPORARY TABLE %s(%s);""" % (name, ', '.join(coldefs))
-		return """CREATE TABLE %s(%s);""" % (name, ', '.join(coldefs))
-
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
 
