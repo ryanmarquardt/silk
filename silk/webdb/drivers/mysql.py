@@ -97,16 +97,13 @@ class mysql(driver_base):
 	def create_table_if_nexists(self, name, columns, primarykeys):
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore")
-			return super(mysql, self).create_table_if_nexists(name, columns, primarykeys)
-
-	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
-		return """CREATE%s TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (
-			' TEMPORARY' if self.debug else '',
-			name,
-			', '.join(coldefs),
-			', '.join('%s ASC'%p for p in primarykeys),
-			self.engine
-		)
+			return self.execute("""CREATE%s TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s)) ENGINE=%s;""" % (
+				' TEMPORARY' if self.debug else '',
+				name,
+				', '.join(columns),
+				', '.join('%s ASC'%p for p in primarykeys),
+				self.engine
+			))
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
