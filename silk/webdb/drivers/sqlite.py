@@ -25,18 +25,11 @@ class sqlite(driver_base):
 				e.errno = errno.ENOENT
 			raise e
 
-	def format_column(self, column):
-		type = self.map_type(column.native_type)
-		if type is None:
-			raise Exception('Unknown column type %s' % column.native_type)
-		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.required or not column.default is None) else ''
-		return '%(name)s %(type)s%(notnull)s%(autoinc)s%(default)s' % {
-			'name': self.identifier(column.name),
-			'type': type,
-			'notnull': ' NOT NULL' if column.required else '',
-			'default': default,
-			'autoinc': ' AUTO_INCREMENT' if column.autoincrement and not column.primarykey else ''
-		}
+	def normalize_column(self, column):
+		r = driver_base.normalize_column(self, column)
+		if r.primarykey:
+			r.autoinc_sql = ''
+		return r
 
 	webdb_types = {
 		int:'INTEGER',

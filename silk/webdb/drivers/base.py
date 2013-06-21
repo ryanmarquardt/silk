@@ -46,7 +46,7 @@ driver.commit() -> return value is ignored
 driver.rollback() -> return value is ignored
 """
 
-from ... import sequence, flatten
+from ... import sequence, flatten, container
 import sys
 import datetime
 
@@ -222,7 +222,7 @@ class driver_base(object):
 		if self.cursor is None:
 			self.cursor = self.connection.cursor()
 		return self.cursor
-		
+
 	def __exit__(self, obj, exc, tb):
 		self.depth -= 1
 		if self.depth == 0:
@@ -237,7 +237,7 @@ class driver_base(object):
 
 	def rollback(self):
 		self.connection.rollback()
-		
+
 	def execute(self, sql, values=()):
 		self.lastsql = sql
 		#print >>sys.stderr, sql, values or ''
@@ -249,7 +249,6 @@ class driver_base(object):
 				self.handle_exception(e)
 				raise Exception(e, sql, values)
 
-		
 	def identifier(self, name):
 		if not name.replace('_','').isalnum():
 			raise NameError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
@@ -264,10 +263,10 @@ class driver_base(object):
 			return '%g'%value
 		else:
 			return value
-			
+
 	def column_name(self, table, col):
 		return '.'.join(map(self.identifier, (table, col)))
-	
+
 	def expression(self, x):
 		if isinstance(x, list):
 			operator = x[0]
@@ -278,7 +277,7 @@ class driver_base(object):
 			return self.expression(x._where_tree)
 		else:
 			return self.literal(x)
-		
+
 	def parse_where(self, where_clause):
 		if where_clause:
 			clause = self.expression(where_clause)
@@ -287,26 +286,30 @@ class driver_base(object):
 		else:
 			clause = ''
 		return clause
-		
+
 	def parameters(self, count):
 		return [self.param_marker for i in range(count)]
-		
+
+	def normalize_column(self, column):
+		r = container(vars(column))
+		r.type = self.map_type(r.native_type)
+		if r.type is None:
+			raise Exception('Unknown column type %s' % r.native_type)
+		r.hasdefault = not callable(r.default) and (r.required or not r.default is None)
+		r.default = self.literal(r.default, r.type)
+		r.name = self.identifier(r.name)
+		r.notnull_sql = 'NOT NULL' if r.required else ''
+		r.autoinc_sql = 'AUTO_INCREMENT' if r.autoincrement else ''
+		r.default_sql = 'DEFAULT %s' % r.default if r.hasdefault else ''
+		return r
+
 	def format_column(self, column):
-		type = self.map_type(column.native_type)
-		if type is None:
-			raise Exception('Unknown column type %s' % column.native_type)
-		default = " DEFAULT %s"%self.literal(column.default, type) if not callable(column.default) and (column.required or not column.default is None) else ''
-		return '%(name)s %(type)s%(notnull)s%(autoinc)s%(default)s' % {
-			'name': self.identifier(column.name),
-			'type': type,
-			'notnull': ' NOT NULL' if column.required else '',
-			'default': default,
-			'autoinc': ' AUTO_INCREMENT' if column.autoincrement else ''
-		}
+		col = self.normalize_column(column)
+		return ' '.join((col.name, col.type, col.notnull_sql, col.autoinc_sql, col.default_sql))
 
 	def map_type(self, t):
 		return self.webdb_types.get(t) or None
-			
+
 	def unmap_type(self, t):
 		return self.driver_types.get(t) or None
 
