@@ -125,7 +125,7 @@ class mysql(driver_base):
 		)
 
 	def insert(self, table, columns, values):
-		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,columns)), values)
+		cur = self.execute(self.insert_sql(table, columns), values)
 		return self.connection.insert_id()
 
 	def insert_sql(self, table, names):

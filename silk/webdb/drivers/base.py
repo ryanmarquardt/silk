@@ -332,15 +332,20 @@ class driver_base(object):
 	def drop_column(self, table, column):
 		raise NotImplementedError
 
+	def _create_table_if_nexists(self, name, columns, primarykeys):
+		"""Sanitize data from DB and call create_table_if_nexists"""
+		return self.create_table_if_nexists(
+			self.identifier(name),
+			map(self.format_column, columns),
+			map(self.identifier, primarykeys),
+		)
+
 	def create_table_if_nexists(self, name, columns, primarykeys):
-		if hasattr(self, 'create_table_if_nexists_sql'):
-			self.execute(self.create_table_if_nexists_sql(
-				self.identifier(name),
-				map(self.format_column, columns),
-				map(self.identifier, primarykeys),
-			))
-		elif name not in self.list_tables:
-			self.create_table(name, columns, primarykeys)
+		try:
+			self.execute(self.create_table_if_nexists_sql(name, columns, primarykeys))
+		except NotImplementedError:
+			if name not in self.list_tables():
+				self.create_table(name, columns, primarykeys)
 
 	def create_table_if_nexists_sql(self, name, columns, primarykeys):
 		'''create_table_if_nexists_sql(self, name, *columns) -> Stub
@@ -353,13 +358,14 @@ class driver_base(object):
 		raise NotImplementedError
 
 	def create_table(self, name, columns, primarykeys):
-		try:
-			self.execute(self.create_table_sql(self.identifier(name), map(self.format_column,columns), primarykeys))
-		except NotImplementedError:
-			self.create_table_if_nexists(name, table.columns)
+		self.execute(self.create_table_sql(name, columns, primarykeys))
+
+	def _delete(self, table, conditions):
+		"""Sanitize data from DB and call delete"""
+		return self.delete(self.identifier(table), self.parse_where(conditions))
 
 	def delete(self, table, conditions):
-		return self.execute(self.delete_sql(self.identifier(table), self.parse_where(conditions)))
+		return self.execute(self.delete_sql(table, conditions))
 
 	def delete_sql(self, table, conditions):
 		raise NotImplementedError
@@ -369,28 +375,40 @@ class driver_base(object):
 
 	def drop_table_sql(self, table):
 		raise NotImplementedError
+		
+	def _insert(self, table, columns, values):
+		"""Sanitize data from DB and call insert"""
+		return self.insert(self.identifier(table), map(self.identifier,columns), values)
 
 	def insert(self, table, columns, values):
-		cur = self.execute(self.insert_sql(self.identifier(table), map(self.identifier,columns)), values)
+		cur = self.execute(self.insert_sql(table, columns), values)
 		return cur.lastrowid
 
 	def insert_sql(self, table, columns):
 		raise NotImplementedError
 
-	def select(self, columns, tables, conditions, distinct, orderby):
-		return self.execute(self.select_sql(
+	def _select(self, columns, tables, conditions, distinct, orderby):
+		"""Sanitize data from DB and call select"""
+		return self.select(
 			map(self.expression,columns),
 			[self.identifier(t._name) for t in tables],
 			self.parse_where(conditions),
 			bool(distinct),
 			orderby,
-		))
+		)
+
+	def select(self, columns, tables, where, distinct, orderby):
+		return self.execute(self.select_sql(columns, tables, where, distinct, orderby))
 
 	def select_sql(self, columns, tables, conditions, distinct, orderby):
 		raise NotImplementedError
 
-	def update(self, table, conditions, values):
-		return self.execute(self.update_sql(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions)), values.values())
+	def _update(self, table, conditions, values):
+		"""Sanitize data from DB and call update"""
+		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions), values.values())
+
+	def update(self, table, names, where, values):
+		return self.execute(self.update_sql(table, names, where), values)
 
 	def update_sql(self, table, columns, values, conditions):
 		raise NotImplementedError

@@ -454,19 +454,19 @@ class Where(Expression):
 		elif len(self._tables) == 1 and not props.get('distinct'):
 			primarykey = self._tables.copy().pop().primarykey
 			all_columns.extend(primarykey)
-		values = self._db.__driver__.select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		values = self._db.__driver__._select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
 		return Selection(all_columns, columns, primarykey, values)
 		
 	def count(self, **props):
 		columns = flatten(table.primarykey for table in self._tables)
-		values = self._db.__driver__.select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
 		return len(values.fetchall())
 		
 	def update(self, **values):
-		self._db.__driver__.update(self._tables.copy().pop()._name, self._where_tree, values)
+		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
 		
 	def delete(self):
-		self._db.__driver__.delete(self._tables.copy().pop()._name, self._where_tree)
+		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
 		
 	def __repr__(self):
 		return 'Where(%r)'%self._where_tree
@@ -679,7 +679,7 @@ class Table(object):
 				raise
 			except KeyError:
 				raise KeyError('No such column in table: %s' % k)
-		self._db.__driver__.insert(self._name, values.keys(), db_values)
+		self._db.__driver__._insert(self._name, values.keys(), db_values)
 
 	def insert_many(self, *records):
 		for record in records:
@@ -748,7 +748,7 @@ class DB(collection):
 		elif kwargs.get('primarykey'):
 			kwargs['primarykey'] = sequence(kwargs['primarykey'])
 		value = Table(self, name, flatten(columns), **kwargs)
-		self.__driver__.create_table_if_nexists(name, value._columns, [pk.name for pk in value.primarykey])
+		self.__driver__._create_table_if_nexists(name, value._columns, [pk.name for pk in value.primarykey])
 		collection.__setitem__(self, name, value)
 
 	def __getattr__(self, key):
@@ -791,7 +791,7 @@ class DB(collection):
 		db_tables = set(self.__driver__.list_tables())
 		for name in names - db_tables:
 			#Create
-			self.__driver__.create_table_if_nexists(name, self[name])
+			self.__driver__._create_table_if_nexists(name, self[name])
 		for name in names.intersection(db_tables):
 			#Alter if not the same
 			raise NotImplementedError
