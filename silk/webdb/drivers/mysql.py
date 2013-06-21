@@ -105,6 +105,9 @@ class mysql(driver_base):
 				self.engine
 			))
 
+	def insert_rowid(self, cursor):
+		return self.connection.insert_id()
+
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
 
@@ -122,10 +125,6 @@ class mysql(driver_base):
 			where,
 			' ORDER BY %s'%', '.join(orderby) if orderby else '',
 		)
-
-	def insert(self, table, columns, placeholders, values):
-		cur = self.execute(self.insert_sql(table, columns, placeholders), values)
-		return self.connection.insert_id()
 
 	def insert_sql(self, table, columns, values):
 		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))

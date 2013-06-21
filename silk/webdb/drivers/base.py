@@ -391,7 +391,9 @@ class driver_base(object):
 		return self.insert(self.identifier(table), map(self.identifier,columns), self.parameters(len(columns)), values)
 
 	def insert(self, table, columns, placeholders, values):
-		cur = self.execute(self.insert_sql(table, columns, placeholders), values)
+		return self.insert_rowid(self.execute(self.insert_sql(table, columns, placeholders), values))
+
+	def insert_rowid(self, cur):
 		return cur.lastrowid
 
 	def insert_sql(self, table, columns):
