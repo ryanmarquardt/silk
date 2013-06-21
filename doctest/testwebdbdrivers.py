@@ -6,9 +6,13 @@ from silk.webdb import *
 
 fdoc = '\n'.join(silk.webdb.__doc__.split('\n')[8:])
 fdoc = fdoc.replace('%','%%')
-fdoc = fdoc.replace('DB()','DB.connect(%(conn)s, debug=True)')
+fdoc = fdoc.replace('DB()','DB.connect(%(conn)s)')
 for driver in drivers.__all__:
-	conn = ','.join(map(repr,(driver,)+getattr(getattr(drivers,driver),driver).test_args))
+	dr_obj = getattr(getattr(drivers,driver),driver)
+	test_args = (driver,) + (getattr(dr_obj,'test_args',None) or ())
+	test_kwargs = getattr(dr_obj,'test_kwargs',None) or {}
+	test_kwargs['debug'] = True
+	conn = ','.join(map(repr,test_args) + ['%s=%r' % i for i in test_kwargs.items()])
 	o = type('',(object,),{'__doc__':fdoc%dict(conn=conn)})
 	doctest.run_docstring_examples(o, globals(), name=__file__+'(%s)'%driver)
 

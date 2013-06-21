@@ -11,8 +11,6 @@ class sqlite(driver_base):
 	file. By default, path=':memory:', which creates a temporary database
 	in memory.
 	"""
-	test_args = ()
-	
 	parameters = driver_base.parameters_qmark
 	id_quote = '"'
 	
