@@ -340,6 +340,9 @@ class driver_base(object):
 	def rename_table(self, table, name):
 		self.execute(self.rename_table_sql(table, name))
 
+	def rename_table_sql(self, orig, new):
+		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
+
 	def add_column(self, table, column):
 		with self:
 			db_cols = self.list_columns(name)
@@ -348,8 +351,17 @@ class driver_base(object):
 				if column.name not in db_names:
 					self.execute(self.add_column_sql(self.identifier(name), self.format_column(column)))
 
+	def add_column_sql(self, table, column):
+		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
+
+	def _drop_column(self, table, column):
+		self.drop_column(self.identifier(table), self.identifier(column))
+
 	def drop_column(self, table, column):
-		raise NotImplementedError
+		self.execute(self.drop_column_sql(table, column))
+
+	def drop_column_sql(self, table, column):
+		return "ALTER TABLE %s DROP COLUMN %s;" % (table, column)
 
 	def _create_table_if_nexists(self, name, columns, primarykeys):
 		"""Sanitize data from DB and call create_table_if_nexists"""
@@ -386,11 +398,17 @@ class driver_base(object):
 	def delete(self, table, conditions):
 		return self.execute(self.delete_sql(table, conditions))
 
+	def delete_sql(self, table, where):
+		return """DELETE FROM %s%s;""" % (table, where)
+
 	def _drop_table(self, table):
 		self.drop_table(self.identifier(table))
 
 	def drop_table(self, table):
 		self.execute(self.drop_table_sql(table))
+
+	def drop_table_sql(self, table):
+		return """DROP TABLE %s;""" % (table)
 
 	def _insert(self, table, columns, values):
 		"""Sanitize data from DB and call insert"""
@@ -398,6 +416,9 @@ class driver_base(object):
 
 	def insert(self, table, columns, placeholders, values):
 		return self.insert_rowid(self.execute(self.insert_sql(table, columns, placeholders), values))
+
+	def insert_sql(self, table, columns, values):
+		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
 
 	def insert_rowid(self, cur):
 		return cur.lastrowid
@@ -415,22 +436,6 @@ class driver_base(object):
 	def select(self, columns, tables, where, distinct, orderby):
 		return self.execute(self.select_sql(columns, tables, where, distinct, orderby))
 
-	def _update(self, table, conditions, values):
-		"""Sanitize data from DB and call update"""
-		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.where_clause(conditions), self.parameters(values.keys()), values.values())
-
-	def update(self, table, columns, where, parameters, values):
-		return self.execute(self.update_sql(table, columns, where, parameters), values)
-
-	def rename_table_sql(self, orig, new):
-		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
-
-	def add_column_sql(self, table, column):
-		return """ALTER TABLE %s ADD COLUMN %s;""" % (table, column)
-
-	def drop_table_sql(self, table):
-		return """DROP TABLE %s;""" % (table)
-
 	def select_sql(self, columns, tables, where, distinct, orderby):
 		return """SELECT%s %s FROM %s%s%s;""" % (
 			' DISTINCT' if distinct else '',
@@ -440,14 +445,15 @@ class driver_base(object):
 			' ORDER BY %s'%', '.join(orderby) if orderby else '',
 		)
 
-	def insert_sql(self, table, columns, values):
-		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
+	def _update(self, table, conditions, values):
+		"""Sanitize data from DB and call update"""
+		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.where_clause(conditions), self.parameters(values.keys()), values.values())
+
+	def update(self, table, columns, where, parameters, values):
+		return self.execute(self.update_sql(table, columns, where, parameters), values)
 
 	def update_sql(self, table, columns, where, parameters):
 		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,parameters)), where)
-
-	def delete_sql(self, table, where):
-		return """DELETE FROM %s%s;""" % (table, where)
 
 
 	op_EQUAL = staticmethod(lambda a,b:'%s %s %s'%(a,'IS'if'NULL'in(a,b)else'=',b))
