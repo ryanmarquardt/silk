@@ -278,9 +278,9 @@ class driver_base(object):
 		else:
 			return self.literal(x)
 
-	def parse_where(self, where_clause):
-		if where_clause:
-			clause = self.expression(where_clause)
+	def where_clause(self, where):
+		if where:
+			clause = self.expression(where)
 			if clause:
 				clause = ' WHERE '+clause
 		else:
@@ -378,7 +378,7 @@ class driver_base(object):
 
 	def _delete(self, table, conditions):
 		"""Sanitize data from DB and call delete"""
-		return self.delete(self.identifier(table), self.parse_where(conditions))
+		return self.delete(self.identifier(table), self.where_clause(conditions))
 
 	def delete(self, table, conditions):
 		return self.execute(self.delete_sql(table, conditions))
@@ -401,7 +401,7 @@ class driver_base(object):
 		return self.select(
 			map(self.expression,columns),
 			[self.identifier(t._name) for t in tables],
-			self.parse_where(conditions),
+			self.where_clause(conditions),
 			bool(distinct),
 			[pstrip(self.expression(o)) for o in orderby],
 		)
@@ -411,10 +411,10 @@ class driver_base(object):
 
 	def _update(self, table, conditions, values):
 		"""Sanitize data from DB and call update"""
-		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.parse_where(conditions), self.parameters(values.keys()), values.values())
+		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.where_clause(conditions), self.parameters(values.keys()), values.values())
 
 	def update(self, table, columns, where, parameters, values):
-		return self.execute(self.update_sql(table, columns, parameters, where), values)
+		return self.execute(self.update_sql(table, columns, where, parameters), values)
 
 	def rename_table_sql(self, orig, new):
 		return """ALTER TABLE %s RENAME TO %s;""" % (orig, new)
@@ -437,8 +437,8 @@ class driver_base(object):
 	def insert_sql(self, table, columns, values):
 		return """INSERT INTO %s(%s) VALUES (%s)""" % (table, ','.join(columns), ','.join(values))
 
-	def update_sql(self, table, columns, values, where):
-		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,values)), where)
+	def update_sql(self, table, columns, where, parameters):
+		return """UPDATE %s SET %s%s;""" % (table, ', '.join('%s=%s'%i for i in zip(columns,parameters)), where)
 
 	def delete_sql(self, table, where):
 		return """DELETE FROM %s%s;""" % (table, where)
