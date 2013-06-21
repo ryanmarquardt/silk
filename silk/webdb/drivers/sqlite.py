@@ -14,6 +14,7 @@ class sqlite(driver_base):
 	test_args = ()
 	
 	param_marker = '?'
+	id_quote = '"'
 	
 	def __init__(self, path=':memory:', debug=False):
 		self.path = path

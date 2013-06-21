@@ -252,7 +252,7 @@ class driver_base(object):
 	def identifier(self, name):
 		if not name.replace('_','').isalnum():
 			raise NameError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
-		return '"%s"'%name
+		return ''.join((self.id_quote,name,self.id_quote))
 
 	def literal(self, value, cast=None):
 		if value is None:

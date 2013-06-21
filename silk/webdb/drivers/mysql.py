@@ -16,6 +16,7 @@ class mysql(driver_base):
 	test_kwargs = {'engine':'InnoDB'}
 	
 	param_marker = '%s'
+	id_quote = '`'
 	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
 		try:
@@ -63,11 +64,6 @@ class mysql(driver_base):
 			#msg = e.args[0]
 			#if 'has no column named' in msg or msg.startswith('no such column: '):
 				#raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
-
-	def identifier(self, name):
-		if not name.replace('_','').isalnum():
-			raise NameError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
-		return '`%s`'%name
 
 	def unmap_type(self, t):
 		name, y, size = t.partition('(')
