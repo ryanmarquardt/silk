@@ -337,8 +337,11 @@ class driver_base(object):
 	def list_columns(self, table):
 		raise NotImplementedError
 
+	def _rename_table(self, table, name):
+		self.rename_table(self.identifier(table), self.identifier(name))
+
 	def rename_table(self, table, name):
-		self.execute(self.rename_table_sql(self.identifier(table), self.identifier(name)))
+		self.execute(self.rename_table_sql(table, name))
 
 	def add_column(self, table, column):
 		with self:
@@ -386,8 +389,11 @@ class driver_base(object):
 	def delete(self, table, conditions):
 		return self.execute(self.delete_sql(table, conditions))
 
+	def _drop_table(self, table):
+		self.drop_table(self.identifier(table))
+
 	def drop_table(self, table):
-		self.execute(self.drop_table_sql(self.identifier(table)))
+		self.execute(self.drop_table_sql(table))
 
 	def _insert(self, table, columns, values):
 		"""Sanitize data from DB and call insert"""
