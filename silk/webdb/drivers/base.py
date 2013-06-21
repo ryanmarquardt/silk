@@ -264,15 +264,12 @@ class driver_base(object):
 		else:
 			return value
 
-	def column_name(self, table, col):
-		return '.'.join(map(self.identifier, (table, col)))
-
 	def expression(self, x):
 		if isinstance(x, list):
 			operator = x[0]
 			return '(%s)'%getattr(self,'op_%s'%operator)(*map(self.expression,x[1:]))
 		elif hasattr(x, 'table') and hasattr(x, 'name'): #Column duck-typed
-			return self.column_name(x.table._name, x.name)
+			return '%s.%s' % (self.identifier(x.table._name), self.identifier(x.name))
 		elif hasattr(x, '_where_tree'): #Where duck-typed
 			return self.expression(x._where_tree)
 		else:
