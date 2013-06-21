@@ -752,10 +752,7 @@ class DB(collection):
 		collection.__setitem__(self, name, value)
 
 	def __getattr__(self, key):
-		if key[0] == '_':
-			return self.__dict__[key]
-		else:
-			return self[key]
+		return self.__dict__[key] if key[0] == '_' else self[key]
 	
 	def __delattr__(self, key):
 		if key[0] == '_':
@@ -769,9 +766,8 @@ class DB(collection):
 			driver = getattr(getattr(drivers, name), name)
 		except AttributeError:
 			raise UnknownDriver("Unable to find database driver %r" % name)
-		newcls = type(cls.__name__, (cls,), {'__driver__':driver(*args,**kwargs)})
-		return newcls()
-		
+		return type(cls.__name__, (cls,), {'__driver__':driver(*args,**kwargs)})()
+
 	def conform(self):
 		"""DB.conform()
 		
