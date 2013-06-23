@@ -23,10 +23,3 @@ import silk.webdb
 doctest.testmod(silk.webdb)
 doctest.testmod(silk.webdb.drivers)
 doctest.testmod(silk.webdb.drivers.base)
-doctest.testmod(silk.webdb.drivers.sqlite)
-
-try:
-	import silk.webdb.drivers.mysql
-	doctest.testmod(silk.webdb.drivers.mysql)
-except ImportError:
-	pass

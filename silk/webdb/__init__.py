@@ -724,6 +724,11 @@ class DB(collection):
 	[<Table 'test'>]
 	"""
 	__driver__ = drivers.sqlite.sqlite()
+	execute = __driver__.execute
+
+	@property
+	def lastsql(self):
+		return self.__driver__.lastsql
 
 	def __init__(self):
 		collection.__init__(self, namekey='_name')
@@ -769,7 +774,11 @@ class DB(collection):
 			driver = getattr(getattr(drivers, name), name)
 		except AttributeError:
 			raise UnknownDriver("Unable to find database driver %r" % name)
-		return type(cls.__name__, (cls,), {'__driver__':driver(*args,**kwargs)})()
+		driver = driver(*args,**kwargs)
+		return type(cls.__name__, (cls,), {
+			'__driver__':driver,
+			'execute':driver.execute,
+		})()
 
 	def conform(self):
 		"""DB.conform()
