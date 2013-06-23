@@ -19,10 +19,6 @@ class mysql(driver_base):
 	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
 		self.__db_api_init__(MySQLdb, host=host, user=user, passwd=password or '', db=database, debug=debug)
-		self.database = database
-		self.host = host
-		self.user = user
-		self.password = password
 		self.engine = engine
 
 	@property

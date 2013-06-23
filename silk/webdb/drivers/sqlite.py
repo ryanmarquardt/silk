@@ -14,7 +14,6 @@ class sqlite(driver_base):
 	id_quote = '"'
 	
 	def __init__(self, path=':memory:', debug=False):
-		self.path = path
 		try:
 			self.__db_api_init__(sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
 		except sqlite3.OperationalError, e:
