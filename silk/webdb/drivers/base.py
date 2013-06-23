@@ -1,49 +1,6 @@
-"""silk.webdb.drivers.base: Base class and common objects for webdb drivers
+"""Base class and common objects for webdb drivers
 
-The silk DAL expects the following methods to be available from its driver:
-
-driver.list_tables() -> list of names of tables in database
-
-driver.list_columns(table) -> iterator of tuples(name, v_type, notnull, default)
-  name: column name
-  v_type: type name of column
-  notnull: boolean
-  default: default value
-  
-driver.rename_table(table, name) -> return value is ignored
-
-driver.add_column(table, column) -> return value is ignored
-
-driver.drop_column(table, column) -> return value is ignored
-
-driver.create_table_if_nexists(name, columns, primarykeys) -> return value is ignored
-
-driver.delete(table, where) -> return value is ignored
-  table: table name
-  where: where_tree
-
-driver.drop_table(table) -> return value is ignored
-  table: table name
-
-driver.insert(table, columns, values) -> returns rowid of inserted row (integer > 0)
-  table: table name
-  values: dictionary of values to insert
-
-driver.select(tables, columns, where, distinct, orderby) -> iterator over result set
-  tables: set of table objects
-  columns: list of column objects
-  where: where object's "where_tree"; nested list like [operator, arg1, arg2, ...]
-  distinct: distinct
-  orderby: list of ordering columns
-  
-driver.update(table, columns, values, where) -> return value is ignored
-  table: table name
-  columns: list of columns to update
-  values: list of values to set
-  where: where_tree
-
-driver.commit() -> return value is ignored
-driver.rollback() -> return value is ignored
+Drivers written for webdb should subclass ``driver_base``.
 """
 
 from ... import sequence, flatten, container
