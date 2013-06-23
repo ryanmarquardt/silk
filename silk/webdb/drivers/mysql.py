@@ -15,11 +15,10 @@ class mysql(driver_base):
 	test_args = ('silk_test','silk_test')
 	test_kwargs = {'engine':'InnoDB'}
 	
-	parameters = driver_base.parameters_format
 	id_quote = '`'
 	
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
-		driver_base.__init__(self, MySQLdb.connect(host=host, user=user, passwd=password or '', db=database), debug)
+		self.__db_api_init__(MySQLdb, host=host, user=user, passwd=password or '', db=database, debug=debug)
 		self.database = database
 		self.host = host
 		self.user = user

@@ -16,7 +16,7 @@ class sqlite(driver_base):
 	def __init__(self, path=':memory:', debug=False):
 		self.path = path
 		try:
-			driver_base.__db_api_init__(self, sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
+			self.__db_api_init__(sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
 		except sqlite3.OperationalError, e:
 			if e.message == 'unable to open database file':
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
