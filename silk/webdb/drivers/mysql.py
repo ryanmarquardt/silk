@@ -14,9 +14,11 @@ class mysql(driver_base):
 	"""
 	test_args = ('silk_test','silk_test')
 	test_kwargs = {'engine':'InnoDB'}
-	
+
+	engines = {'MyISAM','InnoDB','MERGE','MEMORY','BDB','EXAMPLE','FEDERATED','ARCHIVE','CSV','BLACKHOLE'}
+
 	id_quote = '`'
-	
+
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
 		self.__db_api_init__(MySQLdb, host=host, user=user, passwd=password or '', db=database, debug=debug)
 		self.engine = engine
@@ -26,7 +28,7 @@ class mysql(driver_base):
 		return self.__dict__['engine']
 	@engine.setter
 	def engine(self, new):
-		assert new in {'MyISAM','InnoDB','MERGE','MEMORY','BDB','EXAMPLE','FEDERATED','ARCHIVE','CSV','BLACKHOLE'}, 'Unknown storage engine %r' % new
+		assert new in self.engines, 'Unknown storage engine %r' % new
 		if new in {'InnoDB', 'BDB'}:
 			self.features.add('transactions')
 		else:
