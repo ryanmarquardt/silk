@@ -11,6 +11,12 @@ class sqlite(driver_base):
 	file. By default, path=':memory:', which creates a temporary database
 	in memory.
 
+	The following are equivalent:
+
+	>>> mydb = DB() #sqlite is used as the default database
+
+	>>> mydb = DB.connect('sqlite')
+
 	>>> mydb = DB.connect('sqlite', ':memory:')
 	"""
 	id_quote = '"'
