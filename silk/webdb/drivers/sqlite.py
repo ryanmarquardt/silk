@@ -11,13 +11,12 @@ class sqlite(driver_base):
 	file. By default, path=':memory:', which creates a temporary database
 	in memory.
 	"""
-	parameters = driver_base.parameters_qmark
 	id_quote = '"'
 	
 	def __init__(self, path=':memory:', debug=False):
 		self.path = path
 		try:
-			driver_base.__init__(self, sqlite3.connect(path, sqlite3.PARSE_DECLTYPES), debug)
+			driver_base.__db_api_init__(self, sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
 		except sqlite3.OperationalError, e:
 			if e.message == 'unable to open database file':
 				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)

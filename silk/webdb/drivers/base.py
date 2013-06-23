@@ -217,6 +217,17 @@ class driver_base(object):
 		self.debug = debug
 		self.features = {'transactions'}
 
+	def __db_api_init__(self, module, *args, **kwargs):
+		self.parameters = {
+			'qmark':self.parameters_qmark,
+			'format':self.parameters_format,
+			'pyformat':self.parameters_pyformat,
+			'named':self.parameters_named,
+			'numeric':self.parameters_numeric,
+		}[module.paramstyle]
+		debug = kwargs.pop('debug', False)
+		driver_base.__init__(self, module.connect(*args, **kwargs), debug=debug)
+
 	def __enter__(self):
 		self.depth += 1
 		if self.cursor is None:
