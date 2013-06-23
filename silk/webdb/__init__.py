@@ -478,45 +478,46 @@ ident = lambda x:x
 class Column(Expression):
 	"""Object representing a single column in a database table.
 
-	Arguments:
-	name -- Name of the column. Must consist only of alpha-numerics and
-	  underscores.
-	native_type -- Python type which database should expect and produce. Must be
-	  one of int, bool, float, unicode, bytes or datetime. This value is used by
-	  the database driver to determine the type affinity of the database column
-	todb -- Function which converts a value to native_type for passing to the
-	  database driver. If todb is None the value is passed through unaltered.
-	  (default None)
-	fromdb -- Function which converts a value of native_type from the database
-	  to the desired type. If fromdb is None, the native_type is returned
-	  unaltered. (default None)
-	required -- Boolean value which determines whether the column must be given
-	  a value on insert or update. None is not allowed as a value of required
-	  columns. (default False)
-	default -- Value to insert when no value is specified for this column. This
-	  value is ignored if 'required' is true. If default is callable, it will be
-	  called with no arguments when an insert is performed. (default None)
-	unique -- Boolean value. If true, no value (except None) can occur more than
-	  once in this column. (default False)
-	primarykey -- Boolean value. If true, the values of this column uniquely
-	  identify a row (possibly in combination with other columns). Primary key
-	  columns are unique and required implicitly, and these attributes are
-	  ignored. (default False)
-	references -- Table which this Column refers to. Any value other than None
-	  depends on several other things happening. Subclass ReferenceColumn or
-	  study the source code if you need a new type of reference. (default None)
-	length -- Integer specifying the expected maximum length of a Column's
-	  value. Please note that this limit is only enforced at the driver level,
-	  so database engines that don't enforce size limits (e.g. sqlite) may store
-	  longer values. In order to enforce a strict length limit, use a todb
-	  function a la
-
-	      Column('a', length=24, todb=lambda x:x[:24])
-
-	   to truncate values.
-	autoincrement -- Boolean value. If true, an incrementally-increasing
-	 integer value is inserted by default by the database. (default False)
-	
+	:``name``: Name of the column. Must consist only of alpha-numerics
+	  and underscores.
+	:``native_type``: Python type which database should expect and
+	  produce. Must be one of ``int``, ``bool``, ``float``, ``unicode``,
+	  ``bytes``, or ``datetime.datetime``. This value is used by the
+	  database driver to determine the type affinity of the database
+	  column.
+	:``todb=None``: Function which converts a value to ``native_type``
+	  for passing to the database driver. If ``todb`` is ``None``, the
+	  value is passed through unaltered.
+	:``fromdb=None``: Function which converts a ``native_type`` value
+	  from the database to the desired type. If ``fromdb`` is ``None``,
+	  the native_type is returned unaltered.
+	:``required=False``: Boolean value which determines whether a value
+	  must be given on insert or update. ``None`` is not allowed as a
+	  value of required columns.
+	:``default=None``: Value to insert when no value is specified for
+	  this column. This value is ignored if ``required`` is true. If
+	  ``default`` is callable, it will be called with no arguments
+	  every time an insert is performed and the return value will be
+	  used instead.
+	:``unique=False``: Boolean value. If true, no value (except
+	  ``None``) can occur more than once in this column.
+	:``primarykey=False``: Boolean value. If true, the values of this
+	  column uniquely identify a row (possibly in combination with other
+	  columns). A true value for ``primarykey`` implies ``unique=True``
+	  and ``required=True``.
+	:``references=None``: For any ``table``, values in this column (or
+	  the result of this column's ``todb`` function) refer to
+	  corresponding rows in ``table``. It is recommeded to use
+	  ``ReferenceColumn`` to properly setup such references.
+	:``length``: Integer specifying the expected maximum length of this
+	  column's values. Please note that this limit is only enforced by
+	  the database itself, so database engines that don't enforce size
+	  limits (e.g. sqlite) might store longer values. In order to
+	  enforce a strict length limit, use a ``todb`` function to truncate
+	  values. For example, ``todb=lambda x:x[:24]``
+	:``autoincrement=False``: Boolean value. If true, an
+	  incrementally-increasing integer value is inserted by default by
+	  the database.
 	"""
 	def __init__(self, name, native_type, todb=None, fromdb=None, required=False,
 	default=None, unique=False, primarykey=False, references=None, length=None,
