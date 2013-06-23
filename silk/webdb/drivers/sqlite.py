@@ -10,6 +10,8 @@ class sqlite(driver_base):
 	sqlite accepts only one parameter: path, which is the path of the database
 	file. By default, path=':memory:', which creates a temporary database
 	in memory.
+
+	>>> mydb = DB.connect('sqlite', ':memory:')
 	"""
 	id_quote = '"'
 	

@@ -10,7 +10,9 @@ class mysql(driver_base):
 	"""Driver for mysql databases
 
 	mysql requires only one parameter: database, which is the name of the
-	database to use. 
+	database to use.
+
+	>>> mydb = DB.connect('mysql', 'silk_test', user='silk_test', engine='InnoDB')
 	"""
 	test_args = ('silk_test','silk_test')
 	test_kwargs = {'engine':'InnoDB'}
