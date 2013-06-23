@@ -168,6 +168,33 @@ class driver_base(object):
 	'''
 
 	def __init__(self, connection, debug=False):
+		"""
+
+		:``connection``: The DB-API compliant connection object. ``driver_base``
+		    stores this as ``self.connection`` and uses it to implement
+		    transaction support.
+
+		:``debug=False``: This parameter is optional, but must be allowed for
+		    the builtin test suite to function properly. Please consider
+		    adding ``debug`` as a keyword argument to your driver's ``__init__``
+		    and passing that value along. ``driver_base`` stores this as
+		    ``self.debug``.
+
+		In addition to these instance attributes, ``driver_base`` uses:
+
+		:``depth`` and ``cursor``: Together these attributes manage the driver's
+		    transaction state.
+
+		:``features``: This set tracks various optional features that database
+		    drivers might provide. Add or remove features as appropriate to your
+		    database's abilities. As of this writing, ``'transactions'`` is the
+		    only supported value.
+
+		In order for ``driver_base`` to function properly, it is important not
+		to interfere with the instance attributes ``depth``, ``cursor``,
+		``connection``, and ``debug``. They should be treated as read-only.
+
+		"""
 		self.connection = connection
 		self.depth = 0
 		self.cursor = None
@@ -175,6 +202,13 @@ class driver_base(object):
 		self.features = {'transactions'}
 
 	def __db_api_init__(self, module, *args, **kwargs):
+		"""Shortcut to __init__ for DB-API compliant databases
+
+		:``module``: Imported module object. Currently uses ``paramstyle``
+			to generate proper SQL
+
+		Remaining arguments are passed to ``module``'s ``connect`` function.
+		"""
 		self.parameters = {
 			'qmark':self.parameters_qmark,
 			'format':self.parameters_format,
@@ -186,6 +220,14 @@ class driver_base(object):
 		driver_base.__init__(self, module.connect(*args, **kwargs), debug=debug)
 
 	def __enter__(self):
+		"""Transaction support.
+
+		If a driver supports transactions, wrapping multiple calls in a
+		``with`` block will prevent any database commit from being performed
+		until the outer-most block is left. Each database call is also
+		wrapped in a with statement.
+
+		"""
 		self.depth += 1
 		if self.cursor is None:
 			self.cursor = self.connection.cursor()
@@ -201,12 +243,29 @@ class driver_base(object):
 			self.cursor = None
 
 	def commit(self):
+		"""Commits pending changes to the database.
+
+		``commit`` should not be called manually. Instead transactions
+		should be expressed using with statements. See __exit__.
+		"""
 		self.connection.commit()
 
 	def rollback(self):
+		"""Cancels pending changes to the database.
+
+		``rollback`` should not be called manually. Instead transactions
+		should be expressed using with statements. See __exit__.
+		"""
 		self.connection.rollback()
 
 	def execute(self, sql, values=()):
+		"""Runs a single SQL statement manually.
+
+		``execute`` may be used to run SQL code that is outside ``webdb``'s
+		scope. For example, creating an index can improve performance, but
+		is not supported by ``webdb``. ``execute`` is also used internally
+		to run all generated SQL statements. The most recent SQL statement
+		run is always available as ``lastsql``"""
 		self.lastsql = sql
 		#print >>sys.stderr, sql, values or ''
 		with self as cursor:
@@ -218,11 +277,18 @@ class driver_base(object):
 				raise Exception(e, sql, values)
 
 	def identifier(self, name):
+		"""Sanitize and format table and column names
+
+		"""
 		if not name.replace('_','').isalnum():
 			raise NameError("Column names can only contain letters, numbers, and underscores. Got %r" % name)
 		return ''.join((self.id_quote,name,self.id_quote))
 
 	def literal(self, value, cast=None):
+		"""Formats python values into equivalent SQL
+
+		The default implementation tunrs None into NULL and wraps text in
+		single-quotes."""
 		if value is None:
 			return 'NULL'
 		elif isinstance(value, basestring) or cast in ('TEXT','BLOB'):
