@@ -67,10 +67,7 @@ class sqlite(driver_base):
 			yield (str(name),self.unmap_type(v_type),bool(notnull),default)
 
 	def create_table_if_nexists_sql(self, name, coldefs, primarykeys):
-		if primarykeys:
-			return """CREATE TABLE IF NOT EXISTS %s(%s, PRIMARY KEY (%s));""" % (name, ', '.join(coldefs), ', '.join('%s ASC'%p for p in primarykeys))
-		else:
-			return """CREATE TABLE IF NOT EXISTS %s(%s);""" % (name, ', '.join(coldefs))
+		return """CREATE TABLE IF NOT EXISTS %s(%s%s);""" % (name, ', '.join(coldefs), (', PRIMARY KEY (%s)' % ', '.join('%s ASC'%p for p in primarykeys)) if primarykeys else '')
 
 	def _drop_column(self, table, column):
 		raise NotImplementedError
