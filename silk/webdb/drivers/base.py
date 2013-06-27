@@ -7,6 +7,9 @@ from ... import sequence, flatten, container
 import sys
 import datetime
 
+class AuthenticationError(Exception):
+	pass
+
 def timestamp(arg):
 	return arg.replace()
 
@@ -217,7 +220,12 @@ class driver_base(object):
 			'numeric':self.parameters_numeric,
 		}[module.paramstyle]
 		debug = kwargs.pop('debug', False)
-		driver_base.__init__(self, module.connect(*args, **kwargs), debug=debug)
+		try:
+			connection = module.connect(*args, **kwargs)
+		except Exception, e:
+			self.handle_exception(e)
+			raise e
+		driver_base.__init__(self, connection, debug=debug)
 
 	def __enter__(self):
 		"""Transaction support.

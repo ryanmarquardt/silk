@@ -22,13 +22,8 @@ class sqlite(driver_base):
 	id_quote = '"'
 	
 	def __init__(self, path=':memory:', debug=False):
-		try:
-			self.__db_api_init__(sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
-		except sqlite3.OperationalError, e:
-			if e.message == 'unable to open database file':
-				e = IOError(errno.ENOENT, 'No such file or directory: %r' % path)
-				e.errno = errno.ENOENT
-			raise e
+		self.path = path
+		self.__db_api_init__(sqlite3, path, sqlite3.PARSE_DECLTYPES, debug=debug)
 
 	def normalize_column(self, column):
 		r = driver_base.normalize_column(self, column)
@@ -57,7 +52,11 @@ class sqlite(driver_base):
 		if isinstance(e, sqlite3.OperationalError):
 			msg = e.args[0]
 			if 'has no column named' in msg or msg.startswith('no such column: '):
-				raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
+				e = KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
+			if e.message == 'unable to open database file':
+				e = IOError(errno.ENOENT, 'No such file or directory: %r' % self.path)
+				e.errno = errno.ENOENT
+			raise e
 
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""

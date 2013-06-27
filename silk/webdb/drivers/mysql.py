@@ -22,6 +22,7 @@ class mysql(driver_base):
 	id_quote = '`'
 
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
+		self.database = database
 		self.__db_api_init__(MySQLdb, host=host, user=user, passwd=password or '', db=database, debug=debug)
 		self.engine = engine
 
@@ -48,10 +49,19 @@ class mysql(driver_base):
 
 	def handle_exception(self, e):
 		if isinstance(e, MySQLdb.OperationalError):
+			code = e.args[0]
+			if code == 1049:
+				e = IOError(errno.ENOENT, 'No such database: %r' % self.database)
+				e.errno = errno.ENOENT
+			elif code == 1045:
+				e = AuthenticationError()
+			elif code == 1044:
+				e = AuthenticationError()
 			raise e
 			#msg = e.args[0]
 			#if 'has no column named' in msg or msg.startswith('no such column: '):
 				#raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
+
 
 	def unmap_type(self, t):
 		name, _, size = t.partition('(')

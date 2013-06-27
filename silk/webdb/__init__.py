@@ -217,7 +217,7 @@ import inspect
 import sys
 
 from . import drivers
-from .drivers.base import timestamp
+from .drivers.base import timestamp, AuthenticationError
 
 from .. import *
 
