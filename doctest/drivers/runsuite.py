@@ -92,17 +92,6 @@ class DriverTestInsert(DriverTestBase):
 	def table1(self):
 		self.db.define_table('table1', StrColumn('data'))
 
-	def users(self):
-		self.db.define_table('users',
-			StrColumn('first_name'),
-			StrColumn('last_name'),
-			StrColumn('email'),
-			IntColumn('age', default=18),
-			DateTimeColumn('registered', default=datetime.datetime.now),
-			primarykey = 'email',
-		)
-		self.assertIn('users', self.db)
-
 	def messages(self):
 		self.db.define_table('messages',
 			ReferenceColumn('owner', db.users),
@@ -156,6 +145,90 @@ class DriverTestInsert(DriverTestBase):
 		with self.assertRaises(ValueError):
 			self.db.table1.insert(data='12345')
 
+	def test_column_name_clash(self):
+		"It is awkward, but possible to name columns after methods of Table"
+		self.db.define_table('table1', StrColumn('insert'))
+		self.assertIn('table1', self.db)
+		self.assertNotIsInstance(self.db.table1.insert, Column)
+		self.db.table1.insert(insert='1')
+		self.assertEqual(len(self.db.table1._columns['insert'] == '1'), 1)
+
+	def test_no_primarykey(self):
+		self.db.define_table('table1', StrColumn('data'), primarykey=[])
+		self.db.table1.insert(data='abc')
+		with self.assertRaises(TypeError):
+			self.db.table1[1]
+		self.assertEqual((self.db.table1.data=='abc').select().one().primarykey, ())
+
+class DriverTestSelect(DriverTestBase):
+	def setUp(self):
+		DriverTestBase.setUp(self)
+		self.db.define_table('users',
+			StrColumn('first_name'),
+			StrColumn('last_name'),
+			StrColumn('email'),
+			IntColumn('age', default=18),
+			DateTimeColumn('registered', default=datetime.datetime.now),
+			primarykey = 'email',
+		)
+		self.assertIn('users', self.db)
+		self.db.users.insert_many(
+			{'first_name':'Maggie','last_name':'Reynolds','email':'magginator@email.com','registered':datetime.datetime(2012,5,5)},
+			{'first_name':'Bob','last_name':'Smith','email':'bob.smith@email.com','age':23,'registered':datetime.datetime(2010,4,12)},
+			{'first_name':'Pat','last_name':'Smith','email':'pat.smith@email.com','age':19,'registered':datetime.datetime(2010,4,12)},
+			{'first_name':'Werfina','last_name':'Fablesmok','email':'wgf@email.com','age':'45','registered':datetime.datetime(2012,5,6)},
+		)
+
+	def test_select_all(self):
+		self.assertItemsEqual(map(tuple,self.db.users.select()), [
+			(u'Maggie', u'Reynolds', u'magginator@email.com', 18, datetime.datetime(2012, 5, 5, 0, 0)),
+			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			(u'Pat', u'Smith', u'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
+			(u'Werfina', u'Fablesmok', u'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
+		])
+
+	def test_select_args(self):
+		self.assertItemsEqual(map(tuple,self.db.users.select(self.db.users.first_name, self.db.users.last_name, orderby=self.db.users.last_name)), [
+			(u'Maggie', u'Reynolds'),
+			(u'Bob', u'Smith'),
+			(u'Pat', u'Smith'),
+			(u'Werfina', u'Fablesmok'),
+		])
+
+	def test_select_complex_orderby(self):
+		self.assertEqual(map(tuple,self.db.users.select(
+			self.db.users.first_name,
+			self.db.users.last_name,
+			orderby=[
+				self.db.users.last_name,
+				reversed(self.db.users.first_name)
+			])), [
+			(u'Werfina', u'Fablesmok'),
+			(u'Maggie', u'Reynolds'),
+			(u'Pat', u'Smith'),
+			(u'Bob', u'Smith'),
+		])
+
+	def test_select_where(self):
+		self.assertItemsEqual(map(tuple,(self.db.users.age > 20).select()), [
+			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			(u'Werfina', u'Fablesmok', u'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
+		])
+
+	def test_select_distinct(self):
+		self.assertEqual(map(vars, self.db.users.select(self.db.users.last_name, distinct=True, orderby=self.db.users.last_name)),
+		[dict(last_name=u'Fablesmok'), dict(last_name=u'Reynolds'), dict(last_name=u'Smith')])
+
+	def test_select_aggregate(self):
+		self.assertEqual(self.db.users.select(self.db.users.age.sum()).one()[0], 105)
+		self.assertEqual(self.db.users.select(self.db.users.age.average()).one()[0], 26.25)
+		self.assertEqual(self.db.users.select(self.db.users.age.max()).one()[0], 45)
+
+	def test_select_complex_comparison(self):
+		self.assertItemsEqual(map(tuple, self.db.users.age.between(19,30).select()), [
+			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			(u'Pat', u'Smith', u'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
+		])
 
 if __name__=='__main__':
 	print 'Testing using %s as driver...' % args.driver
