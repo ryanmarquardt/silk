@@ -690,6 +690,11 @@ class Table(object):
 
 	def select(self, *columns, **props):
 		return Where(self).select(*(columns or self.ALL), **props)
+
+	def count(self):
+		return Where(self).count()
+
+	__len__ = count
 		
 	def drop(self):
 		self._db.__driver__.drop_table(self._name)
