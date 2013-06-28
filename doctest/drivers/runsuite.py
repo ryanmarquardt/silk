@@ -135,6 +135,13 @@ class DriverTestTables(DriverTestBase):
 		self.assertSequenceEqual(data, [u'12345', u'23456'])
 		self.assertEqual(len(self.db.table1), 2)
 
+	def test_coersion(self):
+		self.db.define_table('table1', StrColumn('data', unique=True))
+		self.db.table1.insert(data='12345')
+		self.db.table1.insert(data=12345)
+		self.db.table1.insert(data=u'12345')
+		
+
 if __name__=='__main__':
 	print 'Testing using %s as driver...' % args.driver
 	unittest.main()
