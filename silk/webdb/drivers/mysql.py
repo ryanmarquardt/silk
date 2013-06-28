@@ -55,6 +55,8 @@ class mysql(driver_base):
 				e = make_IOError('ENOENT', 'No such database: %r' % self.database)
 			elif code == 1045:
 				e = AuthenticationError(self.user)
+			elif code == 1054:
+				e = KeyError(e.args[1])
 		if isinstance(e, MySQLdb.IntegrityError):
 			code = e.args[0]
 			if code == 1062:
@@ -95,3 +97,4 @@ class mysql(driver_base):
 		return self.connection.insert_id()
 
 	op_SUM = staticmethod(lambda a:'sum(%s)'%a)
+	op_CONCATENATE = staticmethod(lambda a,b:'CONCAT(%s,%s)'%(a,b))
