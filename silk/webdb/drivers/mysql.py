@@ -93,3 +93,5 @@ class mysql(driver_base):
 
 	def insert_rowid(self, cursor):
 		return self.connection.insert_id()
+
+	op_SUM = staticmethod(lambda a:'sum(%s)'%a)
