@@ -55,6 +55,10 @@ class mysql(driver_base):
 				e = make_IOError('ENOENT', 'No such database: %r' % self.database)
 			elif code == 1045:
 				e = AuthenticationError(self.user)
+		if isinstance(e, MySQLdb.IntegrityError):
+			code = e.args[0]
+			if code == 1062:
+				e = ValueError(e.message)
 		raise e
 
 

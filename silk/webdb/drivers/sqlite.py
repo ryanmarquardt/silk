@@ -54,6 +54,10 @@ class sqlite(driver_base):
 				e = KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 			if e.message == 'unable to open database file':
 				e = make_IOError('ENOENT', 'No such file or directory: %r' % self.path)
+		elif isinstance(e, sqlite3.IntegrityError):
+			msg = e.args[0]
+			if msg == 'column data is not unique':
+				raise ValueError(msg)
 		raise e
 
 	def list_tables_sql(self):

@@ -361,14 +361,16 @@ class driver_base(object):
 		r.hasdefault = not callable(r.default) and (r.required or not r.default is None)
 		r.default = self.literal(r.default, r.type)
 		r.name = self.identifier(r.name)
+		r.constraints = []
 		r.notnull_sql = 'NOT NULL' if r.required else ''
 		r.autoinc_sql = 'AUTO_INCREMENT' if r.autoincrement else ''
 		r.default_sql = 'DEFAULT %s' % r.default if r.hasdefault else ''
+		r.unique_sql = 'UNIQUE'
 		return r
 
 	def format_column(self, column):
 		col = self.normalize_column(column)
-		return ' '.join((col.name, col.type, col.notnull_sql, col.autoinc_sql, col.default_sql))
+		return ' '.join((col.name, col.type, col.notnull_sql, col.autoinc_sql, col.default_sql, col.unique_sql))
 
 	def map_type(self, t):
 		return self.webdb_types.get(t) or None
