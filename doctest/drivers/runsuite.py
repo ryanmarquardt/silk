@@ -230,6 +230,72 @@ class DriverTestSelect(DriverTestBase):
 			(u'Pat', u'Smith', u'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
 		])
 
+	def test_record_update(self):
+		record = self.db.users['magginator@email.com']
+		self.assertEqual(record.age, 18)
+		self.assertEqual(record.update(age=record.age+1).age, 19)
+		self.assertEqual(self.db.users['magginator@email.com'].age, 19)
+
+	def test_record_bad_update(self):
+		record = self.db.users['magginator@email.com']
+		with self.assertRaises(KeyError):
+			record.update(nonexistent=True)
+		with self.assertRaises(NameError):
+			record.update(**{'bad identifier':True})
+
+	def test_no_such_record(self):
+		with self.assertRaises(KeyError):
+			self.db.users['not.in.db@email.com']
+
+	def test_select_substring(self):
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[0], orderby=self.db.users.email)],
+			[u'S', u'R', u'S', u'F'])
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[3:5], orderby=self.db.users.email)],
+			[u'th', u'no', u'th', u'le'])
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[1:], orderby=self.db.users.email)],
+			[u'mith', u'eynolds', u'mith', u'ablesmok'])
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[-1:], orderby=self.db.users.email)],
+			[u'h', u's', u'h', u'k'])
+		with self.assertRaises(ValueError):
+			self.db.users.select(self.db.users.last_name[:-1])
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.age[1:], orderby=self.db.users.email)],
+			[3, 8, 9, 5])
+
+	def test_select_combined(self):
+		self.assertItemsEqual([r[0] for r in self.db.users.select(self.db.users.first_name + ' ' + self.db.users.last_name)],
+			[u'Pat Smith', u'Maggie Reynolds', u'Bob Smith', u'Werfina Fablesmok'])
+
+	def test_null_comparison(self):
+		self.assertEqual(len(self.db.users.last_name != 'Smith'), 2)
+		self.assertEqual(len(self.db.users.last_name != None), 4)
+
+	def test_select_aggregate_column(self):
+		self.assertEqual([row.last_name for row in self.db.users.last_name.startswith('S').select()],
+			[u'Smith', u'Smith'])
+		self.assertEqual([row.last_name for row in self.db.users.last_name.endswith('s').select()],
+			[u'Reynolds'])
+
+class DriverTestReferences(DriverTestBase):
+	def setUp(self):
+		DriverTestBase.setUp(self)
+		self.db.define_table('addresses',
+			StrColumn('name', primarykey=True),
+			StrColumn('domain', primarykey=True),
+			BoolColumn('active', default=False))
+		self.db.define_table('accounts',
+			ReferenceColumn('address', self.db.addresses, lambda row:row.name+'@'+row.domain),
+			StrColumn('owner_name'))
+		self.db.addresses.insert_many(
+			dict(name='webmaster', domain='example.com', active=True),
+			dict(name='postmaster', domain='example.com', active=True),
+			dict(name='cerealmaster', domain='example.com'))
+		self.db.accounts.insert(address=self.db.addresses['webmaster', 'example.com'], owner_name='The Webmaster')
+
+	def test_cross_select(self):
+		wm = self.db.addresses['webmaster', 'example.com']
+		self.assertEquals(tuple(wm.accounts.select().one()), (u'webmaster@example.com', 'The Webmaster'))
+
+
 if __name__=='__main__':
 	print 'Testing using %s as driver...' % args.driver
 	unittest.main()
