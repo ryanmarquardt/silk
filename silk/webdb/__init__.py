@@ -37,6 +37,7 @@ tables that have already been defined.
 >>> list(mydb)
 [<Table 'test_table'>]
 
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> list(mydb)
 [<Table 'test_table'>]
@@ -46,6 +47,7 @@ tables that have already been defined.
 [<Table 'test_table'>]
 
 Migrate modifies tables in the database to be like newly-assigned tables.
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> #mydb.migrate()
 >>> mydb.test_table
@@ -59,6 +61,8 @@ change data types, boolean columns might be interpretted as integers, etc.)
 <Table 'test_table'>
 
 It is always recommended to conform your database *before* defining columns.
+
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 
 >>> mydb.define_table('test_types',
@@ -88,7 +92,7 @@ Data
 
 Add some data by calling insert on a table. An integer referring to the new row
 is returned and can be used to retrieve it later.
-#>>> mydb = DB()
+>>> mydb = DB()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'))
 
 >>> mydb.define_table('test_table_x', IntColumn('key'), primarykey=[])
@@ -208,7 +212,6 @@ Cleaning Up
 
 Remove tables by calling 'drop' on them.
 >>> mydb.test_table.drop()
->>> mydb.test_types.drop()
 """
 import collections
 import copy
@@ -745,6 +748,8 @@ class DB(collection):
 		self.__driver__.__exit__(obj, exc, tb)
 
 	def define_table(self, name, *columns, **kwargs):
+		if hasattr(self, name):
+			raise AttributeError("%s already defined" % name)
 		columns = list(columns)
 		primarykey = ()
 		for i,c in enumerate(columns):

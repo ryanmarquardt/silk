@@ -80,7 +80,12 @@ class DriverTestTableCreation(DriverTestBase):
 		self.db.define_table('table1', StrColumn('data'))
 		self.assertIn('table1', self.db)
 
-class DriverTestTables(DriverTestBase):
+	def test_create_duplicate(self):
+		self.db.define_table('table1')
+		with self.assertRaisesRegexp(AttributeError, ' already defined'):
+			self.db.define_table('table1')
+
+class DriverTestInsert(DriverTestBase):
 	def setUp(self):
 		DriverTestBase.setUp(self)
 
@@ -135,12 +140,22 @@ class DriverTestTables(DriverTestBase):
 		self.assertSequenceEqual(data, [u'12345', u'23456'])
 		self.assertEqual(len(self.db.table1), 2)
 
-	def test_coersion(self):
+	def test_string_coersion(self):
 		self.db.define_table('table1', StrColumn('data', unique=True))
 		self.db.table1.insert(data='12345')
+		with self.assertRaises(ValueError):
+			self.db.table1.insert(data=12345)
+		with self.assertRaises(ValueError):
+			self.db.table1.insert(data=u'12345')
+
+	def test_integer_coersion(self):
+		self.db.define_table('table1', IntColumn('data', unique=True))
 		self.db.table1.insert(data=12345)
-		self.db.table1.insert(data=u'12345')
-		
+		with self.assertRaises(ValueError):
+			self.db.table1.insert(data=12345.0)
+		with self.assertRaises(ValueError):
+			self.db.table1.insert(data='12345')
+
 
 if __name__=='__main__':
 	print 'Testing using %s as driver...' % args.driver

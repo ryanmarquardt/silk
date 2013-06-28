@@ -365,7 +365,7 @@ class driver_base(object):
 		r.notnull_sql = 'NOT NULL' if r.required else ''
 		r.autoinc_sql = 'AUTO_INCREMENT' if r.autoincrement else ''
 		r.default_sql = 'DEFAULT %s' % r.default if r.hasdefault else ''
-		r.unique_sql = 'UNIQUE'
+		r.unique_sql = 'UNIQUE' if r.unique else ''
 		return r
 
 	def format_column(self, column):
