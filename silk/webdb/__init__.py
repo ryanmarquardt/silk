@@ -466,6 +466,8 @@ class Where(Expression):
 		columns = flatten(table.primarykey for table in self._tables)
 		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
 		return len(values.fetchall())
+
+	__len__ = count
 		
 	def update(self, **values):
 		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
