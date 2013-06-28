@@ -1,7 +1,6 @@
 
 from .base import *
 
-import errno
 import warnings
 
 import MySQLdb
@@ -23,6 +22,8 @@ class mysql(driver_base):
 
 	def __init__(self, database, user='root', password=None, host='localhost', engine='MyISAM', debug=False):
 		self.database = database
+		self.user = user
+		self.password = password
 		self.__db_api_init__(MySQLdb, host=host, user=user, passwd=password or '', db=database, debug=debug)
 		self.engine = engine
 
@@ -50,17 +51,11 @@ class mysql(driver_base):
 	def handle_exception(self, e):
 		if isinstance(e, MySQLdb.OperationalError):
 			code = e.args[0]
-			if code == 1049:
-				e = IOError(errno.ENOENT, 'No such database: %r' % self.database)
-				e.errno = errno.ENOENT
+			if code in (1044, 1049):
+				e = make_IOError('ENOENT', 'No such database: %r' % self.database)
 			elif code == 1045:
-				e = AuthenticationError()
-			elif code == 1044:
-				e = AuthenticationError()
-			raise e
-			#msg = e.args[0]
-			#if 'has no column named' in msg or msg.startswith('no such column: '):
-				#raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
+				e = AuthenticationError(self.user)
+		raise e
 
 
 	def unmap_type(self, t):

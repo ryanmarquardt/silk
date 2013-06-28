@@ -5,10 +5,22 @@ Drivers written for webdb should subclass ``driver_base``.
 
 from ... import sequence, flatten, container
 import sys
+import errno
+rerrorcode = dict(zip(errno.errorcode.values(), errno.errorcode.keys()))
 import datetime
 
+def make_IOError(code, message):
+	e = IOError(rerrorcode[code], message)
+	e.errno = rerrorcode[code]
+	return e
+
 class AuthenticationError(Exception):
-	pass
+	def __init__(self, user, message=None):
+		self.user = user
+		self.message = None
+
+	def __str__(self):
+		return (message or 'Access denied for %(user)r') % dict(user=self.user)
 
 def timestamp(arg):
 	return arg.replace()
@@ -405,6 +417,8 @@ class driver_base(object):
 
 	def _create_table_if_nexists(self, name, columns, primarykeys):
 		"""Sanitize data from DB and call create_table_if_nexists"""
+		if len(columns) == 0:
+			raise RuntimeError("Cannot create table with no columns")
 		return self.create_table_if_nexists(
 			self.identifier(name),
 			map(self.format_column, columns),

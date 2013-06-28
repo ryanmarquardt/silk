@@ -2,7 +2,6 @@
 from .base import *
 
 import sqlite3
-import errno
 
 class sqlite(driver_base):
 	"""Driver for sqlite3 databases
@@ -54,9 +53,8 @@ class sqlite(driver_base):
 			if 'has no column named' in msg or msg.startswith('no such column: '):
 				e = KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 			if e.message == 'unable to open database file':
-				e = IOError(errno.ENOENT, 'No such file or directory: %r' % self.path)
-				e.errno = errno.ENOENT
-			raise e
+				e = make_IOError('ENOENT', 'No such file or directory: %r' % self.path)
+		raise e
 
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""
