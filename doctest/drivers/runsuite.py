@@ -256,8 +256,8 @@ class DriverTestSelect(DriverTestBase):
 			[u'mith', u'eynolds', u'mith', u'ablesmok'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[-1:], orderby=self.db.users.email)],
 			[u'h', u's', u'h', u'k'])
-		with self.assertRaises(ValueError):
-			self.db.users.select(self.db.users.last_name[:-1])
+		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[:-1], orderby=self.db.users.email)],
+			[u'Smit', u'Reynold', u'Smit', u'Fablesmo'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.age[1:], orderby=self.db.users.email)],
 			[3, 8, 9, 5])
 

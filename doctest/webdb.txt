@@ -187,9 +187,7 @@ KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
 >>> [r[0] for r in db.users.select(db.users.last_name[-1:])]
 [u's', u'h', u'h', u'k']
 >>> [r[0] for r in db.users.select(db.users.last_name[:-1])]
-Traceback (most recent call last):
-	...
-ValueError: Negative-valued slices not allowed
+[u'Reynold', u'Smit', u'Smit', u'Fablesmo']
 >>> [r[0] for r in db.users.select(db.users.age[1:])]
 [9, 3, 9, 5]
 >>> [r[0] for r in db.users.select(db.users.first_name+' '+db.users.last_name)]

@@ -410,17 +410,20 @@ class Expression(object):
 		return self[:len(prefix)] == prefix
 	def __getitem__(self, index):
 		if isinstance(index, slice):
+			if index.step not in (None, 1):
+				raise ValueError('Slices of db columns must have step==1')
 			start = (index.start or 0)
 			if start >= 0:
 				start += 1
-			if index.step not in (None, 1):
-				raise ValueError('Slices of db columns must have step==1')
 			if index.stop is None:
 				return Where(self, drivers.base.SUBSTRING, self, start)
 			elif index.stop >= 0:
 				return Where(self, drivers.base.SUBSTRING, self, start, index.stop-start+1)
 			else:
-				raise ValueError('Negative-valued slices not allowed')
+				return Where(self, drivers.base.SUBSTRING, self, start,
+					Where(self, drivers.base.ADD,
+						Where(self, drivers.base.LENGTH, self),
+				index.stop))
 		return Where(self, drivers.base.SUBSTRING, self, index+1, 1)
 		
 	def coalesce(self, *args):
