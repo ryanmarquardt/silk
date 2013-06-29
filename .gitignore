@@ -10,3 +10,4 @@ debian/*.install
 !debian/copyright
 !debian/rules
 !debian/pyversions
+doctest/*.html
