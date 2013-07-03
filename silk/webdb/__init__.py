@@ -752,6 +752,8 @@ class DB(collection):
 	"""
 	__driver__ = drivers.sqlite.sqlite()
 	execute = __driver__.execute
+	__enter__ = __driver__.__enter__
+	__exit__ = __driver__.__exit__
 
 	@property
 	def lastsql(self):
@@ -759,12 +761,6 @@ class DB(collection):
 
 	def __init__(self):
 		collection.__init__(self, namekey='_name')
-		
-	def __enter__(self):
-		self.__driver__.__enter__()
-		
-	def __exit__(self, obj, exc, tb):
-		self.__driver__.__exit__(obj, exc, tb)
 
 	def define_table(self, name, *columns, **kwargs):
 		if hasattr(self, name):
@@ -807,6 +803,8 @@ class DB(collection):
 		return type(cls.__name__, (cls,), {
 			'__driver__':driver,
 			'execute':driver.execute,
+			'__enter__':driver.__enter__,
+			'__exit__':driver.__exit__,
 		})()
 
 	def conform(self):
