@@ -221,6 +221,7 @@ class DriverTestSelect(DriverTestBase):
 
 	def test_select_aggregate(self):
 		self.assertEqual(self.db.users.select(self.db.users.age.sum()).one()[0], 105)
+		self.assertEqual(self.db.users.get(self.db.users.age.sum()), 105)
 		self.assertEqual(self.db.users.select(self.db.users.age.average()).one()[0], 26.25)
 		self.assertEqual(self.db.users.select(self.db.users.age.max()).one()[0], 45)
 
