@@ -315,7 +315,48 @@ class Selection(object):
 		except StopIteration:
 			return None
 
-class Expression(object):
+class Selectable(object):
+	def __init__(self):
+		pass
+	
+	def _get_columns(self, columns):
+		if not columns:
+			columns = [table.ALL for table in self._tables]
+		return flatten(columns)
+
+	def select(self, *columns, **props):
+		columns = self._get_columns(columns)
+		all_columns = columns[:]
+		primarykey = []
+		if not self._tables:
+			raise Exception('No tables! Using %s' % flatten(columns))
+		elif len(self._tables) == 1 and not props.get('distinct'):
+			primarykey = self._tables.copy().pop().primarykey
+			all_columns.extend(primarykey)
+		values = self._db.__driver__._select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return Selection(all_columns, columns, primarykey, values)
+
+	def select1(self, *columns, **props):
+		return self.select(*columns, **props).one()
+
+	def get(self, expression, **props):
+		return self.select(expression, **props).one()[0]
+		
+	def count(self, **props):
+		columns = flatten(table.primarykey for table in self._tables)
+		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return len(values.fetchall())
+
+	__len__ = count
+
+	def update(self, **values):
+		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
+		
+	def delete(self):
+		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
+
+
+class Expression(Selectable):
 	def _op_args(self, op, *args):
 		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
 	def __nonzero__(self):
@@ -433,6 +474,7 @@ class Expression(object):
 
 class Where(Expression):
 	def __init__(self, old, *wrapped, **kwargs):
+		Selectable.__init__(self)
 		self._db = old._db
 		if isinstance(old, Table):
 			self._tables = {old}
@@ -448,36 +490,6 @@ class Where(Expression):
 			self.fromdb = kwargs.get('fromdb', old.fromdb)
 			self.native_type = kwargs.get('native_type', old.native_type)
 
-	def _get_columns(self, columns):
-		if not columns:
-			columns = [table.ALL for table in self._tables]
-		return flatten(columns)
-		
-	def select(self, *columns, **props):
-		columns = self._get_columns(columns)
-		all_columns = columns[:]
-		primarykey = []
-		if not self._tables:
-			raise Exception('No tables! Using %s' % flatten(columns))
-		elif len(self._tables) == 1 and not props.get('distinct'):
-			primarykey = self._tables.copy().pop().primarykey
-			all_columns.extend(primarykey)
-		values = self._db.__driver__._select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
-		return Selection(all_columns, columns, primarykey, values)
-		
-	def count(self, **props):
-		columns = flatten(table.primarykey for table in self._tables)
-		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
-		return len(values.fetchall())
-
-	__len__ = count
-		
-	def update(self, **values):
-		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
-		
-	def delete(self):
-		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
-		
 	def __repr__(self):
 		return 'Where(%r)'%self._where_tree
 
@@ -530,6 +542,7 @@ class Column(Expression):
 	def __init__(self, name, native_type, todb=None, fromdb=None, required=False,
 	default=None, unique=False, primarykey=False, references=None, length=None,
 	autoincrement=False):
+		Selectable.__init__(self)
 		self.name = name
 		self.table = None
 		self.native_type = native_type
@@ -598,7 +611,7 @@ def ReferenceColumn(name, table, todb=None, *args, **kwargs):
 	table._referers.add(self)
 	return self
 
-class Table(object):
+class Table(Selectable):
 	"""
 
 	self._columns: collection of all column objects
@@ -622,6 +635,7 @@ class Table(object):
 	'rowid'
 	"""
 	def __init__(self, db, name, columns, primarykey=None):
+		Selectable.__init__(self)
 		self._db = db
 		self._name = name
 		self.ALL = columns
@@ -696,14 +710,14 @@ class Table(object):
 		for record in records:
 			self.insert(**record)
 
-	def select(self, *columns, **props):
-		return Where(self).select(*(columns or self.ALL), **props)
+	@property
+	def _tables(self):
+		return {self}
 
-	def count(self):
-		return Where(self).count()
+	@property
+	def _where_tree(self):
+		return []
 
-	__len__ = count
-		
 	def drop(self):
 		self._db.__driver__.drop_table(self._name)
 		del self._db[self._name]
