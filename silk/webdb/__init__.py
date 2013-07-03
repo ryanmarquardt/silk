@@ -675,11 +675,7 @@ class Table(Selectable):
 			key = sequence(key)
 			if len(self.primarykey) != len(key):
 				raise IndexError('Primarykey for %s requires %i values (got %i)' % (self._name, len(self.primarykey), len(key)))
-			assert len(self.primarykey) == len(key)
-			selection = self.primarykey[0] == key[0]
-			for k,v in zip(self.primarykey[1:], key[1:]):
-				selection &= k==v
-			return selection
+			return reduce(lambda x,y:x&y, map(lambda x,y:x==y, self.primarykey, key))
 		raise TypeError('Table %r has no primarykey' % (self._name))
 
 	def __getitem__(self, key):
