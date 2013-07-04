@@ -282,19 +282,21 @@ class Selection(object):
 
 	def index(self, name):
 		return self.names[name]
-		
+
 	def __iter__(self):
+		return self
+
+	def next(self):
+		value = self.values.fetchone()
+		if value is None:
+			raise StopIteration
 		def conv(c,v):
-			try:
-				if isinstance(v,c.native_type) or v is None:
-					return v
-				else:
-					return c.native_type(v)
-			except TypeError:
-				print >>sys.stderr, c, v
-				raise
-		for value in self.values:
-			yield self.Row(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value))
+			if v is None:
+				return v
+			if c.fromdb:
+				v = c.fromdb(v)
+			return v if isinstance(v,c.native_type) else c.native_type(v)
+		return self.Row(map(conv, self.columns, value))
 
 	def one(self):
 		try:

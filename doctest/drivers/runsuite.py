@@ -276,6 +276,25 @@ class DriverTestSelect(DriverTestBase):
 		self.assertEqual([row.last_name for row in self.db.users.last_name.endswith('s').select()],
 			[u'Reynolds'])
 
+	def test_selection_iteration(self):
+		self.db.define_table('table1', StrColumn('data'))
+		self.db.table1.insert(data='a')
+		selection = self.db.table1.select()
+		count = 0
+		for row in selection:
+			count += 1
+		self.assertEqual(count, 1)
+		for row in selection:
+			count += 1
+		self.assertEqual(count, 1)
+
+	def test_selection_truth_value(self):
+		self.db.define_table('table1', StrColumn('data'))
+		self.db.table1.insert(data='a')
+		self.assertTrue((self.db.table1.data == 'a').select())
+		self.assertFalse((self.db.table1.data == 'b').select())
+
+
 class DriverTestReferences(DriverTestBase):
 	def setUp(self):
 		DriverTestBase.setUp(self)
