@@ -296,19 +296,6 @@ class Selection(object):
 		for value in self.values:
 			yield self.Row(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value))
 
-	def __contains__(self, seq):
-		if hasattr(seq, 'items'):
-			for row in self:
-				if kwargs < row.as_dict():
-					return True
-			return False
-		else:
-			seq = sequence(seq)
-			for row in self:
-				if row[:len(seq)] == seq:
-					return True
-			return False
-			
 	def one(self):
 		try:
 			return iter(self).next()
