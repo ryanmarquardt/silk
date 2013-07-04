@@ -266,10 +266,25 @@ class DriverTestSelect(DriverTestBase):
 		self.assertEqual(count, 1)
 
 	def test_selection_truth_value(self):
-		self.db.define_table('table1', StrColumn('data'))
-		self.db.table1.insert(data='a')
-		self.assertTrue((self.db.table1.data == 'a').select())
-		#self.assertFalse((self.db.table1.data == 'b').select())
+		self.db.define_table('table1', StrColumn('data'), IntColumn('value'))
+		self.db.table1.insert(data='a', value=1)
+		self.db.table1.insert(data='b', value=2)
+		selection = (self.db.table1.data == 'a').select()
+		 #__nonzero__ must fetch a row, but it stores it for later use
+		self.assertTrue(selection)
+		self.assertEqual(map(tuple,selection), [(u'a', 1)])
+		self.assertEqual(map(tuple,selection), [])
+		#Non-zero tests are consistent as long as data remains in the cursor
+		selection = (self.db.table1.data != None).select()
+		count = 0
+		while selection:
+			row = selection.next()
+			count += 1
+			self.assertIn(row.data, (u'a', u'b'))
+			self.assertIn(row.value, (1, 2))
+			self.assertEqual({u'a':1, u'b':2}[row.data], row.value)
+		self.assertEqual(count, 2)
+		self.assertFalse((self.db.table1.data == '').select())
 
 
 class DriverTestReferences(DriverTestBase):

@@ -279,6 +279,7 @@ class Selection(object):
 		self.names = {getattr(c,'name',None):i for i,c in enumerate(columns)}
 		self.values = values
 		self.Row = type('Row', (__Row__,), refs)
+		self.cache = None
 
 	def index(self, name):
 		return self.names[name]
@@ -287,7 +288,11 @@ class Selection(object):
 		return self
 
 	def next(self):
-		value = self.values.fetchone()
+		if self.cache:
+			value = self.cache
+			self.cache = None
+		else:
+			value = self.values.fetchone()
 		if value is None:
 			raise StopIteration
 		def conv(c,v):
@@ -303,6 +308,11 @@ class Selection(object):
 			return iter(self).next()
 		except StopIteration:
 			return None
+
+	def __nonzero__(self):
+		if not self.cache:
+			self.cache = self.values.fetchone()
+		return self.cache is not None
 
 class Selectable(object):
 	def __init__(self):
