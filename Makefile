@@ -17,7 +17,8 @@ clean:
 	@python setup.py clean
 
 test: build
-	@$(TESTPYTHON) doctest/drivers/runsuite.py
+	$(TESTPYTHON) doctest/drivers/sqlite.py
+	$(TESTPYTHON) doctest/drivers/mysql.py
 	@$(TESTPYTHON) doctest/rundoctests.py
 	@$(TESTPYTHON) doctest/testwebdbdrivers.py
 	@$(TESTPYTHON) -m doctest doctest/*.txt

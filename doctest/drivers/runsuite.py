@@ -9,51 +9,28 @@ import unittest
 from silk.webdb import *
 import silk.webdb.drivers
 
-parser = argparse.ArgumentParser()
-parser.add_argument('driver', nargs='?', default='<all>')
-args = parser.parse_args()
-
-import sys
-
-sys.argv = sys.argv[:1]
-
-if args.driver == '<all>':
-	import subprocess
-	for driver in silk.webdb.drivers.__all__:
-		subprocess.Popen(['python', __file__, driver]).communicate()
-	exit(0)
-
-conf = ConfigParser.ConfigParser()
-x = ['drivers.conf']
-f = os.path.abspath(__file__)
-while f != '/':
-	f = os.path.split(f)[0]
-	x.append(os.path.join(f,'drivers.conf'))
-conf.read(x)
-
 class DriverTestBase(unittest.TestCase):
 	def setUp(self):
-		self.driver = args.driver
-		self.options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(self.driver)))
-		self.options['debug'] = True
-		self.db = DB.connect(self.driver, **self.options)
+		self.connect()
+
+	def connect(self, **kwargs):
+		new = dict(self.options)
+		new.update(kwargs)
+		self.db = DB.connect(self.driver, **new)
 
 class DriverTestConnection(DriverTestBase):
-	def setUp(self):
-		self.driver = args.driver
+	#def run_driver(self, section):
+		#options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(driver)))
+		#options.update(dict(filter(lambda (k,v):not k.startswith('_'), conf.items(section))))
+		#options['debug'] = True
+		#exc = eval(conf.get(section, '__raises__') if conf.has_option(section, '__raises__') else 'Exception')
+		#with self.assertRaises(exc):
+			#DB.connect(self.driver, **options)
 
-	def run_driver(self, section):
-		options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(self.driver)))
-		options.update(dict(filter(lambda (k,v):not k.startswith('_'), conf.items(section))))
-		options['debug'] = True
-		exc = eval(conf.get(section, '__raises__') if conf.has_option(section, '__raises__') else 'Exception')
-		with self.assertRaises(exc):
-			DB.connect(self.driver, **options)
-
-	def test_drivers(self):
-		sections = filter(lambda name:name.startswith(args.driver+':'), conf.sections())
-		for section in sections:
-			self.run_driver(section)
+	#def test_drivers(self):
+		#sections = filter(lambda name:name.startswith(args.driver+':'), conf.sections())
+		#for section in sections:
+			#self.run_driver(section)
 
 	def test_invalid_driver_name(self):
 		with self.assertRaises(UnknownDriver):
@@ -292,7 +269,7 @@ class DriverTestSelect(DriverTestBase):
 		self.db.define_table('table1', StrColumn('data'))
 		self.db.table1.insert(data='a')
 		self.assertTrue((self.db.table1.data == 'a').select())
-		self.assertFalse((self.db.table1.data == 'b').select())
+		#self.assertFalse((self.db.table1.data == 'b').select())
 
 
 class DriverTestReferences(DriverTestBase):
@@ -322,6 +299,19 @@ class DriverTestExceptions(DriverTestBase):
 		with self.assertRaises(silk.webdb.SQLSyntaxError):
 			((self.db.test.a == None) & (self.db.test.b == None)).select()
 
-if __name__=='__main__':
-	print 'Testing using %s as driver...' % args.driver
+
+def main(driver):
+	DriverTestBase.driver = driver
+	
+	conf = ConfigParser.ConfigParser()
+	x = ['drivers.conf']
+	f = os.path.abspath(__file__)
+	while f != '/':
+		f = os.path.split(f)[0]
+		x.append(os.path.join(f,'drivers.conf'))
+	conf.read(x)
+
+	DriverTestBase.options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(driver)))
+	DriverTestBase.options['debug'] = True
+
 	unittest.main()

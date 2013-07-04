@@ -29,7 +29,7 @@ class AuthenticationError(Exception):
 		self.message = None
 
 	def __str__(self):
-		return (message or 'Access denied for %(user)r') % dict(user=self.user)
+		return (self.message or 'Access denied for %(user)r') % dict(user=self.user)
 
 def timestamp(arg):
 	return arg.replace()
