@@ -51,9 +51,13 @@ class sqlite(driver_base):
 		if isinstance(e, sqlite3.OperationalError):
 			msg = e.args[0]
 			if 'has no column named' in msg or msg.startswith('no such column: '):
-				e = KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
+				raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
 			if e.message == 'unable to open database file':
-				e = make_IOError('ENOENT', 'No such file or directory: %r' % self.path)
+				raise make_IOError('ENOENT', 'No such file or directory: %r' % self.path)
+			if msg.endswith(': syntax error'):
+				text = msg.partition('"')[2].rpartition('"')[0]
+				offset = self.lastsql.index(text)
+				raise SQLSyntaxError(self.lastsql, offset, text)
 		elif isinstance(e, sqlite3.IntegrityError):
 			msg = e.args[0]
 			if msg == 'column data is not unique':

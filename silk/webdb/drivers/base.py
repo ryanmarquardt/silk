@@ -14,6 +14,15 @@ def make_IOError(code, message):
 	e.errno = rerrorcode[code]
 	return e
 
+class SQLSyntaxError(Exception):
+	def __init__(self, sql, offset=None, text=None):
+		Exception.__init__(self, "The driver produced improper SQL%s%s" % ((" near offset %i" % offset) if offset else '', " %r" % text if text else ''))
+		self.sql = sql
+		self.offset = offset
+
+	def __str__(self):
+		return "%s\n%s%s" % (Exception.__str__(self), self.sql, '\n' + ' '*self.offset + '^' if self.offset else '')
+
 class AuthenticationError(Exception):
 	def __init__(self, user, message=None):
 		self.user = user

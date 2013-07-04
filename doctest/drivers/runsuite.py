@@ -315,6 +315,12 @@ class DriverTestReferences(DriverTestBase):
 		wm = self.db.addresses['webmaster', 'example.com']
 		self.assertEquals(tuple(wm.accounts.select().one()), (u'webmaster@example.com', 'The Webmaster'))
 
+class DriverTestExceptions(DriverTestBase):
+	def test_sqlsyntaxerror(self):
+		self.db.__driver__.op_AND = lambda a,b:'%s AD %s'%(a,b)
+		self.db.define_table('test', StrColumn('a'), StrColumn('b'))
+		with self.assertRaises(silk.webdb.SQLSyntaxError):
+			((self.db.test.a == None) & (self.db.test.b == None)).select()
 
 if __name__=='__main__':
 	print 'Testing using %s as driver...' % args.driver

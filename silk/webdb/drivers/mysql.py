@@ -52,15 +52,19 @@ class mysql(driver_base):
 		if isinstance(e, MySQLdb.OperationalError):
 			code = e.args[0]
 			if code in (1044, 1049):
-				e = make_IOError('ENOENT', 'No such database: %r' % self.database)
+				raise make_IOError('ENOENT', 'No such database: %r' % self.database)
 			elif code == 1045:
-				e = AuthenticationError(self.user)
+				raise AuthenticationError(self.user)
 			elif code == 1054:
-				e = KeyError(e.args[1])
-		if isinstance(e, MySQLdb.IntegrityError):
+				raise KeyError(e.args[1])
+		elif isinstance(e, MySQLdb.IntegrityError):
 			code = e.args[0]
 			if code == 1062:
-				e = ValueError(e.message)
+				raise ValueError(e.message)
+		elif isinstance(e, MySQLdb.ProgrammingError):
+			text = e.args[1].partition("'")[2].rpartition("'")[0]
+			offset = self.lastsql.index(text)
+			raise SQLSyntaxError(self.lastsql, offset, text)
 		raise e
 
 
