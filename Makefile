@@ -17,8 +17,9 @@ clean:
 	@python setup.py clean
 
 test: build
-	$(TESTPYTHON) doctest/drivers/sqlite.py -v 2
-	$(TESTPYTHON) doctest/drivers/mysql.py -v 2
+	$(TESTPYTHON) doctest/drivers/sqlite.py -v 1
+	$(TESTPYTHON) doctest/drivers/mysql.py -v 1
+	$(TESTPYTHON) doctest/webdoc.py
 	$(TESTPYTHON) doctest/rundoctests.py
 	$(TESTPYTHON) -m doctest doctest/*.txt
 
