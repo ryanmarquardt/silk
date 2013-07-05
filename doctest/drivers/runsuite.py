@@ -335,6 +335,12 @@ class DriverTestExceptions(DriverTestBase):
 
 
 def main(driver):
+	import argparse
+
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-v', dest='verbosity', nargs='?', action='store', type=int, default=1)
+	args = parser.parse_args()
+	
 	DriverTestBase.driver = driver
 	
 	conf = ConfigParser.ConfigParser()
@@ -348,4 +354,4 @@ def main(driver):
 	DriverTestBase.options = dict(conf.items(driver))
 	DriverTestBase.options['debug'] = True
 
-	unittest.main(verbosity=2)
+	unittest.main(verbosity=args.verbosity)
