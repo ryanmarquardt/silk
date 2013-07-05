@@ -258,7 +258,10 @@ class __Row__(tuple):
 		except TypeError:
 			return tuple.__getitem__(self, self._selection.index(key))
 	__getattr__ = __getitem__
-			
+
+	def __eq__(self, x):
+		return list(self) == sequence(x)
+
 	def __len__(self):
 		return len(self._selection.explicit)
 		
@@ -308,6 +311,31 @@ class Selection(object):
 			return self.next()
 		except StopIteration:
 			return None
+
+	first = one
+
+	def last(self):
+		result = None
+		for result in self:
+			pass
+		return result
+
+	def skip(self, count):
+		for x in range(count):
+			self.values.fetchone()
+
+	def __getitem__(self, x):
+		if not isinstance(x, slice):
+			raise TypeError("Only slices of selections are supported")
+		if (x.start is not None and x.start < 0) or \
+		   (x.stop is not None and x.stop < 0):
+			raise ValueError("Negative slices are not supported")
+		if x.start is not None and x.start > 0:
+			self.skip(x.start)
+		if x.stop is None:
+			return list(self)
+		else:
+			return list(self.next() for y in (x.stop - x.start))
 
 	def __nonzero__(self):
 		if not self.cache:

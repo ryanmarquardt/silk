@@ -12,7 +12,7 @@ class DriverTestBase(unittest.TestCase):
 		self.connect()
 
 	def connect(self, **kwargs):
-		new = dict(self.options)
+		new = dict(filter(lambda (k,v):not k.startswith('_'), self.options.items()))
 		new.update(kwargs)
 		self.db = DB.connect(self.driver, **new)
 
@@ -284,6 +284,27 @@ class DriverTestSelect(DriverTestBase):
 		self.assertEqual(count, 2)
 		self.assertFalse((self.db.table1.data == '').select())
 
+	def test_select_first_last(self):
+		self.db.define_table('test', StrColumn('data'))
+		for x in map(unicode, range(10)):
+			self.db.test.insert(data=x)
+		selection = self.db.test.select(orderby=self.db.test.data)
+		self.assertEqual(selection.first(), '0')
+		self.assertEqual(selection.first(), '1')
+		selection.skip(2)
+		self.assertEqual(selection.one(), '4')
+		self.assertEqual(selection.last(), '9')
+		self.assertEqual(selection.last(), None)
+		self.assertEqual(selection.first(), None)
+
+	def test_select_slice(self):
+		self.db.define_table('test', StrColumn('data'))
+		for x in map(unicode, range(10)):
+			self.db.test.insert(data=x)
+		selection = self.db.test.select(orderby=self.db.test.data)
+		self.assertEqual(len(selection[4:]), 6)
+		selection = self.db.test.select(orderby=self.db.test.data)
+		self.assertEqual(map(tuple,selection[:]), map(tuple,map(unicode,range(10))))
 
 class DriverTestReferences(DriverTestBase):
 	def setUp(self):
@@ -324,7 +345,7 @@ def main(driver):
 		x.append(os.path.join(f,'drivers.conf'))
 	conf.read(x)
 
-	DriverTestBase.options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(driver)))
+	DriverTestBase.options = dict(conf.items(driver))
 	DriverTestBase.options['debug'] = True
 
-	unittest.main()
+	unittest.main(verbosity=2)
