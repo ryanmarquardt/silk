@@ -62,7 +62,6 @@ class sqlite(driver_base):
 			msg = e.args[0]
 			if msg == 'column data is not unique':
 				raise ValueError(msg)
-		raise e
 
 	def list_tables_sql(self):
 		return """SELECT name FROM sqlite_master WHERE type='table'"""

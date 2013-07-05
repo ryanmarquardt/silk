@@ -65,7 +65,6 @@ class mysql(driver_base):
 			text = e.args[1].partition("'")[2].rpartition("'")[0]
 			offset = self.lastsql.index(text)
 			raise SQLSyntaxError(self.lastsql, offset, text)
-		raise e
 
 
 	def unmap_type(self, t):

@@ -245,7 +245,7 @@ class driver_base(object):
 			connection = module.connect(*args, **kwargs)
 		except Exception, e:
 			self.handle_exception(e)
-			raise e
+			raise
 		driver_base.__init__(self, connection, debug=debug)
 
 	def __enter__(self):
