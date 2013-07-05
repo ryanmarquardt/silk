@@ -17,9 +17,10 @@ clean:
 	@python setup.py clean
 
 test: build
-	@$(TESTPYTHON) doctest/rundoctests.py
-	@$(TESTPYTHON) doctest/testwebdbdrivers.py
-	@$(TESTPYTHON) -m doctest doctest/*.txt
+	$(TESTPYTHON) doctest/drivers/sqlite.py -v 2
+	$(TESTPYTHON) doctest/drivers/mysql.py -v 2
+	$(TESTPYTHON) doctest/rundoctests.py
+	$(TESTPYTHON) -m doctest doctest/*.txt
 
 build: $(SRCFILES)
 	@python setup.py build

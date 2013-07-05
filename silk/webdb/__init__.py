@@ -37,6 +37,7 @@ tables that have already been defined.
 >>> list(mydb)
 [<Table 'test_table'>]
 
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', StrColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> list(mydb)
 [<Table 'test_table'>]
@@ -46,6 +47,7 @@ tables that have already been defined.
 [<Table 'test_table'>]
 
 Migrate modifies tables in the database to be like newly-assigned tables.
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 >>> #mydb.migrate()
 >>> mydb.test_table
@@ -59,6 +61,8 @@ change data types, boolean columns might be interpretted as integers, etc.)
 <Table 'test_table'>
 
 It is always recommended to conform your database *before* defining columns.
+
+>>> mydb.test_table.drop()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'), StrColumn('extra'))
 
 >>> mydb.define_table('test_types',
@@ -88,7 +92,7 @@ Data
 
 Add some data by calling insert on a table. An integer referring to the new row
 is returned and can be used to retrieve it later.
-#>>> mydb = DB()
+>>> mydb = DB()
 >>> mydb.define_table('test_table', IntColumn('key'), StrColumn('value'))
 
 >>> mydb.define_table('test_table_x', IntColumn('key'), primarykey=[])
@@ -208,7 +212,6 @@ Cleaning Up
 
 Remove tables by calling 'drop' on them.
 >>> mydb.test_table.drop()
->>> mydb.test_types.drop()
 """
 import collections
 import copy
@@ -217,7 +220,7 @@ import inspect
 import sys
 
 from . import drivers
-from .drivers.base import timestamp
+from .drivers.base import timestamp, AuthenticationError, SQLSyntaxError
 
 from .. import *
 
@@ -255,7 +258,10 @@ class __Row__(tuple):
 		except TypeError:
 			return tuple.__getitem__(self, self._selection.index(key))
 	__getattr__ = __getitem__
-			
+
+	def __eq__(self, x):
+		return list(self) == sequence(x)
+
 	def __len__(self):
 		return len(self._selection.explicit)
 		
@@ -276,43 +282,108 @@ class Selection(object):
 		self.names = {getattr(c,'name',None):i for i,c in enumerate(columns)}
 		self.values = values
 		self.Row = type('Row', (__Row__,), refs)
+		self.cache = None
 
 	def index(self, name):
 		return self.names[name]
-		
-	def __iter__(self):
-		def conv(c,v):
-			try:
-				if isinstance(v,c.native_type) or v is None:
-					return v
-				else:
-					return c.native_type(v)
-			except TypeError:
-				print >>sys.stderr, c, v
-				raise
-		for value in self.values:
-			yield self.Row(v if v is None else conv(c,(c.fromdb or ident)(v)) for c,v in zip(self.columns,value))
 
-	def __contains__(self, seq):
-		if hasattr(seq, 'items'):
-			for row in self:
-				if kwargs < row.as_dict():
-					return True
-			return False
+	def __iter__(self):
+		return self
+
+	def next(self):
+		if self.cache:
+			value = self.cache
+			self.cache = None
 		else:
-			seq = sequence(seq)
-			for row in self:
-				if row[:len(seq)] == seq:
-					return True
-			return False
-			
+			value = self.values.fetchone()
+		if value is None:
+			raise StopIteration
+		def conv(c,v):
+			if v is None:
+				return v
+			if c.fromdb:
+				v = c.fromdb(v)
+			return v if isinstance(v,c.native_type) else c.native_type(v)
+		return self.Row(map(conv, self.columns, value))
+
 	def one(self):
 		try:
-			return iter(self).next()
+			return self.next()
 		except StopIteration:
 			return None
 
-class Expression(object):
+	first = one
+
+	def last(self):
+		result = None
+		for result in self:
+			pass
+		return result
+
+	def skip(self, count):
+		for x in range(count):
+			self.values.fetchone()
+
+	def __getitem__(self, x):
+		if not isinstance(x, slice):
+			raise TypeError("Only slices of selections are supported")
+		if (x.start is not None and x.start < 0) or \
+		   (x.stop is not None and x.stop < 0):
+			raise ValueError("Negative slices are not supported")
+		if x.start is not None and x.start > 0:
+			self.skip(x.start)
+		if x.stop is None:
+			return list(self)
+		else:
+			return list(self.next() for y in (x.stop - x.start))
+
+	def __nonzero__(self):
+		if not self.cache:
+			self.cache = self.values.fetchone()
+		return self.cache is not None
+
+class Selectable(object):
+	def __init__(self):
+		pass
+	
+	def _get_columns(self, columns):
+		if not columns:
+			columns = [table.ALL for table in self._tables]
+		return flatten(columns)
+
+	def select(self, *columns, **props):
+		columns = self._get_columns(columns)
+		all_columns = columns[:]
+		primarykey = []
+		if not self._tables:
+			raise Exception('No tables! Using %s' % flatten(columns))
+		elif len(self._tables) == 1 and not props.get('distinct'):
+			primarykey = self._tables.copy().pop().primarykey
+			all_columns.extend(primarykey)
+		values = self._db.__driver__._select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return Selection(all_columns, columns, primarykey, values)
+
+	def select1(self, *columns, **props):
+		return self.select(*columns, **props).one()
+
+	def get(self, expression, **props):
+		return self.select(expression, **props).one()[0]
+		
+	def count(self, **props):
+		columns = flatten(table.primarykey for table in self._tables)
+		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
+		return len(values.fetchall())
+
+	__len__ = count
+
+	def update(self, **values):
+		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
+		
+	def delete(self):
+		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
+
+
+class Expression(Selectable):
 	def _op_args(self, op, *args):
 		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
 	def __nonzero__(self):
@@ -407,17 +478,20 @@ class Expression(object):
 		return self[:len(prefix)] == prefix
 	def __getitem__(self, index):
 		if isinstance(index, slice):
+			if index.step not in (None, 1):
+				raise ValueError('Slices of db columns must have step==1')
 			start = (index.start or 0)
 			if start >= 0:
 				start += 1
-			if index.step not in (None, 1):
-				raise ValueError('Slices of db columns must have step==1')
 			if index.stop is None:
 				return Where(self, drivers.base.SUBSTRING, self, start)
 			elif index.stop >= 0:
 				return Where(self, drivers.base.SUBSTRING, self, start, index.stop-start+1)
 			else:
-				raise ValueError('Negative-valued slices not allowed')
+				return Where(self, drivers.base.SUBSTRING, self, start,
+					Where(self, drivers.base.ADD,
+						Where(self, drivers.base.LENGTH, self),
+				index.stop))
 		return Where(self, drivers.base.SUBSTRING, self, index+1, 1)
 		
 	def coalesce(self, *args):
@@ -427,6 +501,7 @@ class Expression(object):
 
 class Where(Expression):
 	def __init__(self, old, *wrapped, **kwargs):
+		Selectable.__init__(self)
 		self._db = old._db
 		if isinstance(old, Table):
 			self._tables = {old}
@@ -442,34 +517,6 @@ class Where(Expression):
 			self.fromdb = kwargs.get('fromdb', old.fromdb)
 			self.native_type = kwargs.get('native_type', old.native_type)
 
-	def _get_columns(self, columns):
-		if not columns:
-			columns = [table.ALL for table in self._tables]
-		return flatten(columns)
-		
-	def select(self, *columns, **props):
-		columns = self._get_columns(columns)
-		all_columns = columns[:]
-		primarykey = []
-		if not self._tables:
-			raise Exception('No tables! Using %s' % flatten(columns))
-		elif len(self._tables) == 1 and not props.get('distinct'):
-			primarykey = self._tables.copy().pop().primarykey
-			all_columns.extend(primarykey)
-		values = self._db.__driver__._select(all_columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
-		return Selection(all_columns, columns, primarykey, values)
-		
-	def count(self, **props):
-		columns = flatten(table.primarykey for table in self._tables)
-		values = self._db.__driver__._select(columns, self._tables, self._where_tree, props.get('distinct',False), sequence(props.get('orderby',())))
-		return len(values.fetchall())
-		
-	def update(self, **values):
-		self._db.__driver__._update(self._tables.copy().pop()._name, self._where_tree, values)
-		
-	def delete(self):
-		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
-		
 	def __repr__(self):
 		return 'Where(%r)'%self._where_tree
 
@@ -522,6 +569,7 @@ class Column(Expression):
 	def __init__(self, name, native_type, todb=None, fromdb=None, required=False,
 	default=None, unique=False, primarykey=False, references=None, length=None,
 	autoincrement=False):
+		Selectable.__init__(self)
 		self.name = name
 		self.table = None
 		self.native_type = native_type
@@ -590,7 +638,7 @@ def ReferenceColumn(name, table, todb=None, *args, **kwargs):
 	table._referers.add(self)
 	return self
 
-class Table(object):
+class Table(Selectable):
 	"""
 
 	self._columns: collection of all column objects
@@ -614,6 +662,7 @@ class Table(object):
 	'rowid'
 	"""
 	def __init__(self, db, name, columns, primarykey=None):
+		Selectable.__init__(self)
 		self._db = db
 		self._name = name
 		self.ALL = columns
@@ -653,11 +702,7 @@ class Table(object):
 			key = sequence(key)
 			if len(self.primarykey) != len(key):
 				raise IndexError('Primarykey for %s requires %i values (got %i)' % (self._name, len(self.primarykey), len(key)))
-			assert len(self.primarykey) == len(key)
-			selection = self.primarykey[0] == key[0]
-			for k,v in zip(self.primarykey[1:], key[1:]):
-				selection &= k==v
-			return selection
+			return reduce(lambda x,y:x&y, map(lambda x,y:x==y, self.primarykey, key))
 		raise TypeError('Table %r has no primarykey' % (self._name))
 
 	def __getitem__(self, key):
@@ -688,9 +733,14 @@ class Table(object):
 		for record in records:
 			self.insert(**record)
 
-	def select(self, *columns, **props):
-		return Where(self).select(*(columns or self.ALL), **props)
-		
+	@property
+	def _tables(self):
+		return {self}
+
+	@property
+	def _where_tree(self):
+		return []
+
 	def drop(self):
 		self._db.__driver__.drop_table(self._name)
 		del self._db[self._name]
@@ -725,6 +775,8 @@ class DB(collection):
 	"""
 	__driver__ = drivers.sqlite.sqlite()
 	execute = __driver__.execute
+	__enter__ = __driver__.__enter__
+	__exit__ = __driver__.__exit__
 
 	@property
 	def lastsql(self):
@@ -732,14 +784,10 @@ class DB(collection):
 
 	def __init__(self):
 		collection.__init__(self, namekey='_name')
-		
-	def __enter__(self):
-		self.__driver__.__enter__()
-		
-	def __exit__(self, obj, exc, tb):
-		self.__driver__.__exit__(obj, exc, tb)
 
 	def define_table(self, name, *columns, **kwargs):
+		if hasattr(self, name):
+			raise AttributeError("%s already defined" % name)
 		columns = list(columns)
 		primarykey = ()
 		for i,c in enumerate(columns):
@@ -778,6 +826,8 @@ class DB(collection):
 		return type(cls.__name__, (cls,), {
 			'__driver__':driver,
 			'execute':driver.execute,
+			'__enter__':driver.__enter__,
+			'__exit__':driver.__exit__,
 		})()
 
 	def conform(self):
