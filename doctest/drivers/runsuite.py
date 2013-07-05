@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import argparse
 import ConfigParser
-import inspect
 import os
 import unittest
 
