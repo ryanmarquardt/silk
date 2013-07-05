@@ -1,0 +1,573 @@
+
+========
+Overview
+========
+
+``webdb`` is a database abstraction layer (DAL) inspired by web2py's
+DAL, but made available as a standalone Python library and designed to
+be more succinct and Pythonic whenever possible. Whereas other database
+interface frameworks strive to turn data into objects, the DAL uses
+objects to generate SQL code, providing much more flexibility. ::
+
+    (db.mytable.owner == 'me').select()
+
+is equivalent to the SQL ::
+
+    SELECT * FROM MYTABLE WHERE MYTABLE.OWNER = 'me';
+
+``webdb`` is designed to take advantage of the consistency that Python's
+DB-API provides. The class ``driver_base`` takes care of a lot of the
+boiler-plate code that is normally necessary, and exposes a consistent
+interface to driver authors.
+
+==============
+Initialization
+==============
+
+When a developer attempts to connect to a database::
+
+    mydb = DB.connect('mydriver', 'foo', bar='baz')
+
+``webdb`` attempts to import the ``mydriver`` module from its drivers
+directory and create an instance of the ``mydriver`` class within it
+with the arguments passed to ``connect``, essentially equivalent to::
+
+    from mydriver import mydriver
+    mydriver('foo', bar='baz')
+
+Create a new python file in the drivers directory of webdb with the name
+you'd like to use. For this example, we will use ``mydriver.py``
+
+Import the base driver code.
+::
+
+    from .base import *
+
+Create a class with the same name as the driver's file name. Subclass
+``driver_base``.
+::
+
+    class mydriver(driver_base):
+      ...
+
+Use the driver's ``__init__`` method to create any necessary connections
+to the database. It should accept arguments indicating how to make a
+proper connection, and should only require arguments when there is no
+possible fallback. For example, the builtin mysql driver requires the
+name of a database to connect to, however while the sqlite driver
+accepts a pathname, it will use ``:memory:`` if none is given. Likewise,
+the database name is the only required argument for mysql; by default
+the driver attempts to login as ``root`` with an empty password.
+
+``driver_base.__init__`` must be called by your driver's ``__init__``
+method. It accepts one or two arguments:
+
+.. _driver_base.__init__:
+
+``driver_base.__init__(connection, debug=False)``
+
+:``connection``: The DB-API compliant connection object. ``driver_base``
+    stores this as ``self.connection`` and uses it to implement
+    transaction support. ``driver_base`` stores this as
+    ``self.connection``.
+
+:``debug=False``: This parameter is optional, but must be allowed for
+    the builtin test suite to function properly. Please consider
+    adding ``debug`` as a keyword argument to your driver's ``__init__``
+    and passing that value along. ``driver_base`` stores this as
+    ``self.debug``.
+
+In addition to these instance attributes, ``driver_base`` uses:
+
+:``depth`` and ``cursor``: Together these attributes manage the driver's
+    transaction state.
+
+:``features``: This set tracks various optional features that database
+    drivers might provide. Add or remove features as appropriate to your
+    database's abilities. As of this writing, ``'transactions'`` is the
+    only supported value.
+
+In order for ``driver_base`` to function properly, it is important not
+to interfere with the instance attributes ``depth``, ``cursor``,
+``connection``, and ``debug``. They should be treated as read-only.
+
+===
+API
+===
+
+==========
+Attributes
+==========
+
+Two class attributes are required.
+
+:``id_quote``: specifies which quote character is used with identifiers.
+    If identifiers cannot be quoted, set this to ``''``.
+
+:``parameters``: is technically expected to be a function. There are
+    five pre-defined functions corresponding to the five different
+    paramstyles laid out in `PEP 249`_. Set to whichever is used by
+    your database, i.e.
+
+::
+
+    parameters = driver_base.parameters_pyformat
+
++-------------------------+--------------+
+| Function                | Example      |
++=========================+==============+
+| ``parameters_qmark``    | ``?``        |
++-------------------------+--------------+
+| ``parameters_numeric``  | ``:1``       |
++-------------------------+--------------+
+| ``parameters_named``    | ``:name``    |
++-------------------------+--------------+
+| ``parameters_format``   | ``%s``       |
++-------------------------+--------------+
+| ``parameters_pyformat`` | ``%(name)s`` |
++-------------------------+--------------+
+
+==========
+Formatters
+==========
+
+:``map_type(py_type)`` or ``webdb_types``:
+    ``map_type`` is a method which accepts a Python type object and
+    returns the database data type. The default implementation uses the
+    mapping ``webdb_types``. Unless coersion is more complicated, it is
+    recommended to simply define ``webdb_types``. There must be a
+    mapping for each of the following Python types: ``int``, ``float``,
+    ``bool``, ``unicode``, ``bytes``, and ``datetime.datetime``.
+    Different Python types may map to the same database type if
+    necessary.
+
+:``unmap_type(native_type)`` or ``driver_types``:
+    ``unmap_type`` accepts a database data type and returns a Python
+    type object. The default implementation uses the mapping
+    ``driver_types``. At the least, there should be a mapping for any
+    native type that ``map_type`` returns. ``DB.conform`` may fail if
+    a column listing reports a type that ``unmap_type`` cannot parse.
+
+As an example, the sqlite type maps are:
+::
+
+    webdb_types = {
+        int:'INTEGER',
+        float:'REAL',
+        bool:'INT',
+        unicode:'TEXT',
+        bytes:'BLOB',
+        datetime.datetime:'TIMESTAMP',
+    }
+
+    driver_types = {
+        'TEXT':unicode,
+        'INTEGER':int,
+        'REAL':float,
+        'BLOB':bytes,
+        'TIMESTAMP':datetime.datetime,
+    }
+
+:``expression(x)``: Recursively formats Expression objects (``Column``
+    and ``Where``)
+
+:``identifier(name)``: Checks ``name`` for invalid characters and quotes
+    it as an identifier.
+
+:``literal(value, cast=None)``: Formats ``value`` as a literal,
+    converting it to ``cast`` datatype if appropriate.
+
+:``where_clause(where)``: Formats ``where`` using ``expression()`` and
+    prepends ``' WHERE'``
+
+:``format_column``: Formats the SQL definition of a webdb Column object.
+    ``normalize_column`` converts the Column object into an intermediate
+    object which is used to generate the SQL code.
+    
+    For intermediate object ``c``, ``format_column`` essentially returns
+    ``' '.join([c.name, c.type, c.notnull_sql, c.autoinc_sql, c.default_sql])``.
+
+========
+Commands
+========
+
+For all of the following methods, either the method itself or a method
+of the same name with _SQL appended must be defined. The _SQL version
+is preferred if the desired effect can be accomplished with a single
+SQL command. See the builtin sqlite and mysql drivers for examples.
+
+-------------
+Unimplemented
+-------------
+
+These functions or their _SQL variants must be defined in order to have
+a functional driver. They are highly platform-specific.
+
+:``create_table_if_nexists(name, columns, primarykeys)``:
+    
+    :``name``: single identifier
+    :``columns``: list of column definitions
+    :``primarykeys``: list of identifiers
+
+    ``DB`` never creates new tables blindly. ``create_table_if_nexists``
+    is used exclusively to create new tables. If your database
+    doesn't support any natural equivalent, it should define
+    ``create_table`` (or ``create_table_sql``) instead, along with a
+    ``list_tables`` or ``list_tables_sql`` method.
+
+    - ``DB.define_table`` | ``DB.migrate``
+
+      - ``driver._create_table_if_nexists(name, columns, primarykeys)``
+
+        - ``driver.identifier``
+        - ``driver.format_column``
+        - ``driver.create_table_if_nexists(name, columns, primarykeys)``
+
+          - ``driver.create_table_if_nexists_sql(name, columns, primarykeys)``
+          - ``driver.execute``
+          - # If ``create_table_if_nexists_sql`` is defined, execution ends here
+          - ``driver.list_tables()``
+          - ``driver.create_table(name, columns, primarykeys)``
+
+            - ``driver.create_table_sql(name, columns, primarykeys)``
+            - ``driver.execute``
+
+:``list_tables()``:
+    Migrating or conforming the database requires a listing of all
+    currently defined tables. This should simply return an iterator of
+    table names.
+
+    - ``DB.migrate`` | ``DB.conform``
+
+      - ``driver.list_tables()``
+
+        - ``driver.list_tables_sql()``
+        - ``driver.execute``
+
+:``list_columns(table)``: Used by ``DB.conform``
+    
+    :``table``: single identifier
+    
+    Returned object must be an iterator of 4-tuples:
+    
+    :``name``: String. The native name of the database.
+    :``type``: Python ``type`` object. Type of data to expect.
+    :``notnull``: Bool. Whether ``None`` is forbidden.
+    :``default``: Default value or ``None``.
+
+    - ``DB.conform``
+
+      - ``driver._list_columns(table)``
+
+        - ``driver.identifier``
+        - ``driver.list_columns(table)``
+
+          - ``driver.list_columns_sql(table)``
+          - ``driver.execute``
+      
+
+-----------
+Implemented
+-----------
+
+Default versions of these methods are pre-defined. They are generic
+enough that platform differences are best accomodated in supporting
+methods. If your database uses non-standard syntax, they may need to be
+overridden.
+
+:``select(columns, tables, where, distinct, orderby)``: ``SELECT`` is
+    possibly the most complicated SQL construct. It implements both
+    ``Where.select`` and ``Where.count``
+
+    :``columns``: list of expressions
+    :``tables``: list of identifiers
+    :``where``: single pre-formatted where clause
+    :``distinct``: single boolean value
+    :``orderby``: list of expressions
+
+    In addition to being formatted as expressions, all the elements of
+    ``orderby`` have their outer-most parentheses stripped. This is to
+    fulfill a requirement of mysql. This function, ``pstrip`` is
+    available as a global object of module ``base``.
+
+    - ``Where.select`` | ``Where.count``
+
+      - ``driver._select(columns, tables, conditions, distinct, orderby)``
+
+        - ``driver.expression``
+        - ``driver.identifier``
+        - ``driver.where_clause``
+        - ``pstrip``
+        - ``driver.select(columns, tables, where, distinct, orderby)``
+
+          - ``driver.select_sql(columns, tables, where, distinct, orderby)``
+          - ``driver.execute``
+
+:``insert(table, columns, parameters, values)``:
+    ``insert_sql`` omits the ``values`` argument
+
+    :``table``: single identifier
+    :``columns``: list of identifiers
+    :``parameters``: list of parameter placeholders, returned by
+        ``self.parameters``
+    :``values``: list of raw python objects to be passed to the
+        connection object's ``execute`` method directly
+
+    ``insert`` uses the helper method ``insert_rowid`` for retrieving
+    the proper return value. If your database uses standard SQL but
+    stores the rowid of inserted values in an unusual place (see mysql),
+    simply override ``insert_rowid``.
+
+    - ``Table.insert``
+    
+      - ``driver._insert(table, columns, values)``
+      
+        - ``driver.identifier``
+        - ``driver.parameters``
+        - ``driver.insert(table, columns, placeholders, values)``
+        
+          - ``driver.insert_sql(table, columns, placeholders)``
+          - ``driver.execute``
+          - ``driver.insert_rowid(cursor)``
+
+:``update(table, columns, where, parameters, values)``:
+    ``update_sql`` omits the ``values`` argument
+
+    :``table``: single identifier
+    :``columns``: list of identifiers
+    :``where``: single pre-formatted where clause
+    :``parameters``: list of parameter placeholders, returned by
+        ``self.parameters``
+    :``values``: list of raw python objects to be passed to the
+        connection object's ``execute`` method directly
+
+    - ``Where.update``
+
+      - ``driver._update(table, conditions, values)``
+
+        - ``driver.identifier``
+        - ``driver.where_clause``
+        - ``driver.parameters``
+        - ``driver.update(table, columns, where, parameters, values)``
+
+          - ``driver.update_sql(table, columns, where, parameters)``
+          - ``driver.execute``
+
+:``delete(table, where)``:
+
+    :``table``: single identifier
+    :``where``: single pre-formatted where clause
+
+    - ``Where.delete``
+
+      - ``driver._delete``
+
+        - ``driver.identifier``
+        - ``driver.where_clause``
+        - ``driver.delete``
+
+          - ``driver.delete_sql``
+          - ``driver.execute``
+
+:``drop_table(table)``: This method is only used via the Table object's
+    drop method. ``webdb`` will never automatically drop user-created
+    tables, however it may drop tables after all data has been copied
+    to a new one if the driver's ALTER TABLE doesn't support dropping
+    columns (see sqlite).
+
+    :``table``: single identifier
+
+    - ``Table.drop``
+
+      - ``driver._drop_table``
+
+        - ``driver.identifier``
+        - ``driver.drop_table``
+
+          - ``driver.drop_table_sql``
+          - ``driver.execute``
+
+:``rename_table(table, new)``:
+
+    :``table``: single identifier
+    :``new``: single identifier
+
+    - ???
+
+      - ``driver._rename_table(table, new)``
+
+        - ``driver.identifier``
+        - ``driver.rename_table(table, new)``
+
+          - ``driver.rename_table_sql(table, new)``
+          - ``driver.execute``
+
+:``add_column(table, column)``:
+
+    :``table``: single identifier
+    :``column``: single column definition
+
+    - ???
+
+      - ``driver._add_column(table, column)``
+
+        - ``driver.identifier``
+        - ``driver.format_column``
+        - ``driver.add_column(table, column)``
+
+          - ``driver.add_column_sql(table, column)``
+          - ``driver.execute``
+
+--------
+Optional
+--------
+
+These methods are not required, but may be defined for the sake of
+efficiency.
+
+:``drop_column(table, column)``: This action is not supported by all
+    databases (most notably sqlite)
+
+=========
+Operators
+=========
+
+Default operator definitions may need to be overridden. They are based
+on sqlite syntax. Define operators as static methods like so::
+
+    class mydriver(driver_base):
+      @staticmethod
+      def op_CONCATENATE(a, b):
+        return '%s . %s' % (a, b)
+
+or using a shortened syntax::
+
+    class mydriver(driver_base):
+      op_CONCATENATE = staticmethod(lambda a,b:'%s . %s' % (a,b))
+
+Operators that are implemented in the database using functions will
+almost certainly need to be overridden. Default definitions are listed
+below.
+
+-----------
+Comparisons
+-----------
+
++----------+---------------------+------------------------+
+|          |                     | ``a = b``              |
+|          | ``op_EQUAL``        +------------------------+
+|          |                     | ``a IS b``             |
+| Equality +---------------------+------------------------+
+|          |                     | ``a != b``             |
+|          | ``op_NOTEQUAL``     +------------------------+
+|          |                     | ``a IS NOT b``         |
++----------+---------------------+------------------------+
+|          | ``op_GREATERTHAN``  | ``a>b``                |
+|          +---------------------+------------------------+
+|          | ``op_LESSTHAN``     | ``a<b``                |
+|          +---------------------+------------------------+
+| Numbers  | ``op_GREATEREQUAL`` | ``a>=b``               |
+|          +---------------------+------------------------+
+|          | ``op_LESSEQUAL``    | ``a<=b``               |
+|          +---------------------+------------------------+
+|          | ``op_BETWEEN``      | ``a BETWEEN b AND c``  |
++----------+---------------------+------------------------+
+|          | ``op_LIKE``         | ``a LIKE b``           |
+|          |                     +------------------------+
+|          |                     | ``a LIKE b ESCAPE c``  |
+| Text     |                     |                        |
+|          |                     | ``c`` must be a single |
+|          |                     |   escape character     |
+|          +---------------------+------------------------+
+|          | ``op_GLOB``         | ``a GLOB b``           |
++----------+---------------------+------------------------+
+
+----------------
+Mathematical Ops
+----------------
+
++-----------+--------------------+----------------+
+|           | ``op_NEGATIVE``    | ``-a``         |
+| Unary     +--------------------+----------------+
+|           | ``op_ABS``         | ``abs(a)``     |
++-----------+--------------------+----------------+
+|           | ``op_ADD``         | ``a+b``        |
+|           +--------------------+----------------+
+|           | ``op_SUBTRACT``    | ``a-b``        |
+|           +--------------------+----------------+
+|           | ``op_MULTIPLY``    | ``a*b``        |
+|           +--------------------+----------------+
+|           | ``op_DIVIDE``      | ``a/b``        |
+| Binary    +--------------------+----------------+
+|           | ``op_FLOORDIVIDE`` | ``a/b``        |
+|           +--------------------+----------------+
+|           | ``op_MODULO``      | ``a%b``        |
+|           +--------------------+----------------+
+|           |                    | ``round(a)``   |
+|           | ``op_ROUND``       +----------------+
+|           |                    | ``round(a,b)`` |
++-----------+--------------------+----------------+
+|           | ``op_AVERAGE``     | ``avg(a)``     |
+|           +--------------------+----------------+
+|           | ``op_MIN``         | ``min(a)``     |
+| Aggregate +--------------------+----------------+
+|           | ``op_MAX``         | ``max(a)``     |
+|           +--------------------+----------------+
+|           | ``op_SUM``         | ``total(a)``   |
++-----------+--------------------+----------------+
+
+-----------
+Logical Ops
+-----------
+
++--------+-----------------+-------------------+
+|        | ``op_NOT``      | ``NOT a``         |
+|        +-----------------+-------------------+
+| Unary  | ``op_ASCEND``   | ``a ASC``         |
+|        +-----------------+-------------------+
+|        | ``op_DESCEND``  | ``a DESC``        |
++--------+-----------------+-------------------+
+|        | ``op_AND``      | ``a AND b``       |
+| Binary +-----------------+-------------------+
+|        | ``op_OR``       | ``a OR b``        |
++--------+-----------------+-------------------+
+|        |                 | ``coalesce(a)``   |
+|        |                 +-------------------+
+|        | ``op_COALESCE`` | ``coalesce(a,b)`` |
+|        |                 +-------------------+
+|        |                 | ...               |
++--------+-----------------+-------------------+
+
+-----------------
+Text Manipulation
+-----------------
+
++--------------------+--------------------+
+| ``op_LENGTH``      | ``length(a)``      |
++--------------------+--------------------+
+| ``op_UPPER``       | ``upper(a)``       |
++--------------------+--------------------+
+| ``op_LOWER``       | ``lower(a)``       |
++--------------------+--------------------+
+| ``op_CONCATENATE`` | ``a||b``           |
++--------------------+--------------------+
+|                    | ``substr(a,b)``    |
+| ``op_SUBSTRING``   +--------------------+
+|                    | ``substr(a,b,c)``  |
++--------------------+--------------------+
+|                    | ``ltrim(a)``       |
+| ``op_LSTRIP``      +--------------------+
+|                    | ``ltrim(a,b)``     |
++--------------------+--------------------+
+|                    | ``rtrim(a)``       |
+| ``op_RSTRIP``      +--------------------+
+|                    | ``rtrim(a,b)``     |
++--------------------+--------------------+
+|                    | ``trim(a)``        |
+| ``op_STRIP``       +--------------------+
+|                    | ``trim(a,b)``      |
++--------------------+--------------------+
+| ``op_REPLACE``     | ``replace(a,b,c)`` |
++--------------------+--------------------+
+
+.. _PEP 249: http://www.python.org/dev/peps/pep-0249/
