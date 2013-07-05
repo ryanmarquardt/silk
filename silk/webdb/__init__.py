@@ -305,7 +305,7 @@ class Selection(object):
 
 	def one(self):
 		try:
-			return iter(self).next()
+			return self.next()
 		except StopIteration:
 			return None
 
