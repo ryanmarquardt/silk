@@ -4,171 +4,223 @@ from StringIO import StringIO
 import re
 import sys
 
-import io
+class INDENT:pass
+class DEDENT:pass
 
-class StencilBase(object):
-	'''Base class for template engines.
+class IndentingPrinter(object):
+	def __init__(self, stream, indent):
+		self.stream = stream
+		self.indent = indent
+		self.level = 0
 
-	>>> class Web2pyStencil(StencilBase):
-	...   opener, closer = '{{', '}}'
-	...   indent = '  '
-	>>> parse = Web2pyStencil.parse
+	def __call__(self, text):
+		if text is INDENT:
+			self.level += 1
+		elif text is DEDENT:
+			self.level -= 1
+			if self.level < 0:
+				raise ValueError("Can't have negative indent")
+		else:
+			print >>self.stream, '%s%s' % (self.indent * self.level, text)
+
+class StencilFile(object):
+	def __init__(self, opener, closer, path_or_file, filename='<string>'):
+		self.opener = opener
+		self.closer = closer
+		if isinstance(path_or_file, basestring):
+			path_or_file = open(path_or_file, 'r')
+		self.file = path_or_file
+		self.filename = getattr(path_or_file, 'name', filename)
+		self.iter = iter(self)
+
+	def next(self):
+		return self.iter.next()
+
+	def __iter__(self):
+		insub, multiline = False, ''
+		for lineno, line in enumerate(self.file, 1):
+			multiline, line, text, column = '', multiline+line, line, 0
+			while line:
+				split = self.closer if insub else self.opener
+				token, found, line = line.partition(split)
+				if not found:
+					multiline += token
+					break
+				if insub:
+					token = token.strip()
+				if token:
+					yield lineno, column, insub, token, text
+				column += len(token) + len(split)
+				insub = not insub
+		if multiline or insub:
+			if insub:
+				raise SyntaxError('Unclosed substitution', (self.filename,lineno,column,text))
+			else:
+				yield lineno, column, insub, multiline, text
+
+class Stencil(object):
+	"""
+	>>> erb = Stencil('<%', '%>')
+	>>> erb.compile('b.stencil', out=sys.stdout)
+	# extend 'a.stencil'
+	sys.stdout.write('abc\\n')
+	# include ''
+	sys.stdout.write('\\ndef\\n')
+	sys.stdout.write('\\nghi\\n')
+
+	>>> exec erb.compile('b.stencil')
+	abc
+	<BLANKLINE>
+	def
+	<BLANKLINE>
+	ghi
+
+	>>> parse = Stencil('{{', '}}', '  ').parse
 	>>> parse("{{=123}}")
 	'sys.stdout.write(str(123))\\n'
-	
+
 	>>> parse("123{{if True:}}456{{pass}}", out=sys.stdout)
 	sys.stdout.write('123')
 	if True:
 	  sys.stdout.write('456')
 
-	>>> class ErbStencil(StencilBase):
-	...   opener, closer = '<%', '%>'
-	>>> ErbStencil.parse("You have <%= 'no' if x==0 else x %> messages", out=sys.stdout)
+	>>> erb.parse("You have <%= 'no' if x==0 else x %> messages", out=sys.stdout)
 	sys.stdout.write('You have ')
 	sys.stdout.write(str('no' if x==0 else x))
 	sys.stdout.write(' messages')
-	
-	>>> parse("Uncompleted substitution {{}")
+
+	>>> parse("Uncompleted substitution {{")
 	Traceback (most recent call last):
 		...
 	SyntaxError: Unclosed substitution
-	
-	>>> parse("""This is a {{='multiline'
-	... }} message.""", out=sys.stdout)
+
+	>>> parse('''This is a {{='multiline'
+	... }} message.''', out=sys.stdout)
 	sys.stdout.write('This is a ')
 	sys.stdout.write(str('multiline'))
 	sys.stdout.write(' message.')
-	
-	>>> parse('{{="""This is a \\nmultiline message."""}}', out=sys.stdout)
-	sys.stdout.write(str("""This is a 
-	multiline message."""))
 
-	Subs can contain whole blocks, but can't contain anything outside the sub.
+	>>> parse("{{='''This is a \\nmultiline message.'''}}", out=sys.stdout)
+	sys.stdout.write(str('''This is a 
+	multiline message.'''))
+
 	>>> parse('{{if more_complicated:\\n  it(should, work, anyway)\\nelse:\\n  exit(0)}}{{="This always prints"}}', out=sys.stdout)
 	if more_complicated:
 	  it(should, work, anyway)
 	else:
 	  exit(0)
 	sys.stdout.write(str("This always prints"))
-	
-	The 'pass' keyword takes on new meaning as a block-ending token
+
+	>>> parse("{{if a:}}{{if b:}}{{if c:}}{{=True}}{{pass}}{{pass}}{{pass}}", out=sys.stdout)
+	if a:
+	  if b:
+	    if c:
+	      sys.stdout.write(str(True))
+
 	>>> parse('{{pass}}')
 	Traceback (most recent call last):
 		...
 	SyntaxError: Got dedent outside of block
 
-	Opening sequences aren't parsed inside substitutions
 	>>> parse("{{='{{'}}")
 	"sys.stdout.write(str('{{'))\\n"
-
-	Closing sequences are, however.
-	>>> parse("{{='Hello: }}'}}")
-	Traceback (most recent call last):
-		...
-	SyntaxError: EOL while scanning string literal
-	>>> parse("{{='Hello }'+'}'}}", out=sys.stdout)
-	sys.stdout.write(str('Hello }'+'}'))
-	'''
-	
-	writer='sys.stdout.write'
-	indent = '\t'
-	
-	def __init__(self, path_or_file, filename='<string>'):
-		if isinstance(path_or_file, basestring):
-			path_or_file = open(path_or_file, 'r')
-		self.file = path_or_file
-		self.filename = getattr(path_or_file, 'name', filename)
+	"""
+	def __init__(self, opener=None, closer=None, indent='\t', writer='sys.stdout.write'):
+		if opener:
+			self.opener = opener
+		if closer:
+			self.closer = closer
+		self.writer = writer
+		self.indent = indent
 		self.subs = {
 			'=\s*':self.on_equal_sign,
+			'extend$|extend\s+':self.on_extend,
+			'include$|include\s+':self.on_include,
 		}
 
-	def dedent(self, token):
+	def is_dedent(self, token):
 		return token == 'pass'
 
-	def on_equal_sign(self, token, remainder):
-		return '%s(str(%s))' % (self.writer, remainder)
+	def on_equal_sign(self, printer, token, remainder):
+		printer('%s(str(%s))' % (self.writer, remainder))
 
-	@classmethod
-	def parse(cls, data, out=None):
-		self = cls(StringIO(data))
-		return self.compile(out)
+	def open(self, path):
+		return __builtins__.open(path, 'r')
 
-	def compile(self, out=None):
+	def on_extend(self, printer, token, remainder):
+		printer('# extend %r' % remainder)
+		this = self.sources.pop(-1)
+		self.sources.append(StencilFile(self.opener, self.closer, self.open(remainder), remainder))
+		self.sources[-1].extends = this
+
+	def on_include(self, printer, token, remainder):
+		printer('# include %r' % remainder)
+		if remainder:
+			self.sources.append(StencilFile(self.opener, self.closer, self.open(remainder), remainder))
+		elif hasattr(self.sources[-1], 'extends'):
+			this = self.sources[-1]
+			self.sources.append(this.extends)
+			del this.extends
+
+	def interpret(self, iprint, lineno, column, python, text, orig):
+		filename = self.sources[-1].filename
+		for pattern, function in self.subs.items():
+			match = re.match('(%s)' % pattern, text)
+			if match:
+				column += match.end()
+				text = text[match.end():]
+				function(iprint, *(match.groups()+(text,)))
+				break
+		else:
+			dedent = self.is_dedent(text)
+			if dedent or any(text.startswith(b) for b in ('elif', 'else', 'except', 'finally')):
+				try:
+					iprint(DEDENT)
+				except ValueError:
+					raise SyntaxError('Got dedent outside of block', (filename, lineno, column, orig))
+			stub = text
+			if stub[-1] == ':':
+				if stub[:2] == 'el':
+					stub = 'if 1:pass\n'+stub
+				elif any(map(stub.startswith, ('except','finally'))):
+					stub = 'try:pass\n'+stub
+				stub += '\n\tpass'
+			try:
+				compile(stub, filename, 'exec')
+			except SyntaxError, err:
+				raise SyntaxError(err.msg, (filename, lineno, column+err.offset, orig))
+			if not dedent:
+				if python:
+					iprint(text)
+					if text[-1] == ':':
+						iprint(INDENT)
+				else:
+					iprint('%s(%r)' % (self.writer,text))
+
+	def sequence(self):
+		while self.sources:
+			try:
+				values = self.sources[-1].next()
+			except StopIteration:
+				del self.sources[-1]
+				continue
+			if values[3]:
+				yield values
+
+	def parse(self, data, out=None):
+		return self.compile(StringIO(data), out=out)
+
+	def compile(self, path_or_file, filename='<string>', out=None):
+		self.sources = [StencilFile(self.opener, self.closer, path_or_file, filename)]
 		_return = out is None
 		if _return:
 			out = StringIO()
-		i,level = self.indent,0
-		insub,multiline = False,''
-		for lineno,line in enumerate(self.file, 1):
-			multiline,line,text,col = '',multiline+line,line,0
-			while line:
-				if insub:
-					e,found,line = line.partition(self.closer)
-					if not found:
-						multiline += e
-						break
-					e = e.strip()
-					if e:
-						for pat,func in self.subs.items():
-							m = re.match('(%s)'%pat, e)
-							if m:
-								col += m.end()
-								e = e[m.end():]
-								print >>out, '%s%s'%(i*level,func(*(m.groups()+(e,))))
-								break
-						else:
-							d = self.dedent(e)
-							if d or any(e.startswith(b) for b in ('elif','else','except','finally')):
-								level -= 1
-								if level < 0:
-									raise SyntaxError('Got dedent outside of block', (self.filename,lineno,col,text))
-							if not d:
-								print >>out, '%s%s'%(i*level,e)
-							if e[-1]==':':
-								level += 1
-						test = e
-						if test[-1]==':': #Add stubs to make line-by-line syntax checking work with blocks
-							if test[:2] == 'el':
-								test='if 1:pass\n'+test
-							elif test.startswith('except') or test.startswith('finally'):
-								test='try:pass\n'+test
-							test+='\n\tpass'
-						try:
-							compile(test, self.filename, 'exec')
-						except SyntaxError, err:
-							raise SyntaxError(err.msg, (self.filename,lineno,col+err.offset,text))
-					col += len(e)+len(self.closer)
-				else:
-					p,found,line = line.partition(self.opener)
-					if not found:
-						multiline += p
-						break
-					if p: print >>out, '%s%s(%r)'%(i*level,self.writer,p)
-					col += len(p)+len(self.opener)
-				insub = not insub
-		if multiline:
-			if insub:
-				raise SyntaxError('Unclosed substitution', (self.filename,lineno,col,text))
-			else:
-				print >>out, '%s%s(%r)'%(i*level,self.writer,multiline)
+		iprint = IndentingPrinter(out, self.indent)
+		for lineno, col, python, text, orig in self.sequence():
+			self.interpret(iprint, lineno, col, python, text, orig)
 		if _return:
 			return out.getvalue()
 
-class Web2pyStencil(StencilBase):
-	opener = '{{'
-	closer = '}}'
-
-	def __init__(self, *args, **kwargs):
-		StencilBase.__init__(self, *args, **kwargs)
-		self.subs['extend\s+'] = self.on_extend
-
-	def on_extend(self, token, remainder):
-		return '#Extending %s' % remainder
-
-class ErbStencil(StencilBase):
-	opener = '<%'
-	closer = '%>'
-
-if __name__=='__main__':
+if __name__ == '__main__':
 	import doctest
 	doctest.testmod()

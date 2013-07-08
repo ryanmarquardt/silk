@@ -1,0 +1,409 @@
+#!/usr/bin/env python
+
+from StringIO import StringIO
+import re
+import sys
+
+import io
+
+class INDENT: pass
+class DEDENT: pass
+
+class IndentingPrinter(object):
+	def __init__(self, stream, indent):
+		self.stream = stream
+		self.indent = indent
+		self.level = 0
+
+	def __call__(self, text):
+		if text is INDENT:
+			self.level += 1
+		elif text is DEDENT:
+			self.level -= 1
+			if self.level < 0:
+				raise ValueError("Can't have negative indent")
+		else:
+			print >>self.stream, '%s%s' % (self.indent * self.level, text)
+
+	def inc(self):
+		self.level += 1
+
+	def dec(self):
+		self.level -= 1
+		if self.level < 0:
+			raise ValueError("Can't have negative indent")
+
+class Sequencer(object):
+	'''Base class for template engines.
+
+	>>> class Web2pyStencil(Sequencer):
+	...   opener, closer = '{{', '}}'
+	...   indent = '  '
+	>>> parse = Web2pyStencil.parse
+	>>> parse("{{=123}}")
+	'sys.stdout.write(str(123))\\n'
+	
+	>>> parse("123{{if True:}}456{{pass}}", out=sys.stdout)
+	sys.stdout.write('123')
+	if True:
+	  sys.stdout.write('456')
+
+	>>> class ErbStencil(Sequencer):
+	...   opener, closer = '<%', '%>'
+	>>> ErbStencil.parse("You have <%= 'no' if x==0 else x %> messages", out=sys.stdout)
+	sys.stdout.write('You have ')
+	sys.stdout.write(str('no' if x==0 else x))
+	sys.stdout.write(' messages')
+	
+	>>> parse("Uncompleted substitution {{}")
+	Traceback (most recent call last):
+		...
+	SyntaxError: Unclosed substitution
+	
+	>>> parse("""This is a {{='multiline'
+	... }} message.""", out=sys.stdout)
+	sys.stdout.write('This is a ')
+	sys.stdout.write(str('multiline'))
+	sys.stdout.write(' message.')
+	
+	>>> parse('{{="""This is a \\nmultiline message."""}}', out=sys.stdout)
+	sys.stdout.write(str("""This is a 
+	multiline message."""))
+
+	Subs can contain whole blocks, but can't contain anything outside the sub.
+	>>> parse('{{if more_complicated:\\n  it(should, work, anyway)\\nelse:\\n  exit(0)}}{{="This always prints"}}', out=sys.stdout)
+	if more_complicated:
+	  it(should, work, anyway)
+	else:
+	  exit(0)
+	sys.stdout.write(str("This always prints"))
+	
+	The 'pass' keyword takes on new meaning as a block-ending token
+	>>> parse('{{pass}}')
+	Traceback (most recent call last):
+		...
+	SyntaxError: Got dedent outside of block
+
+	Opening sequences aren't parsed inside substitutions
+	>>> parse("{{='{{'}}")
+	"sys.stdout.write(str('{{'))\\n"
+
+	Closing sequences are, however.
+	>>> parse("{{='Hello: }}'}}")
+	Traceback (most recent call last):
+		...
+	SyntaxError: EOL while scanning string literal
+	>>> parse("{{='Hello }'+'}'}}", out=sys.stdout)
+	sys.stdout.write(str('Hello }'+'}'))
+
+	>>> class ErbES(Sequencer):
+	...   opener, closer = '<%', '%>'
+	...   def open(self, path):
+	...     return StringIO('abc\\n<% include %>\\nghi\\n')
+
+	>>> exec ErbES.parse("<% extend x %>\\ndef")
+	abc
+	def
+	ghi
+	'''
+	
+	writer='sys.stdout.write'
+	indent = '\t'
+	def __init__(self, path_or_file, filename='<string>', out=None):
+		if isinstance(path_or_file, basestring):
+			path_or_file = open(path_or_file, 'r')
+		self.file = path_or_file
+		self.filename = getattr(path_or_file, 'name', filename)
+		self.subs = {
+			'=\s*':self.on_equal_sign,
+		}
+
+	def dedent(self, token):
+		return token == 'pass'
+
+	def on_equal_sign(self, printer, token, remainder):
+		yield '%s(str(%s))' % (self.writer, remainder)
+
+	def on_include(self, printer, token, remainder):
+		if remainder:
+			self.sources.append(self._directives(self.open(remainder)))
+		elif hasattr(self.sources, 'extends'):
+			this = self.sources[-1]
+			self.sources.append(this.extends)
+			del this.extends
+
+	def on_extend(self, printer, token, remainder):
+		this = self.sources.pop()
+		self.sources.append(self._directives(self.open(remainder)))
+		self.sources[-1].extends = this 
+
+	def _directives(self, file):
+		"""line, col, parsing, text = _directives.next()"""
+		insub, multiline = False, ''
+		for lineno, line in enumerate(file, 1):
+			multiline, line, text, column = '', multiline+line, line, 0
+			while line:
+				split = self.closer if insub else self.opener
+				token, found, line = line.partition(split)
+				if not found:
+					multiline += token
+					break
+				if insub:
+					token = token.strip()
+				if token:
+					yield lineno, column, insub, token, text
+				column += len(token) + len(split)
+				insub = not insub
+		if multiline:
+			if insub:
+				raise SyntaxError('Unclosed substitution', (self.filename,lineno,column,text))
+			else:
+				yield lineno, column, insub, multiline, multiline
+				#yield '%s(%r)' % (self.writer, multiline)
+
+	@classmethod
+	def parse(cls, data, out=None):
+		self = cls(StringIO(data))
+		return self.compile(out)
+
+	def compile(self, out=None):
+		_return = out is None
+		if _return:
+			out = StringIO()
+		iprint = IndentingPrinter(out, self.indent)
+		for line in self._produce(iprint):
+			iprint(line)
+		if _return:
+			return out.getvalue()
+
+	def _produce(self, iprint):
+		self.sources = [self._directives(self.file)]
+		while self.sources:
+			lineno, col, python, directive, orig = self.sources[-1].next()
+			if directive:
+				for pattern,func in self.subs.items():
+					match = re.match('(%s)' % pattern, directive)
+					if match:
+						col += match.end()
+						directive = directive[match.end():]
+						for t in func(iprint, *(match.groups()+(directive,))):
+							yield t
+						break
+				else:
+					dedent = self.dedent(directive)
+					if dedent or any(directive.startswith(b) for b in ('elif','else','except','finally')):
+						try:
+							iprint(DEDENT)
+						except ValueError:
+							raise SyntaxError('Got dedent outside of block',
+							                  (self.filename,lineno,col,orig))
+					if not dedent:
+						yield directive
+					directive[-1] == ':' and iprint(INDENT)
+				test = directive
+				if test[-1]==':': #Add stubs to make line-by-line syntax checking work with blocks
+					if test[:2] == 'el':
+						test='if 1:pass\n'+test
+					elif test.startswith('except') or test.startswith('finally'):
+						test='try:pass\n'+test
+					test+='\n\tpass'
+				try:
+					compile(test, self.filename, 'exec')
+				except SyntaxError, err:
+					raise SyntaxError(err.msg,
+					        (self.filename,lineno,col+err.offset,orig))
+			col += len(directive) + len(self.closer)
+
+
+class StencilBase(object):
+	'''Base class for template engines.
+
+	>>> class Web2pyStencil(StencilBase):
+	...   opener, closer = '{{', '}}'
+	...   indent = '  '
+	>>> parse = Web2pyStencil.parse
+	>>> parse("{{=123}}")
+	'sys.stdout.write(str(123))\\n'
+	
+	>>> parse("123{{if True:}}456{{pass}}", out=sys.stdout)
+	sys.stdout.write('123')
+	if True:
+	  sys.stdout.write('456')
+
+	>>> class ErbStencil(StencilBase):
+	...   opener, closer = '<%', '%>'
+	>>> ErbStencil.parse("You have <%= 'no' if x==0 else x %> messages", out=sys.stdout)
+	sys.stdout.write('You have ')
+	sys.stdout.write(str('no' if x==0 else x))
+	sys.stdout.write(' messages')
+	
+	>>> parse("Uncompleted substitution {{}")
+	Traceback (most recent call last):
+		...
+	SyntaxError: Unclosed substitution
+	
+	>>> parse("""This is a {{='multiline'
+	... }} message.""", out=sys.stdout)
+	sys.stdout.write('This is a ')
+	sys.stdout.write(str('multiline'))
+	sys.stdout.write(' message.')
+	
+	>>> parse('{{="""This is a \\nmultiline message."""}}', out=sys.stdout)
+	sys.stdout.write(str("""This is a 
+	multiline message."""))
+
+	Subs can contain whole blocks, but can't contain anything outside the sub.
+	>>> parse('{{if more_complicated:\\n  it(should, work, anyway)\\nelse:\\n  exit(0)}}{{="This always prints"}}', out=sys.stdout)
+	if more_complicated:
+	  it(should, work, anyway)
+	else:
+	  exit(0)
+	sys.stdout.write(str("This always prints"))
+	
+	The 'pass' keyword takes on new meaning as a block-ending token
+	>>> parse('{{pass}}')
+	Traceback (most recent call last):
+		...
+	SyntaxError: Got dedent outside of block
+
+	Opening sequences aren't parsed inside substitutions
+	>>> parse("{{='{{'}}")
+	"sys.stdout.write(str('{{'))\\n"
+
+	Closing sequences are, however.
+	>>> parse("{{='Hello: }}'}}")
+	Traceback (most recent call last):
+		...
+	SyntaxError: EOL while scanning string literal
+	>>> parse("{{='Hello }'+'}'}}", out=sys.stdout)
+	sys.stdout.write(str('Hello }'+'}'))
+	'''
+	
+	writer='sys.stdout.write'
+	indent = '\t'
+	
+	def __init__(self, path_or_file, filename='<string>'):
+		if isinstance(path_or_file, basestring):
+			path_or_file = open(path_or_file, 'r')
+		self.file = path_or_file
+		self.filename = getattr(path_or_file, 'name', filename)
+		self.subs = {
+			'=\s*':self.on_equal_sign,
+		}
+
+	def dedent(self, token):
+		return token == 'pass'
+
+	def on_equal_sign(self, printer, token, remainder):
+		yield '%s(str(%s))' % (self.writer, remainder)
+
+	@classmethod
+	def parse(cls, data, out=None):
+		self = cls(StringIO(data))
+		return self.compile(out)
+
+	def compile(self, out=None):
+		_return = out is None
+		if _return:
+			out = StringIO()
+		iprint = IndentingPrinter(out, self.indent)
+		self.lines_iterator = self._do_compile(iprint)
+		for line in self.lines_iterator:
+			iprint(line)
+		if _return:
+			return out.getvalue()
+
+
+	def _do_compile(self, iprint):
+		insub,multiline = False,''
+		for lineno,line in enumerate(self.file, 1):
+			multiline, line, text, col = '', multiline+line, line, 0
+			while line:
+				if insub:
+					e,found,line = line.partition(self.closer)
+					if not found:
+						multiline += e
+						break
+					e = e.strip()
+					if e:
+						for pat,func in self.subs.items():
+							m = re.match('(%s)'%pat, e)
+							if m:
+								col += m.end()
+								e = e[m.end():]
+								for t in func(iprint, *(m.groups()+(e,))):
+									yield t
+								break
+						else:
+							d = self.dedent(e)
+							if d or any(e.startswith(b) for b in ('elif','else','except','finally')):
+								try:
+									iprint.dec()
+								except ValueError:
+									raise SyntaxError('Got dedent outside of block', (self.filename,lineno,col,text))
+							if not d:
+								yield e
+							e[-1] == ':' and iprint.inc()
+						test = e
+						if test[-1]==':': #Add stubs to make line-by-line syntax checking work with blocks
+							if test[:2] == 'el':
+								test='if 1:pass\n'+test
+							elif test.startswith('except') or test.startswith('finally'):
+								test='try:pass\n'+test
+							test+='\n\tpass'
+						try:
+							compile(test, self.filename, 'exec')
+						except SyntaxError, err:
+							raise SyntaxError(err.msg, (self.filename,lineno,col+err.offset,text))
+					col += len(e) + len(self.closer)
+				else:
+					p,found,line = line.partition(self.opener)
+					if not found:
+						multiline += p
+						break
+					if p:
+						yield '%s(%r)' % (self.writer, p)
+					col += len(p) + len(self.opener)
+				insub = not insub
+		if multiline:
+			if insub:
+				raise SyntaxError('Unclosed substitution', (self.filename,lineno,col,text))
+			else:
+				yield '%s(%r)' % (self.writer, multiline)
+
+class ExtensibleStencil(StencilBase):
+	"""
+	>>> class ErbES(ExtensibleStencil):
+	...   opener, closer = '<%', '%>'
+	...   def open(self, path):
+	...     return StringIO('abc\\n<% include %>\\nghi\\n')
+		"""
+	def __init__(self, *args, **kwargs):
+		StencilBase.__init__(self, *args, **kwargs)
+		self.subs['extend$|extend\s+'] = self.on_extend
+		self.subs['include$|include\s+'] = self.on_include
+
+	def open(self, path):
+		return __builtins__.open(path, 'rb')
+
+	def on_extend(self, printer, token, remainder):
+		outer = self.__class__(self.open(remainder), remainder)
+		outer.extends = self.lines_iterator
+		for line in outer._do_compile(printer):
+			yield line
+
+	def on_include(self, printer, token, remainder):
+		for line in self.__class__(self.open(remainder), remainder)._do_compile(printer) if remainder else self.extends:
+			yield line
+
+class Web2pyStencil(ExtensibleStencil):
+	opener = '{{'
+	closer = '}}'
+
+class ErbStencil(StencilBase):
+	opener = '<%'
+	closer = '%>'
+
+if __name__=='__main__':
+	import doctest
+	doctest.testmod()
