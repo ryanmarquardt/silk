@@ -343,9 +343,6 @@ class Selection(object):
 		return self.cache is not None
 
 class Selectable(object):
-	def __init__(self):
-		pass
-	
 	def _get_columns(self, columns):
 		if not columns:
 			columns = [table.ALL for table in self._tables]
@@ -382,8 +379,26 @@ class Selectable(object):
 	def delete(self):
 		self._db.__driver__._delete(self._tables.copy().pop()._name, self._where_tree)
 
+class Where(Selectable):
+	def __init__(self, old, *wrapped, **kwargs):
+		self._db = old._db
+		if isinstance(old, Table):
+			self._tables = {old}
+			self._text_affinity = False
+			self._where_tree = []
+			self.todb = None
+			self.fromdb = None
+			self.native_type = None
+		else:
+			self._tables = old._tables
+			self._where_tree = old._op_args(*wrapped)
+			self.todb = kwargs.get('todb', old.todb)
+			self.fromdb = kwargs.get('fromdb', old.fromdb)
+			self.native_type = kwargs.get('native_type', old.native_type)
 
-class Expression(Selectable):
+	def __repr__(self):
+		return 'Where(%r)'%self._where_tree
+
 	def _op_args(self, op, *args):
 		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
 	def __nonzero__(self):
@@ -499,30 +514,9 @@ class Expression(Selectable):
 	def between(self, min, max):
 		return Where(self, drivers.base.BETWEEN, self, min, max)
 
-class Where(Expression):
-	def __init__(self, old, *wrapped, **kwargs):
-		Selectable.__init__(self)
-		self._db = old._db
-		if isinstance(old, Table):
-			self._tables = {old}
-			self._text_affinity = False
-			self._where_tree = []
-			self.todb = None
-			self.fromdb = None
-			self.native_type = None
-		else:
-			self._tables = old._tables
-			self._where_tree = old._op_args(*wrapped)
-			self.todb = kwargs.get('todb', old.todb)
-			self.fromdb = kwargs.get('fromdb', old.fromdb)
-			self.native_type = kwargs.get('native_type', old.native_type)
-
-	def __repr__(self):
-		return 'Where(%r)'%self._where_tree
-
 ident = lambda x:x
 
-class Column(Expression):
+class Column(Where):
 	"""Object representing a single column in a database table.
 
 	:``name``: Name of the column. Must consist only of alpha-numerics
