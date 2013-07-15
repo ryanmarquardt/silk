@@ -382,19 +382,11 @@ class Selectable(object):
 class Where(Selectable):
 	def __init__(self, old, *wrapped, **kwargs):
 		self._db = old._db
-		if isinstance(old, Table):
-			self._tables = {old}
-			self._text_affinity = False
-			self._where_tree = []
-			self.todb = None
-			self.fromdb = None
-			self.native_type = None
-		else:
-			self._tables = old._tables
-			self._where_tree = old._op_args(*wrapped)
-			self.todb = kwargs.get('todb', old.todb)
-			self.fromdb = kwargs.get('fromdb', old.fromdb)
-			self.native_type = kwargs.get('native_type', old.native_type)
+		self._tables = old._tables
+		self._where_tree = old._op_args(*wrapped)
+		self.todb = kwargs.get('todb', old.todb)
+		self.fromdb = kwargs.get('fromdb', old.fromdb)
+		self.native_type = kwargs.get('native_type', old.native_type)
 
 	def __repr__(self):
 		return 'Where(%r)'%self._where_tree
