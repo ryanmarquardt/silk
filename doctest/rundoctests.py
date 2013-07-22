@@ -11,6 +11,8 @@ doctest.testmod(silk.webdoc.node)
 doctest.testmod(silk.webdoc.css)
 doctest.testmod(silk.webdoc.html)
 doctest.testmod(silk.webdoc.html.common)
+import silk.webdoc.stencil
+doctest.testmod(silk.webdoc.stencil)
 import silk.webdoc.html.html4
 import silk.webdoc.html.html5
 doctest.testmod(silk.webdoc.html.html4)
