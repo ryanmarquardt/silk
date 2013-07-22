@@ -51,9 +51,9 @@ class mysql(driver_base):
 	def handle_exception(self, e):
 		if isinstance(e, MySQLdb.OperationalError):
 			code = e.args[0]
-			if code in (1044, 1049):
+			if code == 1049:
 				raise make_IOError('ENOENT', 'No such database: %r' % self.database)
-			elif code == 1045:
+			elif code in (1044, 1045):
 				raise AuthenticationError(self.user)
 			elif code == 1054:
 				raise KeyError(e.args[1])

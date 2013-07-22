@@ -3,7 +3,7 @@ from runsuite import *
 
 class DriverTestMysql(DriverTestBase):
 	def test_invalid_db(self):
-		with self.assertRaises(IOError):
+		with self.assertRaises((AuthenticationError, IOError)):
 			self.connect(database = self.options['_database'])
 
 	def test_invalid_user(self):
