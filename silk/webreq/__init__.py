@@ -94,15 +94,11 @@ class Response(object):
 	def stream_path(path, blksize=8192):
 		return wsgiref.util.FileWrapper(open(path, 'rb'), blksize)
 
-class View(object):
-	def __init__(self, renderer=None):
-		self.render = renderer
-
 class TextView(object):
 	def __init__(self, text):
 		self.text = text
 
-	def render(self, vars):
+	def __call__(self, vars):
 		return self.text % vars
 
 
@@ -178,7 +174,13 @@ class BaseRouter(object):
 		if isinstance(response.content, basestring):
 			return [response.content]
 		elif isinstance(response.content, collections.Mapping):
-			return [str(view.render(response.content))]
+			content = view(container(response.content))
+			if isinstance(content, basestring):
+				return [content]
+			elif isinstance(content, collections.Iterable):
+				return content
+			else:
+				return [str(content)]
 		elif isinstance(response.content, collections.Iterable):
 			return response.content
 
