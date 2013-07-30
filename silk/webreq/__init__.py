@@ -191,6 +191,7 @@ class BaseRouter(object):
 			env = environment,
 			method = environment.get('REQUEST_METHOD','GET'),
 			uri = uri,
+			path = path,
 			args = tuple(path.split('/') if path else ()),
 			query = Query.parse(environment.get('QUERY_STRING','')),
 			server = container(
