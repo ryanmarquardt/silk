@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+import silk.serve
+
+if __name__ == '__main__':
+	import sys
+
+	open(sys.argv[1], 'r')
+
+	silk.serve.set_app(sys.argv[1])
+
+	exec silk.serve._Router.serve()
