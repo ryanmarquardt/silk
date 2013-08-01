@@ -163,12 +163,11 @@ class BaseRouter(object):
 				response.content = dict(code=e.code, status=format_status(e.code), message=e.message)
 				return self.error_view
 		except:
-			try:
-				self.report_error(sys.exc_info(), request, response)
-			except:
-				pass
 			response.code = 500
-			response.content = self.unhandled_error or ''
+			try:
+				response.content = self.report_error(sys.exc_info(), request, response)
+			except:
+				response.content = response.content or self.unhandled_error or ''
 
 	def render(self, view, response):
 		if isinstance(response.content, basestring):
