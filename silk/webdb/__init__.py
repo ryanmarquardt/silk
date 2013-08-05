@@ -768,8 +768,8 @@ class DB(collection):
 	def lastsql(self):
 		return self.__driver__.lastsql
 
-	def __init__(self):
-		collection.__init__(self, namekey='_name')
+	def __key__(self, obj):
+		return obj._name
 
 	def define_table(self, name, *columns, **kwargs):
 		if hasattr(self, name):
@@ -791,7 +791,7 @@ class DB(collection):
 			kwargs['primarykey'] = sequence(kwargs['primarykey'])
 		value = Table(self, name, flatten(columns), **kwargs)
 		self.__driver__._create_table_if_nexists(name, value._columns, [pk.name for pk in value.primarykey])
-		collection.__setitem__(self, name, value)
+		collection.add(self, value)
 
 	def __getattr__(self, key):
 		return self.__dict__[key] if key[0] == '_' else self[key]

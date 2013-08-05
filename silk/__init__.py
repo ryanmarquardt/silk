@@ -129,7 +129,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 	b('robert', 'Sys Admin')
 	>>> sorted(list(a), key=lambda x:x.name)
 	[b('josephine', 'Q/A'), b('robert', 'Sys Admin')]
-	>>> a['stephanie'] = b('robert', 'Sys Admin')
+	>>> a.add(b('stephanie', 'Sys Admin'))
 	>>> a['stephanie']
 	b('stephanie', 'Sys Admin')
 	>>> len(a)
@@ -144,9 +144,12 @@ class collection(collections.MutableSet, collections.MutableMapping):
 	>>> a.pop()
 	b('stephanie', 'Sys Admin')
 	'''
-	def __init__(self, namekey, elements=()):
+	def __init__(self, namekey=None, elements=()):
 		self._key = namekey
 		self._data = dict((getattr(e,namekey),e) for e in elements)
+
+	def __key__(self, obj):
+		return getattr(obj, self._key)
 
 	def __len__(self):
 		return len(self._data)
@@ -155,13 +158,13 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		return self._data.itervalues()
 
 	def __contains__(self, value):
-		return value in self._data or getattr(value,self._key) in self._data.values()
+		return value in self._data or self.__key__(value) in self._data.values()
 
 	def add(self, value):
-		self._data[getattr(value,self._key)] = value
+		self._data[self.__key__(value)] = value
 
 	def discard(self, value):
-		del self._data[getattr(value,self._key)]
+		del self._data[self.__key__(value)]
 
 	def keys(self):
 		return self._data.keys()
@@ -170,8 +173,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		return self._data[key]
 		
 	def __setitem__(self, key, value):
-		setattr(value, self._key, key)
-		self._data[key] = value
+		raise NotImplementedError
 
 	def __delitem__(self, key):
 		del self._data[key]
@@ -185,9 +187,9 @@ class collection(collections.MutableSet, collections.MutableMapping):
 			return self._data.popitem()[1]
 
 class ordered_collection(collection):
-	def __init__(self, namekey, elements=()):
+	def __init__(self, namekey=None, elements=()):
 		self._key = namekey
-		self._data = collections.OrderedDict((getattr(e,namekey),e) for e in elements)
+		self._data = collections.OrderedDict((self.__key__(e),e) for e in elements)
 
 
 class MultiDict(collections.MutableMapping):
