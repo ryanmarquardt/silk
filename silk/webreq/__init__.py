@@ -176,12 +176,14 @@ class BaseRouter(object):
 			content = view(container(response.content))
 			if isinstance(content, basestring):
 				return [content]
-			elif isinstance(content, collections.Iterable):
+			elif is_sequence(content):
 				return content
 			else:
 				return [str(content)]
-		elif isinstance(response.content, collections.Iterable):
+		elif is_sequence(response.content):
 			return response.content
+		else:
+			return [str(response.content)]
 
 	def create_request(self, environment):
 		uri = URI.from_env(environment)
