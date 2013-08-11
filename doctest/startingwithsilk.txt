@@ -255,7 +255,7 @@ by a controller, it is passed as an argument to ``response.view.render``.
 Lets create a view to display information on employees.
 
 >>> class EmployeeView(object):
-...   def render(self, data):
+...   def __call__(self, data):
 ...     return 'Employee Information\nName: %(name)s\n' \
 ...            'Age: %(age)s\nEmail: %(email)s' % data
 
@@ -323,11 +323,9 @@ text can be rendered using the ``XML`` class.
 Integration
 -----------
 
-Lets reset the default view to one which produces HTML. Oh, since our view
-is stateless, we can use the standard ``View`` decorator to build a simple one
+Lets reset the default view to one which produces HTML.
 
->>> @View
-... def EmployeeView(data):
+>>> def EmployeeView(data):
 ...   return HTML(HEAD(), BODY(H1('Employee Information'), TABLE(
 ...     TR(TD('Name'), TD(data['name'])),
 ...     TR(TD('Age'), TD(data['age'])),
