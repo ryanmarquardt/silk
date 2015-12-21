@@ -42,24 +42,24 @@ class XMLClosedEntity(XMLEntity):
 class XMLNode(Node):
 	'''Node which is represented as xml.
 	
-	>>> print XMLNode.new('a')('My home page', href='http://homepage.com')
+	>>> print(XMLNode.new('a')('My home page', href='http://homepage.com'))
 	<a href='http://homepage.com'>My home page</a>
 	
 	Literals are escaped properly when rendering.
 	
-	>>> print XMLNode.new('a')('>>> Click Here! <<<', href='/index?a=1&b=2')
+	>>> print(XMLNode.new('a')('>>> Click Here! <<<', href='/index?a=1&b=2'))
 	<a href='/index?a=1&amp;b=2'>&gt;&gt;&gt; Click Here! &lt;&lt;&lt;</a>
 	
 	Attributes that are empty sequences (excluding strings) will be ignored:
 	
-	>>> print XMLNode.new('div')('abc', _class=[])
+	>>> print(XMLNode.new('div')('abc', _class=[]))
 	<div>abc</div>
-	>>> print XMLNode.new('div')('abc', _class='')
+	>>> print(XMLNode.new('div')('abc', _class=''))
 	<div class=''>abc</div>
 	>>> a = XMLNode.new('div')()
 	>>> a.add('span.highlight')
 	XMLNode('span')(_class=['highlight'])
-	>>> print a
+	>>> print(a)
 	<div><span class='highlight' /></div>
 	'''
 	def __init__(self, *children, **attributes):
@@ -99,9 +99,9 @@ class XMLNoChildNode(XMLNode):
 	
 	>>> XMLNoChildNode.new('br')()
 	XMLNoChildNode('br')()
-	>>> print XMLNoChildNode.new('hr')()
+	>>> print(XMLNoChildNode.new('hr')())
 	<hr />
-	>>> print XMLNoChildNode.new('meta')(charset='utf-8')
+	>>> print(XMLNoChildNode.new('meta')(charset='utf-8'))
 	<meta charset='utf-8' />
 	>>> XMLNoChildNode.new('br')('ignored', _not='this')
 	XMLNoChildNode('br')(_not='this')
@@ -112,7 +112,7 @@ class XMLNoChildNode(XMLNode):
 class XMLNotEmptyNode(XMLNode):
 	'''XMLNode which always renders with a start and end tag.
 	
-	>>> print XMLNotEmptyNode.new('head')()
+	>>> print(XMLNotEmptyNode.new('head')())
 	<head></head>
 	'''
 	def __str__(self):
@@ -230,9 +230,9 @@ class Form(FORM):
 class COMMENT(XMLNode):
 	'''Includes comments.
 	
-	>>> print COMMENT('This is a comment')
+	>>> print(COMMENT('This is a comment'))
 	<!--This is a comment-->
-	>>> print COMMENT('This is also', ' a comment')
+	>>> print(COMMENT('This is also', ' a comment'))
 	<!--This is also a comment-->
 	'''
 	def __str__(self):
@@ -241,9 +241,9 @@ class COMMENT(XMLNode):
 class CONDITIONAL_COMMENT(XMLNode):
 	'''Used to comment out text conditionally by browser
 	
-	>>> print CONDITIONAL_COMMENT('lt IE 7', 'Your browser is IE before version 7')
+	>>> print(CONDITIONAL_COMMENT('lt IE 7', 'Your browser is IE before version 7'))
 	<!--[if lt IE 7]>Your browser is IE before version 7<![endif]-->
-	>>> print CONDITIONAL_COMMENT('(gt IE 9)|!(IE)', 'Your browser is IE after version 7 or not IE', uncomment=True)
+	>>> print(CONDITIONAL_COMMENT('(gt IE 9)|!(IE)', 'Your browser is IE after version 7 or not IE', uncomment=True))
 	<!--[if (gt IE 9)|!(IE)]><!-->Your browser is IE after version 7 or not IE<!--<![endif]-->
 	'''
 	def __init__(self, condition, *children, **attributes):
@@ -260,10 +260,10 @@ class CONDITIONAL_COMMENT(XMLNode):
 class XML(XMLNode):
 	'''Renders text without escaping it.
 	
-	>>> print XML('<abc />')
+	>>> print(XML('<abc />'))
 	<abc />
 	>>> x = '123'
-	>>> print XML('<a>', x, '</a>')
+	>>> print(XML('<a>', x, '</a>'))
 	<a>123</a>
 	'''
 	def __str__(self):
@@ -276,9 +276,9 @@ class CAT(XMLNode):
 	
 	>>> from functools import partial
 	>>> DIV = XMLNode.new('div')
-	>>> print CAT('a', 'b')
+	>>> print(CAT('a', 'b'))
 	ab
-	>>> print CAT(DIV('a'), DIV('b'), DIV('c'))
+	>>> print(CAT(DIV('a'), DIV('b'), DIV('c')))
 	<div>a</div><div>b</div><div>c</div>
 	'''
 	def __str__(self):
@@ -287,11 +287,11 @@ class CAT(XMLNode):
 class META(XMLNoChildNode):
 	'''
 	
-	>>> print META.charset('utf-16')
+	>>> print(META.charset('utf-16'))
 	<meta charset='utf-16' />
-	>>> print META.value('application-name', 'examples')
+	>>> print(META.value('application-name', 'examples'))
 	<meta name='application-name' content='examples' />
-	>>> print META.http_equiv('X-UA-Compatible', 'IE=edge')
+	>>> print(META.http_equiv('X-UA-Compatible', 'IE=edge'))
 	<meta http-equiv='X-UA-Compatible' content='IE=edge' />
 	'''
 	name = 'meta'
@@ -324,7 +324,7 @@ class META(XMLNoChildNode):
 def Hyper(href, *children, **attributes):
 	'''Helper function for creating hyperlinks
 
-	>>> print Hyper('http://www.google.com', 'Google')
+	>>> print(Hyper('http://www.google.com', 'Google'))
 	<a href='http://www.google.com'>Google</a>
 	'''
 	attributes['_href'] = href
@@ -333,7 +333,7 @@ def Hyper(href, *children, **attributes):
 def Image(src, alt=None, **attributes):
 	'''Helper function for creating images
 
-	>>> print Image('favicon.ico')
+	>>> print(Image('favicon.ico'))
 	<img src='favicon.ico' />
 	'''
 	r = IMG(**attributes)
@@ -345,9 +345,9 @@ def Image(src, alt=None, **attributes):
 class SCRIPT(XMLNode):
 	'''
 	
-	>>> print SCRIPT()
+	>>> print(SCRIPT())
 	<script></script>
-	>>> print SCRIPT('var abc = "123";', type='text/javascript')
+	>>> print(SCRIPT('var abc = "123";', type='text/javascript'))
 	<script type='text/javascript'><!--
 	var abc = "123";
 	//--></script>
@@ -393,13 +393,13 @@ class HTML(XMLNotEmptyNode):
 	'''Node representing the <html> root element of an html document. Using this
 	class directly is not recommended. Instead use the more featureful HTMLDoc().
 	
-	>>> print HTML()
+	>>> print(HTML())
 	<!DOCTYPE html>
 	<html></html>
-	>>> print HTML(doctype='12345')
+	>>> print(HTML(doctype='12345'))
 	<!DOCTYPE 12345>
 	<html></html>
-	>>> print HTML(HEAD(), BODY())
+	>>> print(HTML(HEAD(), BODY()))
 	<!DOCTYPE html>
 	<html><head></head><body></body></html>
 	'''
@@ -419,7 +419,7 @@ class HTML(XMLNotEmptyNode):
 class HTMLDoc(HTML):
 	'''Class representing a complete (X)HTML document.
 	
-	>>> print HTMLDoc()
+	>>> print(HTMLDoc())
 	<!DOCTYPE HTML>
 	<html><head><meta charset='utf-8' /></head><body></body></html>
 	
@@ -430,14 +430,14 @@ class HTMLDoc(HTML):
 	  (see paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/
 	   for more information.)
 	
-	>>> print HTMLDoc(conditional=True)
+	>>> print(HTMLDoc(conditional=True))
 	<!DOCTYPE HTML>
 	<!--[if lt IE 7]><html class='ie6'><![endif]--><!--[if IE 7]><html class='ie7'><![endif]--><!--[if IE 8]><html class='ie8'><![endif]--><!--[if IE 9]><html class='ie9'><![endif]--><!--[if (gt IE 9)|!(IE)]><!--><html><!--<![endif]--><head><meta charset='utf-8' /></head><body></body></html>
 	
 	
 	title='' : Automatically includes a title tag in the head.
 	
-	>>> print HTMLDoc(title='Welcome to Siteland')
+	>>> print(HTMLDoc(title='Welcome to Siteland'))
 	<!DOCTYPE HTML>
 	<html><head><meta charset='utf-8' /><title>Welcome to Siteland</title></head><body></body></html>
 	
@@ -445,7 +445,7 @@ class HTMLDoc(HTML):
 	doctype='html' : Set the document type header of the document. Defaults to
 	  HTML5. Possible values can be found as HTMLDoc.doctypes.keys()
 	
-	>>> print HTMLDoc(doctype='xhtml11', no_js=True, conditional=True)
+	>>> print(HTMLDoc(doctype='xhtml11', no_js=True, conditional=True))
 	<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 	<!--[if lt IE 7]><html class='ie6 no-js'><![endif]--><!--[if IE 7]><html class='ie7 no-js'><![endif]--><!--[if IE 8]><html class='ie8 no-js'><![endif]--><!--[if IE 9]><html class='ie9 no-js'><![endif]--><!--[if (gt IE 9)|!(IE)]><!--><html class='no-js'><!--<![endif]--><head><meta charset='utf-8' /></head><body></body></html>
 	
@@ -453,10 +453,10 @@ class HTMLDoc(HTML):
 	charset='utf-8' : Sets the character set for the document. Set to a false value
 	to prevent such a meta tag being included in the document.
 	
-	>>> print HTMLDoc(charset='iso-8859-1')
+	>>> print(HTMLDoc(charset='iso-8859-1'))
 	<!DOCTYPE HTML>
 	<html><head><meta charset='iso-8859-1' /></head><body></body></html>
-	>>> print HTMLDoc(charset=None)
+	>>> print(HTMLDoc(charset=None))
 	<!DOCTYPE HTML>
 	<html><head></head><body></body></html>
 	
@@ -465,9 +465,9 @@ class HTMLDoc(HTML):
 	  or strings which are interpretted as paths
 	
 	>>> a,b = HTMLDoc(charset='', includes=['/static.css', XML('123')]).head
-	>>> print a.name, a._href, a._type
+	>>> print(a.name, a._href, a._type)
 	link /static.css text/css
-	>>> print b
+	>>> print(b)
 	123
 	'''
 	doctypes = container(
@@ -593,3 +593,4 @@ class HTMLDoc(HTML):
 			if dt_info.variant == 'Strict':
 				deprecated.update("""applet basefont center dir font iframe isindex menu noframes strike u""".split())
 		return self.walk(lambda x:isinstance(x,Node) and x.name in deprecated)
+

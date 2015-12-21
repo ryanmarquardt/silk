@@ -219,7 +219,7 @@ class Stencil(BaseStencil):
 
 
 
-	>>> exec erb.parse("<% extend a.stencil %>\\ndef\\n")
+	>>> exec(erb.parse("<% extend a.stencil %>\\ndef\\n"))
 	abc
 	<BLANKLINE>
 	def
@@ -268,3 +268,4 @@ class Stencil(BaseStencil):
 if __name__ == '__main__':
 	import doctest
 	doctest.testmod()
+

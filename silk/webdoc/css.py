@@ -1,23 +1,23 @@
 """Construct css style sheets from abstract structure
 
->>> print Block(Selector('div'),
+>>> print(Block(Selector('div'),
 ...     Property.new('padding')('0', Units.Px(20), Units.Px(15)),
 ...     BACKGROUND('transparent'),
 ...     BORDER(Units.Px(1), 'solid', Colors.Black),
-... )
+... ))
 div { padding: 0 20px 15px; background: transparent; border: 1px solid #000000; }
 
 As a shortcut, selectors can be given as strings, and attributes as dictionaries
 
 >>> a = Block('a', {'color': Colors.Red})
->>> print a
+>>> print(a)
 a { color: #FF0000; }
 
 Nodes are created from these values, so they can be accessed and manipulated
 later.
 
 >>> a.selectors[0]['_state'] = 'hover'
->>> print a
+>>> print(a)
 a:hover { color: #FF0000; }
 
 Several helper functions and constants exist.
@@ -29,9 +29,9 @@ Colors are stored with CamelCase names
 '#FFFFFF'
 
 Classes for common properties exist also
->>> print DISPLAY(None)
+>>> print(DISPLAY(None))
 display: none;
->>> print BORDER.WIDTH(px=1)
+>>> print(BORDER.WIDTH(px=1))
 border-width: 1px;
 """
 
@@ -49,9 +49,9 @@ class CSSNode(Node):
 class Block(CSSNode):
 	'''
 	
-	>>> print Block('body',
+	>>> print(Block('body',
 	...   Property.new('background')('white'),
-	... )
+	... ))
 	body { background: white; }
 	'''
 	def __init__(self, selector, *children, **attributes):
@@ -72,29 +72,29 @@ class Block(CSSNode):
 class Property(CSSNode):
 	'''Class for specifying a css property in a block
 	
-	>>> print Property.new('background')('transparent')
+	>>> print(Property.new('background')('transparent'))
 	background: transparent;
-	>>> print Property.new('padding')(0, Units.Px(0), Units.In(15), Units.Px(15))
+	>>> print(Property.new('padding')(0, Units.Px(0), Units.In(15), Units.Px(15)))
 	padding: 0 0 15in 15px;
 	
 	A single keyword provided as a lower-cased unit name is appended to the list
 	of values, transformed into a unitted value. Output with more than one
 	keyword input is undefined and not recommended. 
 	
-	>>> print Property.new('width')(px=100)
+	>>> print(Property.new('width')(px=100))
 	width: 100px;
-	>>> print Property.new('border-left')('solid', 'black', em=1)
+	>>> print(Property.new('border-left')('solid', 'black', em=1))
 	border-left: solid black 1em;
 	
 	If value is an iterable, all members are transformed and appended to the
 	list of children.
 	
-	>>> print Property.new('padding')(px=[0,0,25,50])
+	>>> print(Property.new('padding')(px=[0,0,25,50]))
 	padding: 0 0 25px 50px;
 	
 	The special keyword 'important' appends '!important' to the list of children
 	if it's set to a true value.
-	>>> print Property.new('position')('absolute', important=True)
+	>>> print(Property.new('position')('absolute', important=True))
 	position: absolute !important;
 	'''
 	def __init__(self, *values, **units):
@@ -121,27 +121,27 @@ class Selector(CSSNode):
 	
 	Match elements by type
 	
-	>>> print Selector('input')
+	>>> print(Selector('input'))
 	input
 	
 	Match elements by class
 	
-	>>> print Selector(_class='important')
+	>>> print(Selector(_class='important'))
 	.important
 	
 	Match elements by id
 	
-	>>> print Selector('div', _id='content')
+	>>> print(Selector('div', _id='content'))
 	div#content
 	
 	Match elements by ancestry
-	>>> print Selector('div', Selector('p'))
+	>>> print(Selector('div', Selector('p')))
 	div p
-	>>> print Selector('div', _child=Selector('p'))
+	>>> print(Selector('div', _child=Selector('p')))
 	div>p
 	
 	Match elements with a certain state
-	>>> print Selector('a', _state='hover')
+	>>> print(Selector('a', _state='hover'))
 	a:hover
 	
 	'''
@@ -640,3 +640,4 @@ __all__ = ['ANIMATION', 'APPEARANCE', 'BACKFACE_VISIBILITY', 'BACKGROUND',
 'TEXT', 'TOP', 'TRANSFORM', 'TRANSITION', 'Unit', 'Units', 'VERTICAL_ALIGN',
 'VISIBILITY', 'WHITE_SPACE', 'WIDOWS', 'WIDTH', 'WORD_BREAK', 'WORD_SPACING',
 'WORD_WRAP', 'Z_INDEX', 'css', 'url']
+

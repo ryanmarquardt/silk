@@ -261,7 +261,7 @@ class BaseRouter(object):
 		>>> @BaseRouter
 		... def router(request, response):
 		...   return 'Hello World! %s' % request.uri
-		>>> exec router.serve(method='test', path='/hello', headers=False)
+		>>> exec(router.serve(method='test', path='/hello', headers=False))
 		Hello World! http://localhost/hello
 		"""
 		if method is None:
@@ -416,3 +416,4 @@ if __name__=='__main__':
 		)
 
 	exec(router.serve('router'))
+

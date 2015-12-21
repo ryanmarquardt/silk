@@ -76,7 +76,7 @@ It is always recommended to conform your database *before* defining columns.
 ... )
 >>> _ = mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
 >>> for row in mydb.test_types.select():
-...   print row
+...   print(row)
 Row(a=1, b=True, c=u'3', e=datetime.datetime(1969, 10, 5, 0, 0), f=6.0, g='7', i=1)
 
 Conforming and migrating are both optional. Attempting to manipulate the
@@ -138,7 +138,7 @@ Exception
 ...   _ = mydb.test_table.insert(key=3, value='c')
 ...   _ = mydb.test_table.insert(key=7, value='g')
 >>> for row in mydb.test_table.select():
-...   print row
+...   print(row)
 Row(key=3, value=u'c')
 Row(key=7, value=u'g')
 
@@ -154,7 +154,7 @@ Where([LESSEQUAL, 'test_table'.'key', 3])
 The resulting object can be queried. Standard SQL commands are provided. Using
 parentheses, a query can be set up and then selected:
 >>> for row in (mydb.test_table.key<=3).select():
-...   print row
+...   print(row)
 Row(key=3, value=u'c')
 
 Rows in a query can be counted...
@@ -164,14 +164,14 @@ Rows in a query can be counted...
 or updated...
 >>> (mydb.test_table.value=='c').update(key=4)
 >>> for row in mydb.test_table.select():
-...   print row
+...   print(row)
 Row(key=4, value=u'c')
 Row(key=7, value=u'g')
 
 or deleted...
 >>> (mydb.test_table.key > 5).delete()
 >>> for row in mydb.test_table.select():
-...   print row
+...   print(row)
 Row(key=4, value=u'c')
 
 >>> _ = mydb.test_table.insert(key=4, value='d')
@@ -188,20 +188,20 @@ Multiple conditions can be combined using bitwise operators & and |
 0
 
 >>> for row in mydb.test_table.select(mydb.test_table.value, orderby=mydb.test_table.value, distinct=True):
-...   print row.value
+...   print(row.value)
 c
 d
 
 Order by one column
 >>> for row in mydb.test_table.select(orderby=mydb.test_table.rowid):
-...   print row
+...   print(row)
 Row(key=4, value=u'c')
 Row(key=4, value=u'd')
 Row(key=5, value=u'd')
 
 Or more
 >>> for row in mydb.test_table.select(orderby=[reversed(mydb.test_table.key), mydb.test_table.value]):
-...   print row
+...   print(row)
 Row(key=5, value=u'd')
 Row(key=4, value=u'c')
 Row(key=4, value=u'd')
@@ -843,3 +843,4 @@ class DB(collection):
 			self.__driver__.alter_table(name, self[name])
 
 connect = DB.connect
+

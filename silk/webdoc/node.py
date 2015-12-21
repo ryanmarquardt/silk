@@ -11,12 +11,12 @@ class Entity(MutableMapping):
 	Entity('html', _lang='en')
 	>>> class HTMLStartEntity(Entity):
 	... 	def __str__(self):
-	... 		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
-	>>> h = HTMLStartEntity('html', lang='en'); print h
+	... 		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in list(self.attributes.items())))
+	>>> h = HTMLStartEntity('html', lang='en'); print(h)
 	<html lang='en'>
-	>>> h._lang = 'ru'; print h
+	>>> h._lang = 'ru'; print(h)
 	<html lang='ru'>
-	>>> del h['lang']; print h
+	>>> del h['lang']; print(h)
 	<html>
 	'''
 	def __init__(self, name, **attributes):
@@ -102,18 +102,18 @@ class Node(MutableMapping, MutableSequence):
 	>>> a['class'] = '234'
 	>>> a
 	Node('a')(_class='234')
-	>>> print a
+	>>> print(a)
 	a(class='234')
 	
 	Set and retrieve attributes on the object that start with an underscore. If
 	that attribute doesn't exist, None is returned (similar to dict.get()).
 	
 	>>> a._class = '345'
-	>>> print a
+	>>> print(a)
 	a(class='345')
-	>>> print a._class
+	>>> print(a._class)
 	345
-	>>> print a._milk
+	>>> print(a._milk)
 	None
 	
 	Normal attribute access isn't so lucky
@@ -141,9 +141,9 @@ class Node(MutableMapping, MutableSequence):
 	>>> doc = Node.new('a')(Node.new('b')('c', Node.new('d')(e='f')))
 	>>> for depth, element in doc.walk():
 	...   if isinstance(element, Node):
-	...     print '  '*depth, element.name, element.attributes
+	...     print('  '*depth, element.name, element.attributes)
 	...   else:
-	...     print '  '*depth, `element`
+	...     print('  '*depth, repr(element))
 	 a {}
 	   b {}
 	     'c'
@@ -246,3 +246,4 @@ class Node(MutableMapping, MutableSequence):
 					yield depth+1, element
 
 __all__ = ['Entity', 'Node']
+

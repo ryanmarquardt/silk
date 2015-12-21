@@ -32,7 +32,7 @@ class container(dict):
 	
 	If a key isn't found, None is returned...
 	
-	>>> print c.c
+	>>> print(c.c)
 	None
 	
 	but item access raises an exception
@@ -55,7 +55,7 @@ def sequence(x):
 	[0]
 	>>> sequence('0')
 	['0']
-	>>> sequence(u'123')
+	>>> sequence('123')
 	[u'123']
 	>>> sequence((1,2,3))
 	[1, 2, 3]
@@ -74,7 +74,7 @@ def is_sequence(x):
 	False
 	>>> is_sequence('None')
 	False
-	>>> is_sequence(u'None')
+	>>> is_sequence('None')
 	False
 	>>> is_sequence(['None'])
 	True
@@ -207,7 +207,7 @@ class MultiDict(collections.MutableMapping):
 	2
 	>>> 'c' in m
 	False
-	>>> print m.c
+	>>> print(m.c)
 	None
 	"""
 	__sequence__ = True
@@ -270,3 +270,4 @@ class MultiDict(collections.MutableMapping):
 		return '%s(%s)' % (self.__class__.__name__,dict.__repr__(self._dict))
 
 __all__ = ['container', 'cont', 'sequence', 'is_sequence', 'flatten', 'collection', 'ordered_collection', 'MultiDict']
+
