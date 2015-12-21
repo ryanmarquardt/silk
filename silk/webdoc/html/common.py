@@ -29,7 +29,7 @@ class XMLEntity(Entity):
 
 class XMLStartEntity(XMLEntity):
 	def __str__(self):
-		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+		return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in list(self.attributes.items())))
 
 class XMLEndEntity(XMLEntity):
 	def __str__(self):
@@ -37,7 +37,7 @@ class XMLEndEntity(XMLEntity):
 
 class XMLClosedEntity(XMLEntity):
 	def __str__(self):
-		return '<%s%s />' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+		return '<%s%s />' % (self.name, ''.join(' %s=%r' % i for i in list(self.attributes.items())))
 
 class XMLNode(Node):
 	'''Node which is represented as xml.
@@ -82,12 +82,12 @@ class XMLNode(Node):
 		for part in re.findall('([.#]?[-_a-zA-Z0-9]+)', selector):
 			props[maps.get(part[0])].append(part[1:] if part[0] in maps else part)
 		name = props.pop(None, ['div'])[0]
-		node = XMLNode.new(name)(**dict((k,' '.join(vs)) for k,vs in props.items()))
+		node = XMLNode.new(name)(**dict((k,' '.join(vs)) for k,vs in list(props.items())))
 		self.append(node)
 		return node
 		
 	def _render_attrs(self):
-		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v,attr=True)) for k,v in self._real_attrs().items() if len(sequence(v)))
+		return ''.join(' %s=%r'%(k.replace('_','-'),_xml(v,attr=True)) for k,v in list(self._real_attrs().items()) if len(sequence(v)))
 		
 	def __setitem__(self, key, value):
 		if key in ('class','_class'):
@@ -318,7 +318,7 @@ class META(XMLNoChildNode):
 			items.append(('http-equiv',ra.pop('http_equiv')))
 		if 'content' in ra:
 			items.append(('content',ra.pop('content')))
-		items.extend(ra.items())
+		items.extend(list(ra.items()))
 		return ''.join(' %s=%r'%(k.replace('_','-'),v) for k,v in items if len(sequence(v)))
 
 def Hyper(href, *children, **attributes):

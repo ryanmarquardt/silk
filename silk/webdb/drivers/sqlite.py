@@ -34,13 +34,13 @@ class sqlite(driver_base):
 		int:'INTEGER',
 		float:'REAL',
 		bool:'INT',
-		unicode:'TEXT',
+		str:'TEXT',
 		bytes:'BLOB',
 		datetime.datetime:'TIMESTAMP',
 	}
 	
 	driver_types = {
-		'TEXT':unicode,
+		'TEXT':str,
 		'INTEGER':int,
 		'REAL':float,
 		'BLOB':bytes,

@@ -8,11 +8,11 @@ from .. import *
 import base64
 import cgi
 import collections
-import Cookie
+import http.cookies
 import sys
 import tempfile
 import traceback
-import urlparse
+import urllib.parse
 import wsgiref.util
 import wsgiref.headers
 
@@ -78,7 +78,7 @@ class Response(object):
 		self.view = None
 
 	def set_cookie(self, name, value, **attr):
-		m = Cookie.Morsel()
+		m = http.cookies.Morsel()
 		m.set(name, value, str(value))
 		m.update(attr)
 		self.headers['Set-Cookie'] = m.OutputString()
@@ -133,7 +133,8 @@ class BaseRouter(object):
 	def handler(self, request, response):
 		raise NotImplementedError
 
-	def report_error(self, (exc, obj, tb), request, response):
+	def report_error(self, xxx_todo_changeme, request, response):
+		(exc, obj, tb) = xxx_todo_changeme
 		traceback.print_exception(exc, obj, tb)
 
 	def receive_upload(self, input_name, iterable, filename, content_type, request):
@@ -152,7 +153,7 @@ class BaseRouter(object):
 			response.content = self.handler(request, response)
 			if response.content is None or response.content is NotImplemented:
 				raise HTTP(404, request.uri.path)
-		except (HTTP,NotImplementedError), e:
+		except (HTTP,NotImplementedError) as e:
 			if isinstance(e,NotImplementedError):
 				e = HTTP(404, request.uri.path)
 			response.code = e.code
@@ -170,11 +171,11 @@ class BaseRouter(object):
 				response.content = response.content or self.unhandled_error or ''
 
 	def render(self, view, response):
-		if isinstance(response.content, basestring):
+		if isinstance(response.content, str):
 			return [response.content]
 		elif isinstance(response.content, collections.Mapping):
 			content = view(container(response.content))
-			if isinstance(content, basestring):
+			if isinstance(content, str):
 				return [content]
 			elif is_sequence(content):
 				return content
@@ -201,7 +202,7 @@ class BaseRouter(object):
 				software = environment.get('SERVER_SOFTWARE', ''),
 				protocol = environment.get('SERVER_PROTOCOL', ''),
 			),
-			cookies = dict((m.key, m.value) for m in Cookie.SimpleCookie(environment.get('HTTP_COOKIE', '')).values()),
+			cookies = dict((m.key, m.value) for m in list(http.cookies.SimpleCookie(environment.get('HTTP_COOKIE', '')).values())),
 			wsgi = container(
 				input = environment.get('wsgi.input', sys.stdin),
 				errors = environment.get('wsgi.errors', sys.stderr),
@@ -278,7 +279,7 @@ class BaseRouter(object):
 				'SERVER_NAME':'localhost',
 				'SERVER_PORT':'80'
 			})
-			print ''.join(response.content)
+			print(''.join(response.content))
 		elif method == 'wsgi':
 			name = kwargs['name']
 			return 'application = %s.wsgi_handler' % name
@@ -400,7 +401,7 @@ if __name__=='__main__':
 			FORM(INPUT(name='name'),INPUT(type='submit'),method='post',enctype='application/x-www-form-urlencoded'),
 			FORM(INPUT(name='name'),INPUT(type='submit'),method='get',enctype='application/x-www-form-urlencoded'),
 			PRE(request.vars),
-			P(`r`), P(`env`)]))
+			P(repr(r)), P(repr(env))]))
 
 	@router.set_uploader
 	def handle_upload(self, name, iterable, filename, content_type):
@@ -414,4 +415,4 @@ if __name__=='__main__':
 			content = hashsum.hexdigest(),
 		)
 
-	exec router.serve('router')
+	exec(router.serve('router'))

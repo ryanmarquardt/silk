@@ -15,7 +15,7 @@ class HTMLEntityTest(DocBase):
 	def setUp(self):
 		class HTMLStartEntity(Entity):
 			def __str__(self):
-				return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in self.attributes.items()))
+				return '<%s%s>' % (self.name, ''.join(' %s=%r' % i for i in list(self.attributes.items())))
 		self.HTMLStartEntity = HTMLStartEntity
 	
 	def test_lang_eq_en(self):
@@ -29,23 +29,23 @@ class HTMLEntityTest(DocBase):
 class NodeTest(DocBase):
 	def test_new(self):
 		x = Node.new('x')()
-		self.assertEqual(`x`, "Node('x')()")
+		self.assertEqual(repr(x), "Node('x')()")
 		y = Node.new('y')(1, 2, 3, a=5)
-		self.assertEqual(`y`, "Node('y')(1, 2, 3, _a=5)")
+		self.assertEqual(repr(y), "Node('y')(1, 2, 3, _a=5)")
 		n = Node.new('n')(r='s')
 		n.append('o')
 		n.extend(['p', 'z'])
 		n[-1] = 'q'
 		n['r'] = 'r'
-		self.assertEqual(`n`, "Node('n')('o', 'p', 'q', _r='r')")
+		self.assertEqual(repr(n), "Node('n')('o', 'p', 'q', _r='r')")
 		n.update(_s='t', r=0)
 		del n['r']
 		self.assertEqual(n.pop(1), 'p')
-		self.assertEqual(`n`, "Node('n')('o', 'q', _s='t')")
+		self.assertEqual(repr(n), "Node('n')('o', 'q', _s='t')")
 
 	def test_attr_names(self):
 		a = Node.new('a')(_class='123')
-		self.assertEqual(`a`, "Node('a')(_class='123')")
+		self.assertEqual(repr(a), "Node('a')(_class='123')")
 		self.assertEqual(a['class'], '123')
 
 	def test_missing_attr(self):
@@ -59,7 +59,7 @@ class NodeTest(DocBase):
 class StencilTest(unittest.TestCase):
 	def run_parsed(self, code):
 		io = StringIO()
-		exec code
+		exec(code)
 		return io.getvalue()
 
 class W2PStencilTest(StencilTest):
@@ -77,7 +77,7 @@ class W2PStencilTest(StencilTest):
 		self.assertEqual(self.run_parsed(x), "123456")
 
 	def test_unclosed_sub(self):
-		with self.assertRaisesRegexp(SyntaxError, "Unclosed substitution"):
+		with self.assertRaisesRegex(SyntaxError, "Unclosed substitution"):
 			self.parse("Uncompleted substitution {{")
 
 	def test_multiline_msg(self):

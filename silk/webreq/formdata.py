@@ -4,7 +4,7 @@
 
 import sys
 import os
-from urlparse import parse_qsl
+from urllib.parse import parse_qsl
 
 from .. import container, MultiDict
 from . import header
@@ -60,7 +60,7 @@ def iter_lines(iterable, delim='\r\n'):
 class FormData(MultiDict):
 	@classmethod
 	def parse_raw(cls, infile):
-		return cls.parse(infile, dict(Header.parse(line) for line in iter(infile.next, '\r\n'))['Content-Type'])
+		return cls.parse(infile, dict(Header.parse(line) for line in iter(infile.__next__, '\r\n'))['Content-Type'])
 
 	def handle_upload(self, name, iterable, filename, content_type):
 		class FakeFile(str):
@@ -86,7 +86,7 @@ class FormData(MultiDict):
 		def parse_multipart(iterin, post_head, outerboundaries=()):
 			boundary = post_head['Content-Type']['boundary']
 			sep, term = '--%s\r\n' % boundary, '--%s--\r\n' % boundary
-			iterin.next() #Ignore initial boundary
+			next(iterin) #Ignore initial boundary
 			while True:
 				headers = dict(Header.parse(line) for line in watch(iterin, '', '\r\n', *outerboundaries))
 				if not headers:

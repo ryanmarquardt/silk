@@ -1,7 +1,7 @@
 from .. import *
 from collections import MutableMapping, MutableSequence
 
-is_string = lambda x:isinstance(x,basestring)
+is_string = lambda x:isinstance(x,str)
 
 class Entity(MutableMapping):
 	'''
@@ -22,7 +22,7 @@ class Entity(MutableMapping):
 	def __init__(self, name, **attributes):
 		vars(self)['name'] = name
 		vars(self)['attributes'] = {}
-		for k,v in attributes.items():
+		for k,v in list(attributes.items()):
 			if k[0] == '_':
 				k = k[1:]
 			self.attributes[k] = v
@@ -57,13 +57,13 @@ class Entity(MutableMapping):
 	def __len__(self):
 		return len(self.attributes)
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return True
 
 	def __repr__(self):
 		return '%s(%s)' % (
 			self.__class__.__name__,
-			', '.join([repr(self.name)]+['_%s=%r' % i for i in self.attributes.items()]),
+			', '.join([repr(self.name)]+['_%s=%r' % i for i in list(self.attributes.items())]),
 		)
 
 class Node(MutableMapping, MutableSequence):
@@ -154,7 +154,7 @@ class Node(MutableMapping, MutableSequence):
 	def __init__(self, *children, **attributes):
 		
 		self.children = flatten(children)
-		self.attributes = dict((self._attr_key(k),v) for k,v in attributes.items())
+		self.attributes = dict((self._attr_key(k),v) for k,v in list(attributes.items()))
 	
 	@classmethod
 	def new(cls, name, classname=None):
@@ -210,39 +210,39 @@ class Node(MutableMapping, MutableSequence):
 			self.children.insert(place, v)
 		
 	def _real_attrs(self):
-		return dict((k[1:],v) if k[0]=='_' else (k,v) for k,v in self.attributes.iteritems())
+		return dict((k[1:],v) if k[0]=='_' else (k,v) for k,v in self.attributes.items())
 		
 	def __repr__(self):
 		return '%s%s(%s)'%(
 			self.__class__.__name__,
-			('('+`self.name`+')') if self.name else '',
+			('('+repr(self.name)+')') if self.name else '',
 			', '.join(
-				map(repr,self.children) + \
-				['%s=%r'%i for i in self.attributes.items()]
+				list(map(repr,self.children)) + \
+				['%s=%r'%i for i in list(self.attributes.items())]
 			)
 		)
 		
 	def __str__(self):
 		return '%s(%s)'%(
 			self.name,', '.join(
-			map(repr,self.children) + \
-			['%s=%r'%i for i in self._real_attrs().items()])
+			list(map(repr,self.children)) + \
+			['%s=%r'%i for i in list(self._real_attrs().items())])
 		)
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return True
 		
 	def walk(self, filter=None, depth=0):
 		filter = filter or (lambda x:True)
-		if filter(self):
+		if list(filter(self)):
 			yield depth, self
 		for element in self.children:
 			if hasattr(element, 'walk'):
 				for d,sub in element.walk(filter=filter, depth=depth+1):
-					if filter(sub):
+					if list(filter(sub)):
 						yield d,sub
 			else:
-				if filter(element):
+				if list(filter(element)):
 					yield depth+1, element
 
 __all__ = ['Entity', 'Node']

@@ -26,7 +26,7 @@ class Header(dict):
 				yield f.strip()
 				s = s[end:]
 		parts = _parseparam(';' + line)
-		self = cls(parts.next())
+		self = cls(next(parts))
 		for p in parts:
 			i = p.find('=')
 			if i >= 0:
@@ -34,10 +34,10 @@ class Header(dict):
 		return self
 
 	def __str__(self):
-		return '; '.join([self.key] + [i[0] if i[1] is None else ('%s=%s' % i) for i in self.items()])
+		return '; '.join([self.key] + [i[0] if i[1] is None else ('%s=%s' % i) for i in list(self.items())])
 
 	def __repr__(self):
-		return 'Header(%s)' % ', '.join([`self.key`] + [`i[0]` if i[1] is None else ('%s=%r' % i) for i in self.items()])
+		return 'Header(%s)' % ', '.join([repr(self.key)] + [repr(i[0]) if i[1] is None else ('%s=%r' % i) for i in list(self.items())])
 
 class HeaderList(list):
 	def append(self, name, key, **props):

@@ -43,7 +43,7 @@ class mysql(driver_base):
 		int:'INT',
 		float:'REAL',
 		bool:'TINYINT(1)',
-		unicode:'VARCHAR(512)',
+		str:'VARCHAR(512)',
 		bytes:'BLOB',
 		datetime.datetime:'DATETIME',
 	}
@@ -71,7 +71,7 @@ class mysql(driver_base):
 		name, _, size = t.partition('(')
 		if name in ('int','tinyint'):
 			return int if int((size or '0 ')[:-1]) > 1 else bool
-		return {'text':unicode, 'varchar':unicode,
+		return {'text':str, 'varchar':str,
 			'timestamp':datetime.datetime, 'double':float, 'real':float,
 			'blob':bytes}.get(name)
 	

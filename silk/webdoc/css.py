@@ -59,10 +59,10 @@ class Block(CSSNode):
 		mychildren = []
 		for child in children:
 			if isinstance(child, dict):
-				mychildren.extend(Property.new(prop)(*sequence(val)) for prop,val in child.items())
+				mychildren.extend(Property.new(prop)(*sequence(val)) for prop,val in list(child.items()))
 			else:
 				mychildren.append(child)
-		for k,v in attributes.items():
+		for k,v in list(attributes.items()):
 			mychildren.append(Property.new(k.replace('_','-'))(*sequence(v)))
 		super(Block, self).__init__(*mychildren)
 		
@@ -101,10 +101,10 @@ class Property(CSSNode):
 		important = units.pop('important', False)
 		values = list(values)
 		if units:
-			unit = units.keys()[0].title()
+			unit = list(units.keys())[0].title()
 			if unit[0] == '_':
 				unit = unit[1:]
-			values.extend(map(Units[unit], sequence(units.values()[0])))
+			values.extend(list(map(Units[unit], sequence(list(units.values())[0]))))
 		if important:
 			values.append('!important')
 		super(Property, self).__init__(*values)
@@ -157,7 +157,7 @@ class Selector(CSSNode):
 		if _state: result += ':'+_state
 		_child = self.get('_child')
 		if _child: result += '>'+str(_child)
-		return ' '.join([result] + map(str,self.children[1:]))
+		return ' '.join([result] + list(map(str,self.children[1:])))
 
 def Unit(fmt, i, force=False):
 	try:
@@ -474,7 +474,7 @@ class RESIZE(Property):
 del newp
 
 def css(**attributes):
-	return [globals()[name.upper().replace('-','_')](*sequence(value)) for name,value in attributes.items()]
+	return [globals()[name.upper().replace('-','_')](*sequence(value)) for name,value in list(attributes.items())]
 
 Colors = container(
 	from_rgb = lambda r,g,b:'#%02X%02X%02X'%(r,g,b),

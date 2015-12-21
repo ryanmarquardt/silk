@@ -6,7 +6,8 @@ Drivers written for webdb should subclass ``driver_base``.
 from ... import sequence, flatten, container
 import sys
 import errno
-rerrorcode = dict(zip(errno.errorcode.values(), errno.errorcode.keys()))
+import collections
+rerrorcode = dict(list(zip(list(errno.errorcode.values()), list(errno.errorcode.keys()))))
 import datetime
 
 def make_IOError(code, message):
@@ -243,7 +244,7 @@ class driver_base(object):
 		debug = kwargs.pop('debug', False)
 		try:
 			connection = module.connect(*args, **kwargs)
-		except Exception, e:
+		except Exception as e:
 			self.handle_exception(e)
 			raise
 		driver_base.__init__(self, connection, debug=debug)
@@ -301,7 +302,7 @@ class driver_base(object):
 			try:
 				cursor.execute(sql, values)
 				return cursor
-			except Exception, e:
+			except Exception as e:
 				self.handle_exception(e)
 				raise Exception(e, sql, values)
 
@@ -320,7 +321,7 @@ class driver_base(object):
 		single-quotes."""
 		if value is None:
 			return 'NULL'
-		elif isinstance(value, basestring) or cast in ('TEXT','BLOB'):
+		elif isinstance(value, str) or cast in ('TEXT','BLOB'):
 			return "'%s'"%str(value).replace("'", "''")
 		elif cast in ('INT', 'REAL'):
 			return '%g'%value
@@ -330,7 +331,7 @@ class driver_base(object):
 	def expression(self, x):
 		if isinstance(x, list):
 			operator = x[0]
-			return '(%s)'%getattr(self,'op_%s'%operator)(*map(self.expression,x[1:]))
+			return '(%s)'%getattr(self,'op_%s'%operator)(*list(map(self.expression,x[1:])))
 		elif hasattr(x, 'table') and hasattr(x, 'name'): #Column duck-typed
 			return '%s.%s' % (self.identifier(x.table._name), self.identifier(x.name))
 		elif hasattr(x, '_where_tree'): #Where duck-typed
@@ -367,7 +368,7 @@ class driver_base(object):
 		r.type = self.map_type(r.native_type)
 		if r.type is None:
 			raise Exception('Unknown column type %s' % r.native_type)
-		r.hasdefault = not callable(r.default) and (r.required or not r.default is None)
+		r.hasdefault = not isinstance(r.default, collections.Callable) and (r.required or not r.default is None)
 		r.default = self.literal(r.default, r.type)
 		r.name = self.identifier(r.name)
 		r.constraints = []
@@ -432,8 +433,8 @@ class driver_base(object):
 			raise RuntimeError("Cannot create table with no columns")
 		return self.create_table_if_nexists(
 			self.identifier(name),
-			map(self.format_column, columns),
-			map(self.identifier, primarykeys),
+			list(map(self.format_column, columns)),
+			list(map(self.identifier, primarykeys)),
 		)
 
 	def create_table_if_nexists(self, name, columns, primarykeys):
@@ -477,7 +478,7 @@ class driver_base(object):
 
 	def _insert(self, table, columns, values):
 		"""Sanitize data from DB and call insert"""
-		return self.insert(self.identifier(table), map(self.identifier,columns), self.parameters(columns), values)
+		return self.insert(self.identifier(table), list(map(self.identifier,columns)), self.parameters(columns), values)
 
 	def insert(self, table, columns, placeholders, values):
 		return self.insert_rowid(self.execute(self.insert_sql(table, columns, placeholders), values))
@@ -491,7 +492,7 @@ class driver_base(object):
 	def _select(self, columns, tables, conditions, distinct, orderby):
 		"""Sanitize data from DB and call select"""
 		return self.select(
-			map(self.expression,columns),
+			list(map(self.expression,columns)),
 			[self.identifier(t._name) for t in tables],
 			self.where_clause(conditions),
 			bool(distinct),
@@ -512,7 +513,7 @@ class driver_base(object):
 
 	def _update(self, table, conditions, values):
 		"""Sanitize data from DB and call update"""
-		return self.update(self.identifier(table), map(self.identifier,values.keys()), self.where_clause(conditions), self.parameters(values.keys()), values.values())
+		return self.update(self.identifier(table), list(map(self.identifier,list(values.keys()))), self.where_clause(conditions), self.parameters(list(values.keys())), list(values.values()))
 
 	def update(self, table, columns, where, parameters, values):
 		return self.execute(self.update_sql(table, columns, where, parameters), values)

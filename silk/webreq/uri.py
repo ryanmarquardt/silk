@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from urlparse import urlsplit, urlunsplit
-from urllib import urlencode
+from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlencode
 from wsgiref.util import request_uri
 
 from .. import MultiDict
@@ -21,7 +21,7 @@ class URI(object):
 		return self.__dict__['query']
 	@query.setter
 	def query(self, new):
-		if isinstance(new, basestring):
+		if isinstance(new, str):
 			new = Query.parse(new)
 		elif not isinstance(new, Query):
 			new = Query(new)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from urlparse import parse_qsl
+from urllib.parse import parse_qsl
 
 from .. import MultiDict
 

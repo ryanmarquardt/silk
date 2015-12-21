@@ -155,10 +155,10 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		return len(self._data)
 
 	def __iter__(self):
-		return self._data.itervalues()
+		return iter(self._data.values())
 
 	def __contains__(self, value):
-		return value in self._data or self.__key__(value) in self._data.values()
+		return value in self._data or self.__key__(value) in list(self._data.values())
 
 	def add(self, value):
 		self._data[self.__key__(value)] = value
@@ -167,7 +167,7 @@ class collection(collections.MutableSet, collections.MutableMapping):
 		del self._data[self.__key__(value)]
 
 	def keys(self):
-		return self._data.keys()
+		return list(self._data.keys())
 
 	def __getitem__(self, key):
 		return self._data[key]
@@ -263,7 +263,7 @@ class MultiDict(collections.MutableMapping):
 				yield key, value
 
 	def items(self):
-		return list(self.iteritems())
+		return list(self.items())
 
 	getlist = __getitem__
 

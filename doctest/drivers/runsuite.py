@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import ConfigParser
+import configparser
 import os
 import unittest
 
@@ -12,7 +12,7 @@ class DriverTestBase(unittest.TestCase):
 		self.connect()
 
 	def connect(self, **kwargs):
-		new = dict(filter(lambda (k,v):not k.startswith('_'), self.options.items()))
+		new = {k: v for k,v in list(self.options.items()) if not k.startswith('_')}
 		new.update(kwargs)
 		self.db = DB.connect(self.driver, **new)
 
@@ -57,7 +57,7 @@ class DriverTestTableCreation(DriverTestBase):
 
 	def test_create_duplicate(self):
 		self.db.define_table('table1')
-		with self.assertRaisesRegexp(AttributeError, ' already defined'):
+		with self.assertRaisesRegex(AttributeError, ' already defined'):
 			self.db.define_table('table1')
 
 class DriverTestInsert(DriverTestBase):
@@ -101,7 +101,7 @@ class DriverTestInsert(DriverTestBase):
 			self.db.table1.insert(nonexistent=True)
 		self.db.table1.insert(data=23456)
 		data = [row.data for row in self.db.table1.select()]
-		self.assertSequenceEqual(data, [u'12345', u'23456'])
+		self.assertSequenceEqual(data, ['12345', '23456'])
 		self.assertEqual(len(self.db.table1), 2)
 
 	def test_string_coersion(self):
@@ -110,7 +110,7 @@ class DriverTestInsert(DriverTestBase):
 		with self.assertRaises(ValueError):
 			self.db.table1.insert(data=12345)
 		with self.assertRaises(ValueError):
-			self.db.table1.insert(data=u'12345')
+			self.db.table1.insert(data='12345')
 
 	def test_integer_coersion(self):
 		self.db.define_table('table1', IntColumn('data', unique=True))
@@ -155,44 +155,44 @@ class DriverTestSelect(DriverTestBase):
 		)
 
 	def test_select_all(self):
-		self.assertItemsEqual(map(tuple,self.db.users.select()), [
-			(u'Maggie', u'Reynolds', u'magginator@email.com', 18, datetime.datetime(2012, 5, 5, 0, 0)),
-			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
-			(u'Pat', u'Smith', u'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
-			(u'Werfina', u'Fablesmok', u'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
+		self.assertItemsEqual(list(map(tuple,self.db.users.select())), [
+			('Maggie', 'Reynolds', 'magginator@email.com', 18, datetime.datetime(2012, 5, 5, 0, 0)),
+			('Bob', 'Smith', 'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			('Pat', 'Smith', 'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
+			('Werfina', 'Fablesmok', 'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
 		])
 
 	def test_select_args(self):
-		self.assertItemsEqual(map(tuple,self.db.users.select(self.db.users.first_name, self.db.users.last_name, orderby=self.db.users.last_name)), [
-			(u'Maggie', u'Reynolds'),
-			(u'Bob', u'Smith'),
-			(u'Pat', u'Smith'),
-			(u'Werfina', u'Fablesmok'),
+		self.assertItemsEqual(list(map(tuple,self.db.users.select(self.db.users.first_name, self.db.users.last_name, orderby=self.db.users.last_name))), [
+			('Maggie', 'Reynolds'),
+			('Bob', 'Smith'),
+			('Pat', 'Smith'),
+			('Werfina', 'Fablesmok'),
 		])
 
 	def test_select_complex_orderby(self):
-		self.assertEqual(map(tuple,self.db.users.select(
+		self.assertEqual(list(map(tuple,self.db.users.select(
 			self.db.users.first_name,
 			self.db.users.last_name,
 			orderby=[
 				self.db.users.last_name,
 				reversed(self.db.users.first_name)
-			])), [
-			(u'Werfina', u'Fablesmok'),
-			(u'Maggie', u'Reynolds'),
-			(u'Pat', u'Smith'),
-			(u'Bob', u'Smith'),
+			]))), [
+			('Werfina', 'Fablesmok'),
+			('Maggie', 'Reynolds'),
+			('Pat', 'Smith'),
+			('Bob', 'Smith'),
 		])
 
 	def test_select_where(self):
-		self.assertItemsEqual(map(tuple,(self.db.users.age > 20).select()), [
-			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
-			(u'Werfina', u'Fablesmok', u'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
+		self.assertItemsEqual(list(map(tuple,(self.db.users.age > 20).select())), [
+			('Bob', 'Smith', 'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			('Werfina', 'Fablesmok', 'wgf@email.com', 45, datetime.datetime(2012, 5, 6, 0, 0)),
 		])
 
 	def test_select_distinct(self):
-		self.assertEqual(map(vars, self.db.users.select(self.db.users.last_name, distinct=True, orderby=self.db.users.last_name)),
-		[dict(last_name=u'Fablesmok'), dict(last_name=u'Reynolds'), dict(last_name=u'Smith')])
+		self.assertEqual(list(map(vars, self.db.users.select(self.db.users.last_name, distinct=True, orderby=self.db.users.last_name))),
+		[dict(last_name='Fablesmok'), dict(last_name='Reynolds'), dict(last_name='Smith')])
 
 	def test_select_aggregate(self):
 		self.assertEqual(self.db.users.select(self.db.users.age.sum()).one()[0], 105)
@@ -201,9 +201,9 @@ class DriverTestSelect(DriverTestBase):
 		self.assertEqual(self.db.users.select(self.db.users.age.max()).one()[0], 45)
 
 	def test_select_complex_comparison(self):
-		self.assertItemsEqual(map(tuple, self.db.users.age.between(19,30).select()), [
-			(u'Bob', u'Smith', u'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
-			(u'Pat', u'Smith', u'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
+		self.assertItemsEqual(list(map(tuple, self.db.users.age.between(19,30).select())), [
+			('Bob', 'Smith', 'bob.smith@email.com', 23, datetime.datetime(2010, 4, 12, 0, 0)),
+			('Pat', 'Smith', 'pat.smith@email.com', 19, datetime.datetime(2010, 4, 12, 0, 0)),
 		])
 
 	def test_record_update(self):
@@ -225,21 +225,21 @@ class DriverTestSelect(DriverTestBase):
 
 	def test_select_substring(self):
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[0], orderby=self.db.users.email)],
-			[u'S', u'R', u'S', u'F'])
+			['S', 'R', 'S', 'F'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[3:5], orderby=self.db.users.email)],
-			[u'th', u'no', u'th', u'le'])
+			['th', 'no', 'th', 'le'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[1:], orderby=self.db.users.email)],
-			[u'mith', u'eynolds', u'mith', u'ablesmok'])
+			['mith', 'eynolds', 'mith', 'ablesmok'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[-1:], orderby=self.db.users.email)],
-			[u'h', u's', u'h', u'k'])
+			['h', 's', 'h', 'k'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.last_name[:-1], orderby=self.db.users.email)],
-			[u'Smit', u'Reynold', u'Smit', u'Fablesmo'])
+			['Smit', 'Reynold', 'Smit', 'Fablesmo'])
 		self.assertEqual([r[0] for r in self.db.users.select(self.db.users.age[1:], orderby=self.db.users.email)],
 			[3, 8, 9, 5])
 
 	def test_select_combined(self):
 		self.assertItemsEqual([r[0] for r in self.db.users.select(self.db.users.first_name + ' ' + self.db.users.last_name)],
-			[u'Pat Smith', u'Maggie Reynolds', u'Bob Smith', u'Werfina Fablesmok'])
+			['Pat Smith', 'Maggie Reynolds', 'Bob Smith', 'Werfina Fablesmok'])
 
 	def test_null_comparison(self):
 		self.assertEqual(len(self.db.users.last_name != 'Smith'), 2)
@@ -247,9 +247,9 @@ class DriverTestSelect(DriverTestBase):
 
 	def test_select_aggregate_column(self):
 		self.assertEqual([row.last_name for row in self.db.users.last_name.startswith('S').select()],
-			[u'Smith', u'Smith'])
+			['Smith', 'Smith'])
 		self.assertEqual([row.last_name for row in self.db.users.last_name.endswith('s').select()],
-			[u'Reynolds'])
+			['Reynolds'])
 
 	def test_selection_iteration(self):
 		self.db.define_table('table1', StrColumn('data'))
@@ -270,23 +270,23 @@ class DriverTestSelect(DriverTestBase):
 		selection = (self.db.table1.data == 'a').select()
 		 #__nonzero__ must fetch a row, but it stores it for later use
 		self.assertTrue(selection)
-		self.assertEqual(map(tuple,selection), [(u'a', 1)])
-		self.assertEqual(map(tuple,selection), [])
+		self.assertEqual(list(map(tuple,selection)), [('a', 1)])
+		self.assertEqual(list(map(tuple,selection)), [])
 		#Non-zero tests are consistent as long as data remains in the cursor
 		selection = (self.db.table1.data != None).select()
 		count = 0
 		while selection:
-			row = selection.next()
+			row = next(selection)
 			count += 1
-			self.assertIn(row.data, (u'a', u'b'))
+			self.assertIn(row.data, ('a', 'b'))
 			self.assertIn(row.value, (1, 2))
-			self.assertEqual({u'a':1, u'b':2}[row.data], row.value)
+			self.assertEqual({'a':1, 'b':2}[row.data], row.value)
 		self.assertEqual(count, 2)
 		self.assertFalse((self.db.table1.data == '').select())
 
 	def test_select_first_last(self):
 		self.db.define_table('test', StrColumn('data'))
-		for x in map(unicode, range(10)):
+		for x in map(str, list(range(10))):
 			self.db.test.insert(data=x)
 		selection = self.db.test.select(orderby=self.db.test.data)
 		self.assertEqual(selection.first(), '0')
@@ -299,12 +299,12 @@ class DriverTestSelect(DriverTestBase):
 
 	def test_select_slice(self):
 		self.db.define_table('test', StrColumn('data'))
-		for x in map(unicode, range(10)):
+		for x in map(str, list(range(10))):
 			self.db.test.insert(data=x)
 		selection = self.db.test.select(orderby=self.db.test.data)
 		self.assertEqual(len(selection[4:]), 6)
 		selection = self.db.test.select(orderby=self.db.test.data)
-		self.assertEqual(map(tuple,selection[:]), map(tuple,map(unicode,range(10))))
+		self.assertEqual(list(map(tuple,selection[:])), list(map(tuple,list(map(str,list(range(10)))))))
 
 class DriverTestReferences(DriverTestBase):
 	def setUp(self):
@@ -324,7 +324,7 @@ class DriverTestReferences(DriverTestBase):
 
 	def test_cross_select(self):
 		wm = self.db.addresses['webmaster', 'example.com']
-		self.assertEquals(tuple(wm.accounts.select().one()), (u'webmaster@example.com', 'The Webmaster'))
+		self.assertEqual(tuple(wm.accounts.select().one()), ('webmaster@example.com', 'The Webmaster'))
 
 class DriverTestExceptions(DriverTestBase):
 	def test_sqlsyntaxerror(self):
@@ -344,7 +344,7 @@ def main(driver):
 	
 	DriverTestBase.driver = driver
 	
-	conf = ConfigParser.ConfigParser()
+	conf = configparser.ConfigParser()
 	x = ['drivers.conf']
 	f = os.path.abspath(__file__)
 	while f != '/':

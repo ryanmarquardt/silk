@@ -223,6 +223,7 @@ from . import drivers
 from .drivers.base import timestamp, AuthenticationError, SQLSyntaxError
 
 from .. import *
+from functools import reduce
 
 class __Row__(tuple):
 	"""Base class for Row objects - elements of Selection objects
@@ -290,7 +291,7 @@ class Selection(object):
 	def __iter__(self):
 		return self
 
-	def next(self):
+	def __next__(self):
 		if self.cache:
 			value = self.cache
 			self.cache = None
@@ -304,11 +305,11 @@ class Selection(object):
 			if c.fromdb:
 				v = c.fromdb(v)
 			return v if isinstance(v,c.native_type) else c.native_type(v)
-		return self.Row(map(conv, self.columns, value))
+		return self.Row(list(map(conv, self.columns, value)))
 
 	def one(self):
 		try:
-			return self.next()
+			return next(self)
 		except StopIteration:
 			return None
 
@@ -335,9 +336,9 @@ class Selection(object):
 		if x.stop is None:
 			return list(self)
 		else:
-			return list(self.next() for y in (x.stop - x.start))
+			return list(next(self) for y in (x.stop - x.start))
 
-	def __nonzero__(self):
+	def __bool__(self):
 		if not self.cache:
 			self.cache = self.values.fetchone()
 		return self.cache is not None
@@ -392,8 +393,8 @@ class Where(Selectable):
 		return 'Where(%r)'%self._where_tree
 
 	def _op_args(self, op, *args):
-		return [op] + map(lambda x:getattr(x,'_where_tree',x), args)
-	def __nonzero__(self):
+		return [op] + [getattr(x,'_where_tree',x) for x in args]
+	def __bool__(self):
 		return True
 
 	def __eq__(self, x):
@@ -410,9 +411,9 @@ class Where(Selectable):
 		return Where(self, drivers.base.GREATERTHAN, self, x)
 	
 	def __add__(self, x):
-		if isinstance(x, basestring) or \
-		self.native_type in {str,bytes,unicode} or \
-		x.native_type in {str,bytes,unicode}:
+		if isinstance(x, str) or \
+		self.native_type in {str,bytes,str} or \
+		x.native_type in {str,bytes,str}:
 			self._text_affinity = True
 			return Where(self, drivers.base.CONCATENATE, self, x)
 		else:
@@ -595,7 +596,7 @@ def BoolColumn(name, *args, **kwargs):
 	return Column(name, bool, *args, **kwargs)
 
 def StrColumn(name, *args, **kwargs):
-	return Column(name, unicode, *args, **kwargs)
+	return Column(name, str, *args, **kwargs)
 
 def FloatColumn(name, *args, **kwargs):
 	return Column(name, float, *args, **kwargs)
@@ -666,7 +667,7 @@ class Table(Selectable):
 			self.primarykey = []
 			if primarykey:
 				for col in primarykey:
-					if isinstance(col, basestring):
+					if isinstance(col, str):
 						col = self._columns[col]
 					else:
 						self._columns.add(col)
@@ -688,7 +689,7 @@ class Table(Selectable):
 			key = sequence(key)
 			if len(self.primarykey) != len(key):
 				raise IndexError('Primarykey for %s requires %i values (got %i)' % (self._name, len(self.primarykey), len(key)))
-			return reduce(lambda x,y:x&y, map(lambda x,y:x==y, self.primarykey, key))
+			return reduce(lambda x,y:x&y, list(map(lambda x,y:x==y, self.primarykey, key)))
 		raise TypeError('Table %r has no primarykey' % (self._name))
 
 	def __getitem__(self, key):
@@ -702,18 +703,18 @@ class Table(Selectable):
 
 	def insert(self, **values):
 		db_values = []
-		for k,v in values.items():
+		for k,v in list(values.items()):
 			try:
 				todb = self._columns[k].todb
 				if todb:
 					v = todb(v)
 				db_values.append(v)
 			except TypeError:
-				print >>sys.stderr, k, self._columns[k].todb, repr(v)
+				print(k, self._columns[k].todb, repr(v), file=sys.stderr)
 				raise
 			except KeyError:
 				raise KeyError('No such column in table: %s' % k)
-		self._db.__driver__._insert(self._name, values.keys(), db_values)
+		self._db.__driver__._insert(self._name, list(values.keys()), db_values)
 
 	def insert_many(self, *records):
 		for record in records:
@@ -734,7 +735,7 @@ class Table(Selectable):
 	def __repr__(self):
 		return '<%s %r>' % (self.__class__.__name__, self._name)
 		
-	def __nonzero__(self):
+	def __bool__(self):
 		return True
 
 	def __eq__(self, x):
@@ -778,11 +779,11 @@ class DB(collection):
 		primarykey = ()
 		for i,c in enumerate(columns):
 			if isinstance(c,Table):
-				newcols = map(copy.copy, c.ALL)
+				newcols = list(map(copy.copy, c.ALL))
 				for col in newcols:
 					col.table = None
 				columns[i] = newcols
-				primarykey = map(copy.copy, c.primarykey)
+				primarykey = list(map(copy.copy, c.primarykey))
 				for col in primarykey:
 					col.table = None
 		if primarykey and kwargs.get('primarykey') is None:

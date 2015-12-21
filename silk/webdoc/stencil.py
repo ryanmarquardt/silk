@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from StringIO import StringIO
+from io import StringIO
 import re
 import sys
 
@@ -21,20 +21,20 @@ class IndentingPrinter(object):
 			if self.level < 0:
 				raise ValueError("Can't have negative indent")
 		else:
-			print >>self.stream, '%s%s' % (self.indent * self.level, text)
+			print('%s%s' % (self.indent * self.level, text), file=self.stream)
 
 class StencilFile(object):
 	def __init__(self, opener, closer, path_or_file, filename='<string>'):
 		self.opener = opener
 		self.closer = closer
-		if isinstance(path_or_file, basestring):
+		if isinstance(path_or_file, str):
 			path_or_file = open(path_or_file, 'r')
 		self.file = path_or_file
 		self.filename = getattr(path_or_file, 'name', filename)
 		self.iter = iter(self)
 
-	def next(self):
-		return self.iter.next()
+	def __next__(self):
+		return next(self.iter)
 
 	def __iter__(self):
 		insub, multiline = False, ''
@@ -147,11 +147,11 @@ class BaseStencil(object):
 			stub += '\n\tpass'
 		try:
 			compile(stub, self.source.filename, 'exec')
-		except SyntaxError, err:
+		except SyntaxError as err:
 			self.source.syntax_error(err.msg, orig, err.offset)
 
 	def interpret(self, iprint, python, text, orig):
-		for pattern, function in self.subs.items():
+		for pattern, function in list(self.subs.items()):
 			match = re.match('(%s)' % pattern, text)
 			if match:
 				self.source.column += match.end()
@@ -175,7 +175,7 @@ class BaseStencil(object):
 	def sequence(self):
 		while self.sources:
 			try:
-				values = self.sources[-1].next()
+				values = next(self.sources[-1])
 			except StopIteration:
 				del self.sources[-1]
 				continue
