@@ -95,10 +95,9 @@ def is_sequence(x):
 	>>> is_sequence(B())
 	False
 	'''
-	#Takes advantage of the fact that strings don't have an __iter__ method,
-	# but doesn't limit inputs to subclasses of standard types, and doesn't
-	# match positive with string types. (this might need to change to remain portable)
-	return hasattr(x,'__iter__') and getattr(x,'__sequence__',True)
+	return (hasattr(x,'__iter__') and 
+	        not isinstance(x, str) and
+	        getattr(x,'__sequence__',True)r
 
 def flatten(x):
 	'''Converts nested iterators into a single list. As with sequence(x), strings
