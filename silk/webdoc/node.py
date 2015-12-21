@@ -234,15 +234,15 @@ class Node(MutableMapping, MutableSequence):
 		
 	def walk(self, filter=None, depth=0):
 		filter = filter or (lambda x:True)
-		if list(filter(self)):
+		if filter(self):
 			yield depth, self
 		for element in self.children:
 			if hasattr(element, 'walk'):
 				for d,sub in element.walk(filter=filter, depth=depth+1):
-					if list(filter(sub)):
+					if filter(sub):
 						yield d,sub
 			else:
-				if list(filter(element)):
+				if filter(element):
 					yield depth+1, element
 
 __all__ = ['Entity', 'Node']
