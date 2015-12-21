@@ -52,7 +52,7 @@ class sqlite(driver_base):
 			msg = e.args[0]
 			if 'has no column named' in msg or msg.startswith('no such column: '):
 				raise KeyError("No such column in table: %s" % msg.rsplit(None, 1)[1])
-			if e.message == 'unable to open database file':
+			if msg == 'unable to open database file':
 				raise make_IOError('ENOENT', 'No such file or directory: %r' % self.path)
 			if msg.endswith(': syntax error'):
 				text = msg.partition('"')[2].rpartition('"')[0]
