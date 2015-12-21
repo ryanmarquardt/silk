@@ -795,13 +795,19 @@ class DB(collection):
 		collection.add(self, value)
 
 	def __getattr__(self, key):
-		return self.__dict__[key] if key[0] == '_' else self[key]
+		try:
+			return self.__dict__[key] if key[0] == '_' else self[key]
+		except KeyError:
+			raise AttributeError(key)
 	
 	def __delattr__(self, key):
-		if key[0] == '_':
-			del self.__dict__[key]
-		else:
-			del self[key]
+		try:
+			if key[0] == '_':
+				del self.__dict__[key]
+			else:
+				del self[key]
+		except KeyError:
+			raise AttributeError(key)
 
 	@classmethod
 	def connect(cls, name, *args, **kwargs):
