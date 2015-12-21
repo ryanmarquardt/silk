@@ -16,6 +16,8 @@ class DriverTestBase(unittest.TestCase):
 		new.update(kwargs)
 		self.db = DB.connect(self.driver, **new)
 
+	assertItemsEqual = unittest.TestCase.assertCountEqual
+
 class DriverTestConnection(DriverTestBase):
 	#def run_driver(self, section):
 		#options = dict(filter(lambda (k,v):not k.startswith('_'), conf.items(driver)))
