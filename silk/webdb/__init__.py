@@ -584,6 +584,9 @@ class Column(Where):
 		else:
 			return repr(self.name)
 
+	def __hash__(self):
+		return hash(id(self))
+
 def RowidColumn(name, *args, **kwargs):
 	kwargs['primarykey'] = True
 	kwargs['autoincrement'] = True
