@@ -330,7 +330,7 @@ class DriverTestReferences(DriverTestBase):
 
 class DriverTestExceptions(DriverTestBase):
 	def test_sqlsyntaxerror(self):
-		self.db.__driver__.op_AND = lambda a,b:'%s AND %s'%(a,b)
+		self.db.__driver__.op_AND = lambda a,b:'%s AD %s'%(a,b)
 		self.db.define_table('test', StrColumn('a'), StrColumn('b'))
 		with self.assertRaises(silk.webdb.SQLSyntaxError):
 			((self.db.test.a == None) & (self.db.test.b == None)).select()
