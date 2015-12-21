@@ -97,7 +97,7 @@ def is_sequence(x):
 	'''
 	return (hasattr(x,'__iter__') and 
 	        not isinstance(x, str) and
-	        getattr(x,'__sequence__',True)r
+	        getattr(x,'__sequence__',True))
 
 def flatten(x):
 	'''Converts nested iterators into a single list. As with sequence(x), strings
