@@ -4,7 +4,9 @@ FULLNAME=$(shell python setup.py --fullname)
 PACKAGES=$(patsubst debian/%.install,dist/%_$(VERSION)_all.deb,$(wildcard debian/*.install))
 SRCFILES=$(shell find silk | grep .py$$)
 
-TESTPYTHON=PYTHONPATH=$(PWD)/build/lib.linux-$(shell uname -p)-2.7 python
+PYTHON=python
+
+TESTPYTHON=PYTHONPATH=$(PWD)/build/lib.linux-$(shell uname -p)-2.7 $(PYTHON)
 DOCTEST=$(TESTPYTHON) -m doctest
 
 all: build
@@ -14,7 +16,7 @@ BLANK:
 
 clean:
 	@debuild clean
-	@python setup.py clean
+	@$(PYTHON) setup.py clean
 
 test: build
 	$(TESTPYTHON) doctest/drivers/sqlite.py -v 1
@@ -24,10 +26,10 @@ test: build
 	$(TESTPYTHON) -m doctest doctest/*.txt
 
 build: $(SRCFILES)
-	@python setup.py build
+	@$(PYTHON) setup.py build
 
 install:
-	@python setup.py install
+	@$(PYTHON) setup.py install
 
 debian/python-silk-common.install: BLANK
 	@ls -d silk/* | grep \\.py$$ | \
@@ -68,7 +70,7 @@ deb: $(FULLNAME).tar.gz debian/install
 sdist: $(FULLNAME).tar.gz
 
 $(FULLNAME).tar.gz:
-	@python setup.py sdist
+	@$(PYTHON) setup.py sdist
 
 $(PACKAGES): deb
 
