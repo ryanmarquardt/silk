@@ -48,7 +48,7 @@ class HeaderList(list):
 
 	def __setitem__(self, name, value):
 		try:
-			idx = zip(*self)[0].index(name)
+			idx = list(zip(*self))[0].index(name)
 		except (ValueError, IndexError):
 			self.append(name, value)
 		else:

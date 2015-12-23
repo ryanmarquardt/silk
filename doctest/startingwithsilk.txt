@@ -52,7 +52,7 @@ requires a) creating a router and b) starting it.
 ... def router(request, response):
 ...   return 'Hello World!'
 
->>> exec router.serve(method='test')
+>>> exec(router.serve(method='test'))
 Hello World!
 
 In this tutorial we will be using the 'test' method of serving pages. This
@@ -182,13 +182,13 @@ You can also get data out by building queries. It's easier than you might think,
 and doesn't require learning any SQL. To get all employees over age 50:
 
 >>> for employee in (db.employees.age > 50).select():
-...   print employee
+...   print(employee)
 Row(name='Hank', age=65, email=None)
 
 To get all employees with an email address:
 
 >>> for employee in (db.employees.email != None).select(orderby=db.employees.email):
-...   print employee
+...   print(employee)
 Row(name='Jessie', age=22, email='jessie@company.com')
 Row(name='Miriam', age=42, email='miriam@company.com')
 
@@ -203,7 +203,7 @@ Let's rewrite our router to use some of this new data.
 ...   average = db.employees.select(db.employees.age.average()).one()[0]
 ...   return 'Average age at this company: %i' % average
 
->>> exec router.serve(method='test')
+>>> exec(router.serve(method='test'))
 Average age at this company: 43
 
 Using a table's select method queries all the rows in the table. You'll notice
@@ -226,16 +226,16 @@ to review their information.
 ...     return 'Employee Information\nName: %(name)s\n' \
 ...            'Age: %(age)s\nEmail: %(email)s' % vars(employee)
 
->>> exec router.serve(method='test', path='/')
+>>> exec(router.serve(method='test', path='/'))
 Average age at this company: 43
 
->>> exec router.serve(method='test', path='/Miriam')
+>>> exec(router.serve(method='test', path='/Miriam'))
 Employee Information
 Name: Miriam
 Age: 42
 Email: miriam@company.com
 
->>> exec router.serve(method='test', path='/Miriam/nosuchpath')
+>>> exec(router.serve(method='test', path='/Miriam/nosuchpath'))
 Error: 404 Not Found /Miriam/nosuchpath
 
 ===================
@@ -266,7 +266,7 @@ Lets create a view to display information on employees.
 
 >>> router.default_view = EmployeeView()
 
->>> exec router.serve(method='test', path='/Miriam')
+>>> exec(router.serve(method='test', path='/Miriam'))
 Employee Information
 Name: Miriam
 Age: 42
@@ -288,12 +288,12 @@ lets import the builtin HTML generation objects.
 HTML tags can be produced using these imported functions. Every standard HTML
 tag has a corresponding function which can generate it.
 
->>> print DIV()
+>>> print(DIV())
 <div></div>
 
 These can be nested to produce a full, well-formatted HTML document.
 
->>> print HTML(HEAD(), BODY(DIV('Hello World', BR(), "It's nice to meet you")))
+>>> print(HTML(HEAD(), BODY(DIV('Hello World', BR(), "It's nice to meet you"))))
 <!DOCTYPE html>
 <html><head></head><body><div>Hello World<br />It's nice to meet you</div></body></html>
 
@@ -301,22 +301,22 @@ Add attributes to tags by providing them as keyword arguments. Initial
 underscores (``_``) are removed to allow python keywords (especially 'class')
 to be used.
 
->>> print DIV('abc', _class='123')
+>>> print(DIV('abc', _class='123'))
 <div class='123'>abc</div>
 
 Tag nodes are all base classes of ``XMLNode``. Any tag can be explicitly created
 using  ``XMLNode.new``.
 
->>> print XMLNode.new('p')(NBSP)
+>>> print(XMLNode.new('p')(NBSP))
 <p>&nbsp;</p>
 
 ``NBSP`` is a convenience object for the HTML escape sequence. Other pre-escaped
 text can be rendered using the ``XML`` class.
 
->>> print P('1 & 2')
+>>> print(P('1 & 2'))
 <p>1 &amp; 2</p>
 
->>> print XML('1 & 2')
+>>> print(XML('1 & 2'))
 1 & 2
 
 -----------
@@ -334,7 +334,7 @@ Lets reset the default view to one which produces HTML.
 
 >>> router.default_view = EmployeeView
 
->>> exec router.serve(method='test', path='/Miriam')
+>>> exec(router.serve(method='test', path='/Miriam'))
 <!DOCTYPE html>
 <html><head></head><body><h1>Employee Information</h1><table><tr><td>Name</td><td>Miriam</td></tr><tr><td>Age</td><td>42</td></tr><tr><td>Email</td><td>miriam@company.com</td></tr></table></body></html>
 
@@ -373,3 +373,4 @@ Apache2
     LogLevel notice
     CustomLog /var/log/apache2/access.log common
     ErrorLog /var/log/apache2/error.log
+

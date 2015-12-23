@@ -27,19 +27,19 @@ Containers
 
 Using traditional item access:
 	
->>> print request['env']['server']['name']
+>>> print(request['env']['server']['name'])
 silk
 
 Using ``container``'s attribute access:
 
->>> print request.env.server.name
+>>> print(request.env.server.name)
 silk
 
 Attribute access is implemented using the builtin dict's get method. If an item is not in the container, ``None`` is produced on attribute access rather than raising an error.
 
->>> print request.env.server.version
+>>> print(request.env.server.version)
 None
->>> print request.env.server['version']
+>>> print(request.env.server['version'])
 Traceback (most recent call last):
  ...
 KeyError: 'version'
@@ -76,21 +76,22 @@ Technically, ``is_sequence`` is a duck-typing method, checking whether its argum
 >>> is_sequence(a([1]))
 False
 
->>> print sequence(a([1]))
+>>> print(sequence(a([1])))
 [(1,)]
 
 >>> is_sequence(b([1]))
 True
 
->>> print sequence(b([1]))
+>>> print(sequence(b([1])))
 [1]
 
 One more function, ``flatten``, does a depth-first search of its argument and returns a sequence of all the non-sequence objects it finds. Sequences, are used heavily in the ``webdoc`` package, where flatten gives more flexibility in passing children to a node.
 
 >>> from silk.webdoc.html import DIV
->>> print DIV(DIV('a'), DIV(map(DIV,['b', 'c', 'd']), 'e'))
+>>> print(DIV(DIV('a'), DIV(list(map(DIV,['b', 'c', 'd'])), 'e')))
 <div><div>a</div><div><div>b</div><div>c</div><div>d</div>e</div></div>
 
 -----------
 Collections
 -----------
+
