@@ -56,7 +56,7 @@ def sequence(x):
 	>>> sequence('0')
 	['0']
 	>>> sequence('123')
-	[u'123']
+	['123']
 	>>> sequence((1,2,3))
 	[1, 2, 3]
 	>>> sequence(a*2+1 for a in range(5))

@@ -8,7 +8,7 @@ Use the connect method to open a database connection.
 >>> mydb = DB.connect('sqlite','path/to/database.sqlite')
 Traceback (most recent call last):
  ...
-IOError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
+FileNotFoundError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
 
 By default, an in-memory database is created.
 >>> mydb = DB()
@@ -74,10 +74,10 @@ It is always recommended to conform your database *before* defining columns.
 ... 	DataColumn('g'),
 ... 	RowidColumn('i'),
 ... )
->>> _ = mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=7)
+>>> _ = mydb.test_types.insert(a=1, b=2, c=3, e=datetime.datetime(1969, 10, 5), f=6, g=b'7')
 >>> for row in mydb.test_types.select():
 ...   print(row)
-Row(a=1, b=True, c=u'3', e=datetime.datetime(1969, 10, 5, 0, 0), f=6.0, g='7', i=1)
+Row(a=1, b=True, c='3', e=datetime.datetime(1969, 10, 5, 0, 0), f=6.0, g=b'7', i=1)
 
 Conforming and migrating are both optional. Attempting to manipulate the
 database without these calls may fail if table definitions don't match tables
@@ -106,7 +106,7 @@ increment column is implicitly available. Autoincrement fields start from 1
 >>> row.key
 100
 >>> row.value
-u'a'
+'a'
 >>> row.rowid
 1
 >>> del mydb.test_table[1]
@@ -139,8 +139,8 @@ Exception
 ...   _ = mydb.test_table.insert(key=7, value='g')
 >>> for row in mydb.test_table.select():
 ...   print(row)
-Row(key=3, value=u'c')
-Row(key=7, value=u'g')
+Row(key=3, value='c')
+Row(key=7, value='g')
 
 ===
 Querying
@@ -155,7 +155,7 @@ The resulting object can be queried. Standard SQL commands are provided. Using
 parentheses, a query can be set up and then selected:
 >>> for row in (mydb.test_table.key<=3).select():
 ...   print(row)
-Row(key=3, value=u'c')
+Row(key=3, value='c')
 
 Rows in a query can be counted...
 >>> (mydb.test_table.key>1).count()
@@ -165,14 +165,14 @@ or updated...
 >>> (mydb.test_table.value=='c').update(key=4)
 >>> for row in mydb.test_table.select():
 ...   print(row)
-Row(key=4, value=u'c')
-Row(key=7, value=u'g')
+Row(key=4, value='c')
+Row(key=7, value='g')
 
 or deleted...
 >>> (mydb.test_table.key > 5).delete()
 >>> for row in mydb.test_table.select():
 ...   print(row)
-Row(key=4, value=u'c')
+Row(key=4, value='c')
 
 >>> _ = mydb.test_table.insert(key=4, value='d')
 >>> _ = mydb.test_table.insert(key=5, value='d')
@@ -195,16 +195,16 @@ d
 Order by one column
 >>> for row in mydb.test_table.select(orderby=mydb.test_table.rowid):
 ...   print(row)
-Row(key=4, value=u'c')
-Row(key=4, value=u'd')
-Row(key=5, value=u'd')
+Row(key=4, value='c')
+Row(key=4, value='d')
+Row(key=5, value='d')
 
 Or more
 >>> for row in mydb.test_table.select(orderby=[reversed(mydb.test_table.key), mydb.test_table.value]):
 ...   print(row)
-Row(key=5, value=u'd')
-Row(key=4, value=u'c')
-Row(key=4, value=u'd')
+Row(key=5, value='d')
+Row(key=4, value='c')
+Row(key=4, value='d')
 
 ===
 Cleaning Up
