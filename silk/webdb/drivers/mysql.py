@@ -60,7 +60,7 @@ class mysql(driver_base):
 		elif isinstance(e, MySQLdb.IntegrityError):
 			code = e.args[0]
 			if code == 1062:
-				raise ValueError(e.message)
+				raise ValueError(e.args[1])
 		elif isinstance(e, MySQLdb.ProgrammingError):
 			text = e.args[1].partition("'")[2].rpartition("'")[0]
 			offset = self.lastsql.index(text)
