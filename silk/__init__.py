@@ -256,13 +256,10 @@ class MultiDict(collections.MutableMapping):
 	def __delattr__(self, key):
 		self._dict.pop(key)
 
-	def iteritems(self):
+	def items(self):
 		for key in self._dict:
 			for value in self._dict[key]:
 				yield key, value
-
-	def items(self):
-		return list(self.items())
 
 	getlist = __getitem__
 
