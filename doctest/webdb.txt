@@ -7,19 +7,19 @@ DB.connect
 >>> db = DB.connect('sqlite', 'path/to/database.sqlite')
 Traceback (most recent call last):
  ...
-IOError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
+FileNotFoundError: [Errno 2] No such file or directory: 'path/to/database.sqlite'
 >>> db = DB.connect('fakename')
 Traceback (most recent call last):
  ...
-UnknownDriver: Unable to find database driver 'fakename'
+silk.webdb.UnknownDriver: Unable to find database driver 'fakename'
 >>> db = DB.connect('<>invalid name+/%')
 Traceback (most recent call last):
  ...
-UnknownDriver: Unable to find database driver '<>invalid name+/%'
+silk.webdb.UnknownDriver: Unable to find database driver '<>invalid name+/%'
 >>> db = DB.connect('base') #Module exists, but has no object named 'base'
 Traceback (most recent call last):
  ...
-UnknownDriver: Unable to find database driver 'base'
+silk.webdb.UnknownDriver: Unable to find database driver 'base'
 >>> db = DB.connect('sqlite')
 
 =====
@@ -77,11 +77,11 @@ Traceback (most recent call last):
 KeyError: 'No such column in table: nonexistant'
 >>> db.table1.insert(data=23456)
 >>> for row in db.table1.select():
-...   print row
-Row(data=u'12345')
-Row(data=u'23456')
+...   print(row)
+Row(data='12345')
+Row(data='23456')
 >>> for row in db.table2.select():
-...   print row
+...   print(row)
 >>> db.table3.insert(columns='1')
 >>> (db.table3._columns['columns'] == '1').count()
 1
@@ -105,30 +105,30 @@ TypeError: Table 'table4' has no primarykey
 Table.select
 ------------
 
->>> for row in db.users.select(): print row
-Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
-Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
-Row(first_name=u'Pat', last_name=u'Smith', email=u'pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
-Row(first_name=u'Werfina', last_name=u'Fablesmok', email=u'wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
+>>> for row in db.users.select(): print(row)
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name='Bob', last_name='Smith', email='bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name='Pat', last_name='Smith', email='pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name='Werfina', last_name='Fablesmok', email='wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
 
->>> for row in (db.users.age > 20).select(): print row
-Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
-Row(first_name=u'Werfina', last_name=u'Fablesmok', email=u'wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
+>>> for row in (db.users.age > 20).select(): print(row)
+Row(first_name='Bob', last_name='Smith', email='bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name='Werfina', last_name='Fablesmok', email='wgf@email.com', age=45, registered=datetime.datetime(2012, 5, 6, 0, 0))
 
->>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=db.users.last_name): print row
-Row(first_name=u'Werfina', last_name=u'Fablesmok')
-Row(first_name=u'Maggie', last_name=u'Reynolds')
-Row(first_name=u'Bob', last_name=u'Smith')
-Row(first_name=u'Pat', last_name=u'Smith')
+>>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=db.users.last_name): print(row)
+Row(first_name='Werfina', last_name='Fablesmok')
+Row(first_name='Maggie', last_name='Reynolds')
+Row(first_name='Bob', last_name='Smith')
+Row(first_name='Pat', last_name='Smith')
 
->>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,reversed(db.users.first_name)]): print row
-Row(first_name=u'Werfina', last_name=u'Fablesmok')
-Row(first_name=u'Maggie', last_name=u'Reynolds')
-Row(first_name=u'Pat', last_name=u'Smith')
-Row(first_name=u'Bob', last_name=u'Smith')
+>>> for row in db.users.select(db.users.first_name, db.users.last_name, orderby=[db.users.last_name,reversed(db.users.first_name)]): print(row)
+Row(first_name='Werfina', last_name='Fablesmok')
+Row(first_name='Maggie', last_name='Reynolds')
+Row(first_name='Pat', last_name='Smith')
+Row(first_name='Bob', last_name='Smith')
 
 >>> [vars(row) for row in db.users.select(db.users.last_name, distinct=True, orderby=db.users.last_name)]
-[{'last_name': u'Fablesmok'}, {'last_name': u'Reynolds'}, {'last_name': u'Smith'}]
+[{'last_name': 'Fablesmok'}, {'last_name': 'Reynolds'}, {'last_name': 'Smith'}]
 
 >>> db.users.select(db.users.age.sum()).one()[0]
 105
@@ -136,9 +136,9 @@ Row(first_name=u'Bob', last_name=u'Smith')
 26.25
 >>> db.users.select(db.users.age.max()).one()[0]
 45
->>> for row in db.users.age.between(19,30).select(): print row
-Row(first_name=u'Bob', last_name=u'Smith', email=u'bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
-Row(first_name=u'Pat', last_name=u'Smith', email=u'pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
+>>> for row in db.users.age.between(19,30).select(): print(row)
+Row(first_name='Bob', last_name='Smith', email='bob.smith@email.com', age=23, registered=datetime.datetime(2010, 4, 12, 0, 0))
+Row(first_name='Pat', last_name='Smith', email='pat.smith@email.com', age=19, registered=datetime.datetime(2010, 4, 12, 0, 0))
 
 
 ======
@@ -146,12 +146,12 @@ Record
 ======
 
 >>> record = db.users['magginator@email.com']
->>> print record
-Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
+>>> print(record)
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=18, registered=datetime.datetime(2012, 5, 5, 0, 0))
 >>> record.update(age=record.age+1) #Happy Birthday!
-Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
 >>> db.users['magginator@email.com'] #Primary key is 'email' column
-Row(first_name=u'Maggie', last_name=u'Reynolds', email=u'magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
+Row(first_name='Maggie', last_name='Reynolds', email='magginator@email.com', age=19, registered=datetime.datetime(2012, 5, 5, 0, 0))
 >>> record.update(nonexistant=True)
 Traceback (most recent call last):
  ...
@@ -161,10 +161,10 @@ Traceback (most recent call last):
  ...
 NameError: Column names can only contain letters, numbers, and underscores. Got 'bad identifier'
 
->>> map(tuple, (db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
-[(u'Bob',), (u'Pat',)]
->>> zip(*(db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name))
-[(u'Bob', u'Pat')]
+>>> list(map(tuple, (db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name)))
+[('Bob',), ('Pat',)]
+>>> list(zip(*(db.users.last_name=='Smith').select(db.users.first_name, orderby=db.users.first_name)))
+[('Bob', 'Pat')]
 
 >>> db.users['not.in.db@email.com']
 Traceback (most recent call last):
@@ -179,30 +179,30 @@ KeyError: "No Row in database matching primary key 'not.in.db@email.com'"
 []
 
 >>> [r[0] for r in db.users.select(db.users.last_name[0])]
-[u'R', u'S', u'S', u'F']
+['R', 'S', 'S', 'F']
 >>> [r[0] for r in db.users.select(db.users.last_name[3:5])]
-[u'no', u'th', u'th', u'le']
+['no', 'th', 'th', 'le']
 >>> [r[0] for r in db.users.select(db.users.last_name[1:])]
-[u'eynolds', u'mith', u'mith', u'ablesmok']
+['eynolds', 'mith', 'mith', 'ablesmok']
 >>> [r[0] for r in db.users.select(db.users.last_name[-1:])]
-[u's', u'h', u'h', u'k']
+['s', 'h', 'h', 'k']
 >>> [r[0] for r in db.users.select(db.users.last_name[:-1])]
-[u'Reynold', u'Smit', u'Smit', u'Fablesmo']
+['Reynold', 'Smit', 'Smit', 'Fablesmo']
 >>> [r[0] for r in db.users.select(db.users.age[1:])]
 [9, 3, 9, 5]
 >>> [r[0] for r in db.users.select(db.users.first_name+' '+db.users.last_name)]
-[u'Maggie Reynolds', u'Bob Smith', u'Pat Smith', u'Werfina Fablesmok']
+['Maggie Reynolds', 'Bob Smith', 'Pat Smith', 'Werfina Fablesmok']
 
 >>> len(list((db.users.last_name != None).select()))
 4
 
 >>> for row in db.users.last_name.startswith('S').select(orderby=db.users.last_name):
-...   print row.last_name
+...   print(row.last_name)
 Smith
 Smith
 
 >>> for row in db.users.last_name.endswith('s').select(orderby=db.users.last_name):
-...   print row.last_name
+...   print(row.last_name)
 Reynolds
 
 ======================
@@ -223,21 +223,22 @@ Inter-table references
 >>> db.addresses.insert(name='postmaster', domain='example.com', active=True)
 >>> db.addresses.insert(name='cerealmaster', domain='example.com')
 
->>> for row in db.addresses.select(): print row
-Row(name=u'webmaster', domain=u'example.com', active=True)
-Row(name=u'postmaster', domain=u'example.com', active=True)
-Row(name=u'cerealmaster', domain=u'example.com', active=False)
+>>> for row in db.addresses.select(): print(row)
+Row(name='webmaster', domain='example.com', active=True)
+Row(name='postmaster', domain='example.com', active=True)
+Row(name='cerealmaster', domain='example.com', active=False)
 
 >>> wm = db.addresses['webmaster', 'example.com']
 >>> wm
-Row(name=u'webmaster', domain=u'example.com', active=True)
+Row(name='webmaster', domain='example.com', active=True)
 
 >>> db.accounts.insert(address=wm, owner_name='The Webmaster')
->>> for row in db.accounts.select(): print row
-Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
+>>> for row in db.accounts.select(): print(row)
+Row(address='webmaster@example.com', owner_name='The Webmaster')
 
->>> for row in (db.accounts.owner_name=='The Webmaster').select(): print row
-Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
+>>> for row in (db.accounts.owner_name=='The Webmaster').select(): print(row)
+Row(address='webmaster@example.com', owner_name='The Webmaster')
 
->>> for row in wm.accounts.select(): print row
-Row(address=u'webmaster@example.com', owner_name=u'The Webmaster')
+>>> for row in wm.accounts.select(): print(row)
+Row(address='webmaster@example.com', owner_name='The Webmaster')
+
