@@ -60,7 +60,7 @@ class sqlite(driver_base):
 				raise SQLSyntaxError(self.lastsql, offset, text)
 		elif isinstance(e, sqlite3.IntegrityError):
 			msg = e.args[0]
-			if msg == 'column data is not unique':
+			if msg.startswith('UNIQUE constraint failed: '):
 				raise ValueError(msg)
 
 	def list_tables_sql(self):
