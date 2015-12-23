@@ -814,11 +814,11 @@ class DB(collection):
 
 	@classmethod
 	def connect(cls, name, *args, **kwargs):
-		try:
-			driver = getattr(getattr(drivers, name), name)
-		except AttributeError:
+		module = getattr(drivers, name, None)
+		class_ = getattr(module, name, None)
+		if class_ is None:
 			raise UnknownDriver("Unable to find database driver %r" % name)
-		driver = driver(*args,**kwargs)
+		driver = class_(*args, **kwargs)
 		return type(cls.__name__, (cls,), {
 			'__driver__':driver,
 			'execute':driver.execute,
