@@ -15,4 +15,10 @@ class DriverTestMysql(DriverTestBase):
 			self.connect(password = self.options['password'] + ' ')
 
 if __name__=='__main__':
-	main('mysql')
+    try:
+        import MySQLdb
+    except ImportError:
+        print("Skipping missing driver 'mysql'")
+        exit(0)
+    else:
+	    main('mysql')
