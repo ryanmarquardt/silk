@@ -6,4 +6,4 @@ try:
 	from . import mysql
 	__all__.append('mysql')
 except ImportError:
-	pass
+	mysql = None
