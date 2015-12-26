@@ -237,12 +237,8 @@ class RecordError(Exception):
     pass
 
 
-class AuthenticationError(drivers.base.AuthenticationError):
-    pass
-
-
-class SQLSyntaxError(drivers.base.SQLSyntaxError):
-    pass
+AuthenticationError = drivers.base.AuthenticationError
+SQLSyntaxError = drivers.base.SQLSyntaxError
 
 
 class __Row__(tuple):
