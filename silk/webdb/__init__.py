@@ -240,6 +240,8 @@ class RecordError(Exception):
 AuthenticationError = drivers.base.AuthenticationError
 SQLSyntaxError = drivers.base.SQLSyntaxError
 
+__all__ = ['RecordError', 'AuthenticationError', 'SQLSyntaxError', 'datetime']
+
 
 class __Row__(tuple):
     """Base class for Row objects - elements of Selection objects
@@ -659,37 +661,53 @@ class Column(Where):
     def __hash__(self):
         return hash(id(self))
 
+__all__.append('Column')
+
 
 def RowidColumn(name, *args, **kwargs):
     kwargs['primarykey'] = True
     kwargs['autoincrement'] = True
     return Column(name, int, *args, **kwargs)
 
+__all__.append('RowidColumn')
+
 
 def IntColumn(name, *args, **kwargs):
     return Column(name, int, *args, **kwargs)
+
+__all__.append('IntColumn')
 
 
 def BoolColumn(name, *args, **kwargs):
     return Column(name, bool, *args, **kwargs)
 
+__all__.append('BoolColumn')
+
 
 def StrColumn(name, *args, **kwargs):
     return Column(name, str, *args, **kwargs)
+
+__all__.append('StrColumn')
 
 
 def FloatColumn(name, *args, **kwargs):
     return Column(name, float, *args, **kwargs)
 
+__all__.append('FloatColumn')
+
 
 def DataColumn(name, *args, **kwargs):
     return Column(name, bytes, *args, **kwargs)
+
+__all__.append('DataColumn')
 
 
 def DateTimeColumn(name, *args, **kwargs):
     kwargs['todb'] = drivers.base.timestamp
     kwargs['fromdb'] = drivers.base.timestamp.parse
     return Column(name, datetime.datetime, *args, **kwargs)
+
+__all__.append('DateTimeColumn')
 
 
 def ReferenceColumn(name, table, todb=None, *args, **kwargs):
@@ -710,6 +728,8 @@ def ReferenceColumn(name, table, todb=None, *args, **kwargs):
     self = Column(name, query.native_type, *args, **kwargs)
     table._referers.add(self)
     return self
+
+__all__.append('ReferenceColumn')
 
 
 class Table(Selectable):
@@ -843,9 +863,13 @@ class Table(Selectable):
                 return False
         return True
 
+__all__.append('Table')
+
 
 class UnknownDriver(Exception):
     pass
+
+__all__.append('UnknownDriver')
 
 
 class DB(collection):
@@ -947,4 +971,7 @@ class DB(collection):
             raise NotImplementedError
             self.__driver__.alter_table(name, self[name])
 
+__all__.append('DB')
+
 connect = DB.connect
+__all__.append('connect')
