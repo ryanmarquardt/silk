@@ -3,7 +3,7 @@
 Module containing only html v5 tags. All deprecated tags have been removed.
 """
 
-from .common import (  # flake8: noqa
+from .common import (
     A,
     ABBR,
     ACRONYM,
