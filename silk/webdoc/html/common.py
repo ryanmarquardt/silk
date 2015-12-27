@@ -6,6 +6,13 @@ from functools import partial
 from xml.sax.saxutils import escape as xmlescape, unescape as xmlunescape
 import re
 
+__all__ = ['xmlescape', 'xmlunescape']
+
+def _all(func_or_class):
+    __all__.append(func_or_class.__name__)
+    return func_or_class
+
+
 def _xml(value, attr=False):
 	if is_sequence(value):
 		return (' ' if attr else '').join(map(_xml,value))
@@ -14,6 +21,7 @@ def _xml(value, attr=False):
 	else:
 		return xmlescape(str(value))
 
+@_all
 class XMLEntity(Entity):
 	@staticmethod
 	def start(name, **attributes):
@@ -39,6 +47,7 @@ class XMLClosedEntity(XMLEntity):
 	def __str__(self):
 		return '<%s%s />' % (self.name, ''.join(' %s=%r' % i for i in list(self.attributes.items())))
 
+@_all
 class XMLNode(Node):
 	'''Node which is represented as xml.
 	
@@ -125,100 +134,47 @@ class XMLNotEmptyNode(XMLNode):
 #
 ###Factory functions for names that don't need special treatment
 #
-## Normal tags
-class A(XMLNode): name = 'a'
-class ABBR(XMLNode): name = 'abbr'
-class ACRONYM(XMLNode): name = 'acronym'
-class ADDRESS(XMLNode): name = 'address'
-class APPLET(XMLNode): name = 'applet'
-class B(XMLNode): name = 'b'
-class BDO(XMLNode): name = 'bdo'
-class BIG(XMLNode): name = 'big'
-class BLOCKQUOTE(XMLNode): name = 'blockquote'
-class BUTTON(XMLNode): name = 'button'
-class CAPTION(XMLNode): name = 'caption'
-class CENTER(XMLNode): name = 'center'
-class CITE(XMLNode): name = 'cite'
-class CODE(XMLNode): name = 'code'
-class COLGROUP(XMLNode): name = 'colgroup'
-class DD(XMLNode): name = 'dd'
-class DEL(XMLNode): name = 'del'
-class DFN(XMLNode): name = 'dfn'
-class DIR(XMLNode): name = 'dir'
-class DL(XMLNode): name = 'dl'
-class DT(XMLNode): name = 'dt'
-class EM(XMLNode): name = 'em'
-class FIELDSET(XMLNode): name = 'fieldset'
-class FONT(XMLNode): name = 'font'
-class FORM(XMLNode): name = 'form'
-class FRAMESET(XMLNode): name = 'frameset'
-class HEAD(XMLNode): name = 'head'
-class I(XMLNode): name = 'i'
-class IFRAME(XMLNode): name = 'iframe'
-class INS(XMLNode): name = 'ins'
-class KBD(XMLNode): name = 'kbd'
-class LABEL(XMLNode): name = 'label'
-class LEGEND(XMLNode): name = 'legend'
-class LI(XMLNode): name = 'li'
-class MAP(XMLNode): name = 'map'
-class MENU(XMLNode): name = 'menu'
-class NOFRAMES(XMLNode): name = 'noframes'
-class NOSCRIPT(XMLNode): name = 'noscript'
-class OBJECT(XMLNode): name = 'object'
-class OL(XMLNode): name = 'ol'
-class OPTGROUP(XMLNode): name = 'optgroup'
-class OPTION(XMLNode): name = 'option'
-class P(XMLNode): name = 'p'
-class PRE(XMLNode): name = 'pre'
-class Q(XMLNode): name = 'q'
-class S(XMLNode): name = 's'
-class SAMP(XMLNode): name = 'samp'
-class SELECT(XMLNode): name = 'select'
-class SMALL(XMLNode): name = 'small'
-class SPAN(XMLNode): name = 'span'
-class STRIKE(XMLNode): name = 'strike'
-class STRONG(XMLNode): name = 'strong'
-class STYLE(XMLNode): name = 'style'
-class SUB(XMLNode): name = 'sub'
-class SUP(XMLNode): name = 'sup'
-class TABLE(XMLNode): name = 'table'
-class TBODY(XMLNode): name = 'tbody'
-class TD(XMLNode): name = 'td'
-class TEXTAREA(XMLNode): name = 'textarea'
-class TFOOT(XMLNode): name = 'tfoot'
-class TH(XMLNode): name = 'th'
-class THEAD(XMLNode): name = 'thead'
-class TITLE(XMLNode): name = 'title'
-class TR(XMLNode): name = 'tr'
-class TT(XMLNode): name = 'tt'
-class U(XMLNode): name = 'u'
-class UL(XMLNode): name = 'ul'
-class VAR(XMLNode): name = 'var'
-class XMP(XMLNode): name = 'xmp'
 
-## NoChild tags
-class AREA(XMLNoChildNode): name = 'area'
-class BASE(XMLNoChildNode): name = 'base'
-class BASEFONT(XMLNoChildNode): name = 'basefont'
-class BR(XMLNoChildNode): name = 'br'
-class COL(XMLNoChildNode): name = 'col'
-class FRAME(XMLNoChildNode): name = 'frame'
-class HR(XMLNoChildNode): name = 'hr'
-class IMG(XMLNoChildNode): name = 'img'
-class INPUT(XMLNoChildNode): name = 'input'
-class LINK(XMLNoChildNode): name = 'link'
-class PARAM(XMLNoChildNode): name = 'param'
+normal_tags = {
+    'A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET', 'B', 'BDO', 'BIG',
+    'BLOCKQUOTE', 'BUTTON', 'CAPTION', 'CENTER', 'CITE', 'CODE', 'COLGROUP',
+    'DD', 'DEL', 'DFN', 'DIR', 'DL', 'DT', 'EM', 'FIELDSET', 'FONT', 'FORM',
+    'FRAMESET', 'HEAD', 'I', 'IFRAME', 'INS', 'KBD', 'LABEL', 'LEGEND', 'LI',
+    'MAP', 'MENU', 'NOFRAMES', 'NOSCRIPT', 'OBJECT', 'OL', 'OPTGROUP',
+    'OPTION', 'P', 'PRE', 'Q', 'S', 'SAMP', 'SELECT', 'SMALL', 'SPAN',
+    'STRIKE', 'STRONG', 'STYLE', 'SUB', 'SUP', 'TABLE', 'TBODY', 'TD',
+    'TEXTAREA', 'TFOOT', 'TH', 'THEAD', 'TITLE', 'TR', 'TT', 'U', 'UL', 'VAR',
+    'XMP',
+}
 
-## NotEmpty tags
-class HEAD(XMLNotEmptyNode): name = 'head'
-class DIV(XMLNotEmptyNode): name = 'div'
-class H1(XMLNotEmptyNode): name = 'h1'
-class H2(XMLNotEmptyNode): name = 'h2'
-class H3(XMLNotEmptyNode): name = 'h3'
-class H4(XMLNotEmptyNode): name = 'h4'
-class H5(XMLNotEmptyNode): name = 'h5'
-class H6(XMLNotEmptyNode): name = 'h6'
 
+for name in normal_tags:
+    globals()[name] = type(name, (XMLNode,), {'name': name.lower()})
+    __all__.append(name)
+
+
+nochild_tags = {
+    'AREA', 'BASE', 'BASEFONT', 'BR', 'COL', 'FRAME', 'HR', 'IMG', 'INPUT',
+    'LINK', 'PARAM',
+}
+
+
+for name in nochild_tags:
+    globals()[name] = type(name, (XMLNoChildNode,), {'name': name.lower()})
+    __all__.append(name)
+
+
+notempty_tags = {
+    'HEAD', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+}
+
+
+for name in notempty_tags:
+    globals()[name] = type(name, (XMLNotEmptyNode,), {'name': name.lower()})
+    __all__.append(name)
+
+
+@_all
 class Form(FORM):
 	'''
 	'''
@@ -227,6 +183,7 @@ class Form(FORM):
 		self.setdefault('_method','POST')
 		self.setdefault('_enctype','multipart/form-data')
 
+@_all
 class COMMENT(XMLNode):
 	'''Includes comments.
 	
@@ -238,6 +195,7 @@ class COMMENT(XMLNode):
 	def __str__(self):
 		return '<!--%s-->'%''.join(map(str,self.children))
 
+@_all
 class CONDITIONAL_COMMENT(XMLNode):
 	'''Used to comment out text conditionally by browser
 	
@@ -257,6 +215,7 @@ class CONDITIONAL_COMMENT(XMLNode):
 			kids=''.join(map(_xml,self.children))
 		)
 
+@_all
 class XML(XMLNode):
 	'''Renders text without escaping it.
 	
@@ -271,6 +230,10 @@ class XML(XMLNode):
 
 NBSP = XML('&nbsp;')
 
+__all__.append('NBSP')
+
+
+@_all
 class CAT(XMLNode):
 	'''Concatenates child nodes.
 	
@@ -284,6 +247,7 @@ class CAT(XMLNode):
 	def __str__(self):
 		return ''.join(map(_xml,self.children))
 
+@_all
 class META(XMLNoChildNode):
 	'''
 	
@@ -321,6 +285,8 @@ class META(XMLNoChildNode):
 		items.extend(list(ra.items()))
 		return ''.join(' %s=%r'%(k.replace('_','-'),v) for k,v in items if len(sequence(v)))
 
+
+@_all
 def Hyper(href, *children, **attributes):
 	'''Helper function for creating hyperlinks
 
@@ -330,6 +296,8 @@ def Hyper(href, *children, **attributes):
 	attributes['_href'] = href
 	return A(*children, **attributes)
 
+
+@_all
 def Image(src, alt=None, **attributes):
 	'''Helper function for creating images
 
@@ -342,6 +310,8 @@ def Image(src, alt=None, **attributes):
 		r.setdefault('_alt',alt)
 	return r
 
+
+@_all
 class SCRIPT(XMLNode):
 	'''
 	
@@ -364,13 +334,19 @@ class SCRIPT(XMLNode):
 		else:
 			return '<script%s></script>'%self._render_attrs()
 
-Javascript = partial(SCRIPT, type='text/javascript')
 
+Javascript = partial(SCRIPT, type='text/javascript')
+__all__.append('Javascript')
+
+
+@_all
 class BODY(XMLNotEmptyNode):
 	'''
 	'''
 	name = 'body'
 
+
+@_all
 class Body(BODY):
 	def __init__(self, *children, **attributes):
 		self.conditional = attributes.pop('conditional', False)
@@ -389,6 +365,8 @@ class Body(BODY):
 		else:
 			return XMLNotEmptyNode.__str__(self)
 
+
+@_all
 class HTML(XMLNotEmptyNode):
 	'''Node representing the <html> root element of an html document. Using this
 	class directly is not recommended. Instead use the more featureful HTMLDoc().
@@ -416,6 +394,8 @@ class HTML(XMLNotEmptyNode):
 			attr=self._render_attrs(),
 		)
 
+
+@_all
 class HTMLDoc(HTML):
 	'''Class representing a complete (X)HTML document.
 	
