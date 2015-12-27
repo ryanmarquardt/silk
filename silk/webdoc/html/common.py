@@ -139,7 +139,7 @@ normal_tags = {
     'A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET', 'B', 'BDO', 'BIG',
     'BLOCKQUOTE', 'BUTTON', 'CAPTION', 'CENTER', 'CITE', 'CODE', 'COLGROUP',
     'DD', 'DEL', 'DFN', 'DIR', 'DL', 'DT', 'EM', 'FIELDSET', 'FONT', 'FORM',
-    'FRAMESET', 'HEAD', 'I', 'IFRAME', 'INS', 'KBD', 'LABEL', 'LEGEND', 'LI',
+    'FRAMESET', 'I', 'IFRAME', 'INS', 'KBD', 'LABEL', 'LEGEND', 'LI',
     'MAP', 'MENU', 'NOFRAMES', 'NOSCRIPT', 'OBJECT', 'OL', 'OPTGROUP',
     'OPTION', 'P', 'PRE', 'Q', 'S', 'SAMP', 'SELECT', 'SMALL', 'SPAN',
     'STRIKE', 'STRONG', 'STYLE', 'SUB', 'SUP', 'TABLE', 'TBODY', 'TD',
