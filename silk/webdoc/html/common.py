@@ -136,15 +136,18 @@ class XMLNotEmptyNode(XMLNode):
 #
 
 normal_tags = {
-    'A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET', 'B', 'BDO', 'BIG',
-    'BLOCKQUOTE', 'BUTTON', 'CAPTION', 'CENTER', 'CITE', 'CODE', 'COLGROUP',
-    'DD', 'DEL', 'DFN', 'DIR', 'DL', 'DT', 'EM', 'FIELDSET', 'FONT', 'FORM',
-    'FRAMESET', 'I', 'IFRAME', 'INS', 'KBD', 'LABEL', 'LEGEND', 'LI',
-    'MAP', 'MENU', 'NOFRAMES', 'NOSCRIPT', 'OBJECT', 'OL', 'OPTGROUP',
-    'OPTION', 'P', 'PRE', 'Q', 'S', 'SAMP', 'SELECT', 'SMALL', 'SPAN',
-    'STRIKE', 'STRONG', 'STYLE', 'SUB', 'SUP', 'TABLE', 'TBODY', 'TD',
-    'TEXTAREA', 'TFOOT', 'TH', 'THEAD', 'TITLE', 'TR', 'TT', 'U', 'UL', 'VAR',
-    'XMP',
+    'A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET', 'ARTICLE', 'ASIDE', 'AUDIO',
+    'B', 'BDI', 'BDO', 'BIG', 'BLOCKQUOTE', 'BUTTON', 'CANVAS', 'CAPTION',
+    'CENTER', 'CITE', 'CODE', 'COLGROUP', 'DATALIST', 'DD', 'DEL', 'DETAILS',
+    'DFN', 'DIALOG', 'DIR', 'DL', 'DT', 'EM', 'EMBED', 'FIELDSET',
+    'FIGCAPTION', 'FIGURE', 'FONT', 'FOOTER', 'FORM', 'FRAMESET', 'HEADER',
+    'I', 'IFRAME', 'INS', 'KBD', 'KEYGEN', 'LABEL', 'LEGEND', 'LI', 'MAIN',
+    'MAP', 'MARK', 'MENU', 'MENUITEM', 'METER', 'NAV', 'NOFRAMES', 'NOSCRIPT',
+    'OBJECT', 'OL', 'OPTGROUP', 'OPTION', 'OUTPUT', 'P', 'PRE', 'PROGRESS',
+    'RP', 'RT', 'RUBY', 'Q', 'S', 'SAMP', 'SECTION', 'SELECT', 'SMALL',
+    'SOURCE', 'SPAN', 'STRIKE', 'STRONG', 'STYLE', 'SUB', 'SUMMARY', 'SUP',
+    'TABLE', 'TBODY', 'TD', 'TEXTAREA', 'TFOOT', 'TH', 'THEAD', 'TIME',
+    'TITLE', 'TR', 'TRACK', 'TT', 'U', 'UL', 'VAR', 'VIDEO', 'XMP', 'WBR',
 }
 
 
