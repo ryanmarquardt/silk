@@ -142,3 +142,19 @@ from .common import (  # flake8: noqa
     xmlescape,
     xmlunescape
 )
+
+__all__ = [
+    'A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET', 'AREA', 'B', 'BASE',
+    'BASEFONT', 'BDO', 'BIG', 'BLOCKQUOTE', 'BODY', 'BR', 'BUTTON', 'Body',
+    'CAPTION', 'CAT', 'CENTER', 'CITE', 'CODE', 'COL', 'COLGROUP', 'COMMENT',
+    'CONDITIONAL_COMMENT', 'DD', 'DEL', 'DFN', 'DIR', 'DIV', 'DL', 'DT', 'EM',
+    'FIELDSET', 'FONT', 'FORM', 'FRAME', 'FRAMESET', 'Form', 'H1', 'H2', 'H3',
+    'H4', 'H5', 'H6', 'HEAD', 'HR', 'HTML', 'HTMLDoc', 'Hyper', 'I', 'IFRAME',
+    'IMG', 'INPUT', 'INS', 'Image', 'Javascript', 'KBD', 'LABEL', 'LEGEND',
+    'LI', 'LINK', 'MAP', 'MENU', 'META', 'NBSP', 'NOFRAMES', 'NOSCRIPT',
+    'OBJECT', 'OL', 'OPTGROUP', 'OPTION', 'P', 'PARAM', 'PRE', 'Q', 'S',
+    'SAMP', 'SCRIPT', 'SELECT', 'SMALL', 'SPAN', 'STRIKE', 'STRONG', 'STYLE',
+    'SUB', 'SUP', 'TABLE', 'TBODY', 'TD', 'TEXTAREA', 'TFOOT', 'TH', 'THEAD',
+    'TITLE', 'TR', 'TT', 'U', 'UL', 'VAR', 'XML', 'XMLEntity', 'XMLNode',
+    'XMP', 'xmlescape', 'xmlunescape'
+]
