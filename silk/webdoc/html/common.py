@@ -133,6 +133,12 @@ normal_tags = {
 }
 
 
+# squash flake8 complaints
+A = None
+FORM = None
+TITLE = None
+
+
 for name in normal_tags:
     globals()[name] = type(name, (XMLNode,), {'name': name.lower()})
     __all__.append(name)
@@ -160,6 +166,11 @@ nochild_tags = {
 }
 
 
+# squash flake8 complaints
+IMG = None
+LINK = None
+
+
 for name in nochild_tags:
     globals()[name] = type(name, (XMLNoChildNode,), {'name': name.lower()})
     __all__.append(name)
@@ -184,17 +195,21 @@ notempty_tags = {
 }
 
 
+# squash flake8 complaints
+HEAD = None
+
+
 for name in notempty_tags:
     globals()[name] = type(name, (XMLNotEmptyNode,), {'name': name.lower()})
     __all__.append(name)
 
 
 @_all
-class Form(FORM):  # noqa
+class Form(FORM):
     '''
     '''
     def __init__(self, *children, **attributes):
-        FORM.__init__(self, *children, **attributes)  # noqa
+        FORM.__init__(self, *children, **attributes)
         self.setdefault('_method', 'POST')
         self.setdefault('_enctype', 'multipart/form-data')
 
@@ -321,7 +336,7 @@ def Hyper(href, *children, **attributes):
     <a href='http://www.google.com'>Google</a>
     '''
     attributes['_href'] = href
-    return A(*children, **attributes)  # noqa
+    return A(*children, **attributes)
 
 
 @_all
@@ -331,7 +346,7 @@ def Image(src, alt=None, **attributes):
     >>> print(Image('favicon.ico'))
     <img src='favicon.ico' />
     '''
-    r = IMG(**attributes)  # noqa
+    r = IMG(**attributes)
     r['_src'] = src
     if alt:
         r.setdefault('_alt', alt)
@@ -538,10 +553,10 @@ class HTMLDoc(HTML):
         includes = attributes.pop('includes', [])
         charset = attributes.pop('charset', 'utf-8')
         if title:
-            includes.insert(0, TITLE(title))  # noqa
+            includes.insert(0, TITLE(title))
         if charset:
             includes.insert(0, META.charset(charset))
-        HTML.__init__(self, HEAD(), Body(*children), **attributes)  # noqa
+        HTML.__init__(self, HEAD(), Body(*children), **attributes)
         self['_class'] = sequence(self.get('_class', []))
         if no_js:
             self['_class'].append('no-js')
@@ -565,15 +580,15 @@ class HTMLDoc(HTML):
             node = path
         elif ((type is None and path.endswith('.css')) or
                 type == 'text/css'):
-            node = LINK(type='text/css', href=path, **attributes)  # noqa
+            node = LINK(type='text/css', href=path, **attributes)
             node.setdefault('_rel', 'stylesheet')
         elif ((type is None and path.endswith('.ico')) or
                 type == 'image/x-icon'):
-            node = LINK(type='image/x-icon', href=path, **attributes)  # noqa
+            node = LINK(type='image/x-icon', href=path, **attributes)
             node.setdefault('_rel', 'shortcut icon')
         elif ((type is None and path.endswith('.png')) or
                 type == 'image/png'):
-            node = LINK(type='image/png', href=path, **attributes)  # noqa
+            node = LINK(type='image/png', href=path, **attributes)
         elif ((type is None and path.endswith('.js')) or
                 type == 'text/javascript'):
             node = Javascript(src=path, **attributes)
